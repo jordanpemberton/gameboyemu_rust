@@ -8,6 +8,8 @@ pub(crate) struct Flags {
     pub(crate) subtract: bool,
     pub(crate) half_carry: bool,
     pub(crate) carry: bool,
+    pub(crate) always: bool,
+    
 }
 
 pub(crate) enum RegIndex {
@@ -28,7 +30,7 @@ pub(crate) struct Registers {
 }
 
 impl Registers {
-    pub(crate) fn get_8b(&self, index: RegIndex) -> u8 {
+    pub(crate) fn get_byte(&self, index: RegIndex) -> u8 {
         match index {
             RegIndex::A => self.a,
             RegIndex::B => self.b,
@@ -42,17 +44,17 @@ impl Registers {
         }
     }
 
-    pub(crate) fn get_16b(&self, index: RegIndex) -> u16 {
+    pub(crate) fn get_word(&self, index: RegIndex) -> u16 {
         match index {
-            RegIndex::AF => self.to_16b(self.a, self.f),
-            RegIndex::BC => self.to_16b(self.b, self.c),
-            RegIndex::DE => self.to_16b(self.d, self.e),
-            RegIndex::HL => self.to_16b(self.h, self.l),
+            RegIndex::AF => self.to_word(self.a, self.f),
+            RegIndex::BC => self.to_word(self.b, self.c),
+            RegIndex::DE => self.to_word(self.d, self.e),
+            RegIndex::HL => self.to_word(self.h, self.l),
             _ => 0
         }
     }
 
-    pub(crate) fn to_16b(&self, reg1: u8, reg2: u8) -> u16 {
+    pub(crate) fn to_word(&self, reg1: u8, reg2: u8) -> u16 {
         (reg1 as u16) << 8 | (reg2 as u16)
     }
 
@@ -61,7 +63,8 @@ impl Registers {
             zero: ((self.f >> FLAG_ZERO_BYTE) & 0b1) != 0,
             subtract: ((self.f >> FLAG_SUBTRACT_BYTE) & 0b1) != 0,
             half_carry: ((self.f >> FLAG_HALF_CARRY_BYTE) & 0b1) != 0,
-            carry: ((self.f >> FLAG_CARRY_BYTE) & 0b1) != 0
+            carry: ((self.f >> FLAG_CARRY_BYTE) & 0b1) != 0,
+            always: false,
         }
     }
 
@@ -73,7 +76,7 @@ impl Registers {
                 (if flags.carry { 1 } else { 0 }) << FLAG_CARRY_BYTE;
     }
 
-    pub(crate) fn set_8b(&mut self, index: RegIndex, value: u8) {
+    pub(crate) fn set_byte(&mut self, index: RegIndex, value: u8) {
         match index {
             RegIndex::A => { self.a = value; }
             RegIndex::B => { self.b = value; }
@@ -87,7 +90,7 @@ impl Registers {
         }
     }
 
-    pub(crate) fn set_16b(&mut self, index: RegIndex, value: u16) {
+    pub(crate) fn set_word(&mut self, index: RegIndex, value: u16) {
         match index {
             RegIndex::AF => {
                 self.a = ((value & 0xFF00) >> 8) as u8;

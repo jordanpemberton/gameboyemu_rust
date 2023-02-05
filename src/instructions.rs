@@ -1,4 +1,4 @@
-use crate::registers::{RegIndex};
+use crate::registers::{Flags, RegIndex};
 
 pub(crate) enum LoadType {
     Byte
@@ -6,10 +6,13 @@ pub(crate) enum LoadType {
 
 pub(crate) enum Instruction {
     ADD(RegIndex),
-    JP(bool, bool, bool),
+    HALT,
+    JP(Flags),
     LD(LoadType, RegIndex, RegIndex),
-    POP(),
+    NOP,
+    POP,
     PUSH(RegIndex),
+    RET(Flags),
     RLC(RegIndex)
 }
 

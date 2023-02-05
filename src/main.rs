@@ -26,6 +26,7 @@ fn main() {
         bus: MemoryBus {
             memory: [0; 0xFFFF]
         },
+        is_halted: false,
     };
 
     cpu.step();

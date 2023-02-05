@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 #![allow(unreachable_patterns)]
+#![allow(unused_variables)]
 
 use crate::instructions::{Instruction, LoadType};
 use crate::registers::{Flags, RegIndex, Registers};
@@ -26,6 +27,7 @@ pub(crate) struct CPU {
     pub(crate) sp: u16,
     pub(crate) registers: Registers,
     pub(crate) bus: MemoryBus,
+    pub(crate) is_halted: bool,
 }
 
 impl CPU {
@@ -47,18 +49,31 @@ impl CPU {
     }
 
     pub(crate) fn execute(&mut self, instruction: Instruction) -> u16 {
+        match self.is_halted {
+            true => 0,
+            false => self.execute_instruction(instruction)
+        }
+    }
+
+    fn execute_instruction(&mut self, instruction: Instruction) -> u16 {
         match instruction {
             Instruction::ADD(target) => self.add(target),
 
-            Instruction::JP(is_zero, is_carry, is_always) => self.jump(is_zero, is_carry, is_always),
+            Instruction::HALT => self.halt(),
+
+            Instruction::JP(conditions) => self.jump(conditions),
 
             Instruction::LD(load_type, target, source) => self.load(load_type, target, source),
 
-            Instruction::POP() => self.pop(),
+            Instruction::NOP => self.nop(),
+
+            Instruction::POP => self.pop(),
 
             Instruction::PUSH(target) => self.push(target),
 
-            _ => { self.pc }
+            Instruction::RET(conditions) => self.ret(conditions),
+
+            _ => self.pc
         }
     }
 
@@ -67,8 +82,15 @@ impl CPU {
         0
     }
 
+    fn read_next_word(&mut self) -> u16 {
+        // TODO
+        0
+    }
+
+    // INSTRUCTIONS
+
     fn add(&mut self, target: RegIndex) -> u16 {
-        let value = self.registers.get_8b(target);
+        let value = self.registers.get_byte(target);
         let (result, did_overflow) = self.registers.a.overflowing_add(value); // or hl? bc?
         self.registers.set_f(
             Flags {
@@ -76,16 +98,38 @@ impl CPU {
                 subtract: false,
                 half_carry: did_overflow,
                 carry: ( self.registers.a & 0xF) + (value & 0xF) > 0xF,
+                always: false,
             }
         );
         self.registers.a = result;
         self.pc.wrapping_add(1)
     }
 
-    fn jump(&mut self, is_zero: bool, is_carry: bool, is_always: bool) -> u16 {
-        let flags = self.registers.get_flags();
-        let should_jump = is_always || is_zero == flags.zero || is_carry == flags.carry;
+    fn call(&mut self, conditions: Flags) -> u16 {
+        let should_jump = self.should_jump(conditions);
+        let next_pc = self.pc.wrapping_add(3);
         if should_jump {
+            self.push_value(next_pc);
+            self.read_next_word()
+        } else {
+            next_pc
+        }
+    }
+
+    fn halt(&mut self) -> u16 {
+        self.is_halted = true;
+        self.pc.wrapping_add(1)
+    }
+
+    fn should_jump(&mut self, conditions: Flags) -> bool {
+        let flags = self.registers.get_flags();
+        conditions.always
+            || conditions.zero == flags.zero
+            || conditions.carry == flags.carry
+    }
+
+    fn jump(&mut self, conditions: Flags) -> u16 {
+        if self.should_jump(conditions) {
             // Gameboy is little endian. Read pc + 2 as most signif, pc + 1 as least signif.
             let least_significant_byte = self.bus.read_byte(self.pc + 1) as u16;
             let most_significant_byte = self.bus.read_byte(self.pc + 2) as u16;
@@ -102,12 +146,12 @@ impl CPU {
                 let source_value = match source {
                     RegIndex::A => self.registers.a,
                     RegIndex::D8 => self.read_next_byte(),
-                    // RegIndex::HLI => self.bus.read_byte(self.registers.get_16b(RegIndex::H)),
+                    // RegIndex::HLI => self.bus.read_byte(self.registers.get_word(RegIndex::H)),
                     _ => { panic!("TODO: implement other sources") }
                 };
                 match target {
                     RegIndex::A => self.registers.a = source_value,
-                    // RegIndex::HLI => self.bus.write_byte(self.registers.get_16b(RegIndex::H), source_value),
+                    // RegIndex::HLI => self.bus.write_byte(self.registers.get_word(RegIndex::H), source_value),
                     _ => { panic!("TODO: implement other targets") }
                 };
                 match source {
@@ -119,7 +163,9 @@ impl CPU {
         }
     }
 
-    fn nop() { }
+    fn nop(&mut self) -> u16 {
+        self.sp.wrapping_add(1)
+    }
 
     fn pop(&mut self) -> u16 {
         // Read least signif byte from memory
@@ -133,15 +179,26 @@ impl CPU {
     }
 
     fn push(&mut self, target: RegIndex) -> u16 {
-        let value = self.registers.get_16b(target);
+        let value = self.registers.get_word(target);
+        self.push_value(value);
+        self.pc.wrapping_add(1)
+    }
 
+    fn push_value(&mut self, value: u16) {
         // Write most signif byte into memory
         self.sp = self.sp.wrapping_sub(1);
         self.bus.write_byte(self.sp, ((value & 0xFF00) >> 8) as u8);
         // Write least signif byte into memory
         self.sp = self.sp.wrapping_sub(1);
         self.bus.write_byte(self.sp, (value & 0xFF) as u8);
-        self.pc.wrapping_add(1)
+    }
+
+    fn ret(&mut self, conditions: Flags) -> u16 {
+        if self.should_jump(conditions) {
+            self.pop()
+        } else {
+            self.pc.wrapping_add(1)
+        }
     }
 
     fn rlc(&mut self, target: RegIndex) -> u16 {
