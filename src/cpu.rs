@@ -5,11 +5,17 @@
 #![allow(unreachable_patterns)]
 #![allow(unused_variables)]
 
-use crate::instructions::{Instruction, LoadType};
+use crate::instructions::{Instruction, LoadType, PREFIX_BYTE};
 use crate::registers::{Flags, RegIndex, Registers};
 
 pub(crate) struct MemoryBus {
     pub(crate) memory: [u8; 0xFFFF]
+}
+
+impl Default for MemoryBus {
+    fn default() -> Self {
+        Self { memory: [0; 0xFFFF] }
+    }
 }
 
 impl MemoryBus {
@@ -22,6 +28,7 @@ impl MemoryBus {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct CPU {
     pub(crate) pc: u16,
     pub(crate) sp: u16,
@@ -31,9 +38,36 @@ pub(crate) struct CPU {
 }
 
 impl CPU {
-    pub(crate) fn step(&mut self) {
+    // pub fn new() -> Self {
+    //     Self {
+    //         registers: Registers {
+    //             a: 0,
+    //             b: 0,
+    //             c: 0,
+    //             d: 0,
+    //             e: 0,
+    //             f: 0,
+    //             h: 0,
+    //             l: 0,
+    //         },
+    //         pc: 0,
+    //         sp: 0,
+    //         bus: MemoryBus {
+    //             memory: [0; 0xFFFF]
+    //         },
+    //         is_halted: false,
+    //     }
+    // }
+
+    pub(crate) fn run(&mut self) {
+        while !self.is_halted {
+            self.step()
+        }
+    }
+
+    fn step(&mut self) {
         let mut instruction_byte = self.bus.read_byte(self.pc);
-        let is_prefixed = instruction_byte == 0xCB;
+        let is_prefixed = instruction_byte == PREFIX_BYTE;
         if is_prefixed {
             instruction_byte = self.bus.read_byte(self.pc + 1);
         }
@@ -41,21 +75,15 @@ impl CPU {
         let next_pc = if let Some(instruction) = Instruction::from_byte(instruction_byte, is_prefixed) {
             self.execute(instruction)
         } else {
-            let description = format!("0x{}{:x}", if is_prefixed { "cb" } else { "" }, instruction_byte);
-            panic!("Unknown instruction found for: {}", description)
+            let opcode = format!("0x{}{:x}",
+                if is_prefixed { "cb" } else { "" },
+                instruction_byte);
+            panic!("Unknown instruction found for: {}", opcode)
         };
-
         self.pc = next_pc;
     }
 
     pub(crate) fn execute(&mut self, instruction: Instruction) -> u16 {
-        match self.is_halted {
-            true => 0,
-            false => self.execute_instruction(instruction)
-        }
-    }
-
-    fn execute_instruction(&mut self, instruction: Instruction) -> u16 {
         match instruction {
             Instruction::ADD(target) => self.add(target),
 

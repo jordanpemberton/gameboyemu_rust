@@ -18,6 +18,7 @@ pub(crate) enum RegIndex {
     D8,
 }
 
+#[derive(Default)]
 pub(crate) struct Registers {
     pub(crate) a: u8,
     pub(crate) b: u8,

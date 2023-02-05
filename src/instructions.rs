@@ -1,5 +1,7 @@
 use crate::registers::{Flags, RegIndex};
 
+pub(crate) const PREFIX_BYTE: u8 = 0xCB;
+
 pub(crate) enum LoadType {
     Byte
 }
@@ -48,6 +50,7 @@ SWAP (swap nibbles) - switch upper and lower nibble of a specific register
 */
 
 impl Instruction {
+
     pub(crate) fn from_byte(byte: u8, prefixed: bool) -> Option<Instruction> {
         if prefixed {
             Instruction::from_byte_prefixed(byte)
@@ -65,6 +68,7 @@ impl Instruction {
 
     fn from_byte_unprefixed(byte: u8) -> Option<Instruction> {
         match byte {
+            0x00 => Some(Instruction::NOP),
             // 0x02 => Some(Instruction::INC(IncDecTarget::BC)), // 0x03?
             // 0x09 => Some(Instruction::ADD(RegIndex::)) // ?
             _ => /* TODO: Add mapping for rest of instructions */ None
