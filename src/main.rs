@@ -17,6 +17,7 @@ fn main() {
             l: 0,
         },
         pc: 0,
+        sc: 0,
         bus: cpu::MemoryBus {
             memory: [0; 0xFFFF]
         },

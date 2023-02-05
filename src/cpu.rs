@@ -10,7 +10,7 @@ const FLAG_HALF_CARRY_BYTE: u8 = 5;
 const FLAG_CARRY_BYTE: u8 = 4;
 
 pub(crate) enum RegIndex {
-    A, B, C, D, E, F, H, L
+    A, B, C, D, E, F, H, L, D8,
 }
 
 pub(crate) struct Flags {
@@ -112,20 +112,10 @@ impl Registers {
             _ => ()
         }
     }
+}
 
-    fn add(&mut self, value: u8) -> u8 {
-        let (result, did_overflow) = self.a.overflowing_add(value);
-        self.set_f(
-            Flags {
-                zero: result == 0,
-                subtract: false,
-                half_carry: did_overflow,
-                carry: ( self.a & 0xF) + (value & 0xF) > 0xF,
-            }
-        );
-        self.a = result;
-        result
-    }
+pub(crate) enum LoadType {
+    Byte
 }
 
 pub(crate) struct MemoryBus {
@@ -140,7 +130,8 @@ impl MemoryBus {
 
 pub(crate) enum Instruction {
     ADD(RegIndex),
-    JP(bool, bool, bool)
+    JP(bool, bool, bool),
+    LD(LoadType, RegIndex, RegIndex)
 }
 
 /*
@@ -186,23 +177,22 @@ impl Instruction {
     fn from_byte_prefixed(byte: u8) -> Option<Instruction> {
         match byte {
             // 0x00 => Some(Instruction::RLC(PrefixTarget::B)),
-            /* TODO: Add mapping for rest of instructions */
-            _ => None
+            _ => /* TODO: Add mapping for rest of instructions */ None
         }
     }
 
     fn from_byte_not_prefixed(byte: u8) -> Option<Instruction> {
         match byte {
             // 0x02 => Some(Instruction::INC(IncDecTarget::BC)),
-            /* TODO: Add mapping for rest of instructions */
-            _ => None
+            _ => /* TODO: Add mapping for rest of instructions */ None
         }
     }
 }
 
 pub(crate) struct CPU {
-    pub(crate) registers: Registers,
     pub(crate) pc: u16,
+    pub(crate) sc: u16,
+    pub(crate) registers: Registers,
     pub(crate) bus: MemoryBus,
 }
 
@@ -227,23 +217,36 @@ impl CPU {
     pub(crate) fn execute(&mut self, instruction: Instruction) -> u16 {
         match instruction {
             Instruction::ADD(target) => self.add(target),
-            Instruction::JP(is_zero, is_carry, is_always) => {
-                let flags = self.registers.get_flags();
-                let should_jump = is_always || is_zero == flags.zero || is_carry == flags.carry;
-                self.jump(should_jump)
-            }
+
+            Instruction::JP(is_zero, is_carry, is_always) => self.jump(is_zero, is_carry, is_always),
+
+            Instruction::LD(load_type, target, source) => self.load(load_type, target, source),
+
             /* TODO: support more instructions */
             _ => { self.pc }
         }
     }
 
+    fn nop() { }
+
     fn add(&mut self, target: RegIndex) -> u16 {
         let value = self.registers.get_8b(target);
-        self.registers.add(value);
+        let (result, did_overflow) = self.registers.a.overflowing_add(value); // or hl? bc?
+        self.registers.set_f(
+            Flags {
+                zero: result == 0,
+                subtract: false,
+                half_carry: did_overflow,
+                carry: ( self.registers.a & 0xF) + (value & 0xF) > 0xF,
+            }
+        );
+        self.registers.a = result;
         self.pc.wrapping_add(1)
     }
 
-    fn jump(&self, should_jump: bool) -> u16 {
+    fn jump(&mut self, is_zero: bool, is_carry: bool, is_always: bool) -> u16 {
+        let flags = self.registers.get_flags();
+        let should_jump = is_always || is_zero == flags.zero || is_carry == flags.carry;
         if should_jump {
             // Gameboy is little endian. Read pc + 2 as most signif, pc + 1 as least signif.
             let least_significant_byte = self.bus.read_byte(self.pc + 1) as u16;
@@ -252,6 +255,29 @@ impl CPU {
         } else {
             // If we don't jump we still need to increment pc by 3 (width of jmp instruction).
             self.pc.wrapping_add(3)
+        }
+    }
+
+    fn load(&mut self, load_type: LoadType, target: RegIndex, source: RegIndex) -> u16 {
+        match load_type {
+            LoadType::Byte => {
+                let source_value = match source {
+                    RegIndex::A => self.registers.a,
+                    // RegIndex::D8 => self.read_next_byte(),
+                    // RegIndex::HLI => self.bus.read_byte(self.registers.get_16b(RegIndex::H)),
+                    _ => { panic!("TODO: implement other sources") }
+                };
+                match target {
+                    RegIndex::A => self.registers.a = source_value,
+                    // RegIndex::HLI => self.bus.write_byte(self.registers.get_16b(RegIndex::H), source_value),
+                    _ => { panic!("TODO: implement other targets") }
+                };
+                match source {
+                    RegIndex::D8 => self.pc.wrapping_add(2),
+                    _ => self.pc.wrapping_add(1),
+                }
+            }
+            _ => { panic!("TODO: implement other load types") }
         }
     }
 }
