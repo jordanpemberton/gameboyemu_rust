@@ -2,11 +2,16 @@
 #![allow(non_snake_case)]
 #![allow(unreachable_patterns)]
 
+use crate::cpu::{CPU, MemoryBus};
+use crate::registers::Registers;
+
 mod cpu;
+mod registers;
+mod instructions;
 
 fn main() {
-    let mut cpu = cpu::CPU {
-        registers: cpu::Registers {
+    let mut cpu = CPU {
+        registers: Registers {
             a: 0,
             b: 0,
             c: 0,
@@ -17,8 +22,8 @@ fn main() {
             l: 0,
         },
         pc: 0,
-        sc: 0,
-        bus: cpu::MemoryBus {
+        sp: 0,
+        bus: MemoryBus {
             memory: [0; 0xFFFF]
         },
     };
