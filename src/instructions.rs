@@ -50,7 +50,6 @@ SWAP (swap nibbles) - switch upper and lower nibble of a specific register
 */
 
 impl Instruction {
-
     pub(crate) fn from_byte(byte: u8, prefixed: bool) -> Option<Instruction> {
         if prefixed {
             Instruction::from_byte_prefixed(byte)

@@ -18,7 +18,6 @@ pub(crate) enum RegIndex {
     D8,
 }
 
-#[derive(Default)]
 pub(crate) struct Registers {
     pub(crate) a: u8,
     pub(crate) b: u8,
@@ -31,6 +30,19 @@ pub(crate) struct Registers {
 }
 
 impl Registers {
+    pub(crate) fn new() -> Registers {
+        Registers {
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+            e: 0,
+            f: 0,
+            h: 0,
+            l: 0,
+        }
+    }
+
     pub(crate) fn get_byte(&self, index: RegIndex) -> u8 {
         match index {
             RegIndex::A => self.a,
@@ -47,15 +59,15 @@ impl Registers {
 
     pub(crate) fn get_word(&self, index: RegIndex) -> u16 {
         match index {
-            RegIndex::AF => self.to_word(self.a, self.f),
-            RegIndex::BC => self.to_word(self.b, self.c),
-            RegIndex::DE => self.to_word(self.d, self.e),
-            RegIndex::HL => self.to_word(self.h, self.l),
+            RegIndex::AF => self.bytes_to_word(self.a, self.f),
+            RegIndex::BC => self.bytes_to_word(self.b, self.c),
+            RegIndex::DE => self.bytes_to_word(self.d, self.e),
+            RegIndex::HL => self.bytes_to_word(self.h, self.l),
             _ => 0
         }
     }
 
-    pub(crate) fn to_word(&self, reg1: u8, reg2: u8) -> u16 {
+    pub(crate) fn bytes_to_word(&self, reg1: u8, reg2: u8) -> u16 {
         (reg1 as u16) << 8 | (reg2 as u16)
     }
 

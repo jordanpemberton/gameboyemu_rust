@@ -1,63 +1,30 @@
-/* Following: https://rylev.github.io/DMG-01/public/book/ */
-
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 #![allow(unreachable_patterns)]
 #![allow(unused_variables)]
 
 use crate::instructions::{Instruction, LoadType, PREFIX_BYTE};
+use crate::memory_bus::{MemoryBus};
 use crate::registers::{Flags, RegIndex, Registers};
 
-pub(crate) struct MemoryBus {
-    pub(crate) memory: [u8; 0xFFFF]
-}
-
-impl Default for MemoryBus {
-    fn default() -> Self {
-        Self { memory: [0; 0xFFFF] }
-    }
-}
-
-impl MemoryBus {
-    pub(crate) fn read_byte(&self, address: u16) -> u8 {
-        self.memory[address as usize]
-    }
-
-    pub(crate) fn write_byte(&mut self, address: u16, value: u8) {
-        self.memory[address as usize] = value;
-    }
-}
-
-#[derive(Default)]
-pub(crate) struct CPU {
+pub(crate) struct Cpu {
+    pub(crate) is_halted: bool,
     pub(crate) pc: u16,
     pub(crate) sp: u16,
     pub(crate) registers: Registers,
     pub(crate) bus: MemoryBus,
-    pub(crate) is_halted: bool,
 }
 
-impl CPU {
-    // pub fn new() -> Self {
-    //     Self {
-    //         registers: Registers {
-    //             a: 0,
-    //             b: 0,
-    //             c: 0,
-    //             d: 0,
-    //             e: 0,
-    //             f: 0,
-    //             h: 0,
-    //             l: 0,
-    //         },
-    //         pc: 0,
-    //         sp: 0,
-    //         bus: MemoryBus {
-    //             memory: [0; 0xFFFF]
-    //         },
-    //         is_halted: false,
-    //     }
-    // }
+impl Cpu {
+    pub(crate) fn new() -> Cpu {
+        Cpu {
+            is_halted: false,
+            pc: 0,
+            sp: 0,
+            registers: Registers::new(),
+            bus: MemoryBus::new(),
+        }
+    }
 
     pub(crate) fn run(&mut self) {
         while !self.is_halted {
@@ -146,7 +113,7 @@ impl CPU {
 
     fn halt(&mut self) -> u16 {
         self.is_halted = true;
-        self.pc.wrapping_add(1)
+        self.pc
     }
 
     fn should_jump(&mut self, conditions: Flags) -> bool {

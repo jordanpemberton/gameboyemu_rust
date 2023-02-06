@@ -2,14 +2,15 @@
 #![allow(non_snake_case)]
 #![allow(unreachable_patterns)]
 
-use crate::cpu::{CPU};
-
 mod cpu;
-mod registers;
+mod gpu;
 mod instructions;
+mod memory_bus;
+mod registers;
+
+use crate::cpu::{Cpu};
 
 fn main() {
-    let mut cpu = CPU::default();
-
+    let mut cpu = Cpu::new();
     cpu.run();
 }
