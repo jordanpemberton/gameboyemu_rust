@@ -2,6 +2,7 @@
 #![allow(non_snake_case)]
 #![allow(unreachable_patterns)]
 
+mod alu;
 mod cpu;
 mod gpu;
 mod instructions;

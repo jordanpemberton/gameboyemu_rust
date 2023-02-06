@@ -6,6 +6,7 @@ pub(crate) enum LoadType {
     Byte
 }
 
+/*
 pub(crate) enum Instruction {
     ADD(RegIndex),
     HALT,
@@ -16,6 +17,32 @@ pub(crate) enum Instruction {
     PUSH(RegIndex),
     RET(Flags),
     RLC(RegIndex)
+}
+*/
+
+type Args = [u8; 4];
+
+pub(crate) struct Instruction {
+    _args: Args,
+    _fn: fn (Args) -> u16,
+}
+
+impl Instruction {
+    pub(crate) fn exec(&self) -> u16 {
+        (self._fn)(self._args)
+    }
+}
+
+#[allow(unused_parameters)]
+fn nop(args: Args) -> u16 {
+    0
+}
+
+pub(crate) fn get_instruction(opcode: u8) -> Instruction {
+    match opcode {
+        0x00 => Instruction{_args: [0; 4], _fn: nop},
+        _ => Instruction{_args: [0; 4], _fn: nop},
+    }
 }
 
 /*
@@ -48,29 +75,3 @@ SRA (shift right arithmetic) - arithmetic shift a specific register right by 1
 SLA (shift left arithmetic) - arithmetic shift a specific register left by 1
 SWAP (swap nibbles) - switch upper and lower nibble of a specific register
 */
-
-impl Instruction {
-    pub(crate) fn from_byte(byte: u8, prefixed: bool) -> Option<Instruction> {
-        if prefixed {
-            Instruction::from_byte_prefixed(byte)
-        } else {
-            Instruction::from_byte_unprefixed(byte)
-        }
-    }
-
-    fn from_byte_prefixed(byte: u8) -> Option<Instruction> {
-        match byte {
-            0x00 => Some(Instruction::RLC(RegIndex::B)),
-            _ => /* TODO: Add mapping for rest of instructions */ None
-        }
-    }
-
-    fn from_byte_unprefixed(byte: u8) -> Option<Instruction> {
-        match byte {
-            0x00 => Some(Instruction::NOP),
-            // 0x02 => Some(Instruction::INC(IncDecTarget::BC)), // 0x03?
-            // 0x09 => Some(Instruction::ADD(RegIndex::)) // ?
-            _ => /* TODO: Add mapping for rest of instructions */ None
-        }
-    }
-}

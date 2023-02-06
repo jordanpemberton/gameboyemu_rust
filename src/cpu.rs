@@ -3,7 +3,7 @@
 #![allow(unreachable_patterns)]
 #![allow(unused_variables)]
 
-use crate::instructions::{Instruction, LoadType, PREFIX_BYTE};
+use crate::instructions::{get_instruction, Instruction, LoadType, PREFIX_BYTE};
 use crate::memory_bus::{MemoryBus};
 use crate::registers::{Flags, RegIndex, Registers};
 
@@ -33,24 +33,18 @@ impl Cpu {
     }
 
     fn step(&mut self) {
-        let mut instruction_byte = self.bus.read_byte(self.pc);
-        let is_prefixed = instruction_byte == PREFIX_BYTE;
+        let mut opcode = self.bus.read_byte(self.pc);
+        let is_prefixed = opcode == PREFIX_BYTE;
         if is_prefixed {
-            instruction_byte = self.bus.read_byte(self.pc + 1);
+            opcode = self.bus.read_byte(self.pc + 1);
         }
-
-        let next_pc = if let Some(instruction) = Instruction::from_byte(instruction_byte, is_prefixed) {
-            self.execute(instruction)
-        } else {
-            let opcode = format!("0x{}{:x}",
-                if is_prefixed { "cb" } else { "" },
-                instruction_byte);
-            panic!("Unknown instruction found for: {}", opcode)
-        };
-        self.pc = next_pc;
+        let instruction = get_instruction(opcode);
+        self.pc = self.execute(instruction);
     }
 
     pub(crate) fn execute(&mut self, instruction: Instruction) -> u16 {
+        instruction.exec()
+        /*
         match instruction {
             Instruction::ADD(target) => self.add(target),
 
@@ -69,7 +63,7 @@ impl Cpu {
             Instruction::RET(conditions) => self.ret(conditions),
 
             _ => self.pc
-        }
+        }*/
     }
 
     fn read_next_byte(&mut self) -> u8 {
@@ -81,8 +75,6 @@ impl Cpu {
         // TODO
         0
     }
-
-    // INSTRUCTIONS
 
     fn add(&mut self, target: RegIndex) -> u16 {
         let value = self.registers.get_byte(target);
@@ -140,7 +132,7 @@ impl Cpu {
             LoadType::Byte => {
                 let source_value = match source {
                     RegIndex::A => self.registers.a,
-                    RegIndex::D8 => self.read_next_byte(),
+                    // RegIndex::D8 => self.read_next_byte(),
                     // RegIndex::HLI => self.bus.read_byte(self.registers.get_word(RegIndex::H)),
                     _ => { panic!("TODO: implement other sources") }
                 };
@@ -150,7 +142,7 @@ impl Cpu {
                     _ => { panic!("TODO: implement other targets") }
                 };
                 match source {
-                    RegIndex::D8 => self.pc.wrapping_add(2),
+                    // RegIndex::D8 => self.pc.wrapping_add(2),
                     _ => self.pc.wrapping_add(1),
                 }
             }

@@ -15,7 +15,7 @@ pub(crate) struct Flags {
 pub(crate) enum RegIndex {
     A, B, C, D, E, F, H, L,
     AF, BC, DE, HL,
-    D8,
+    //D8,
 }
 
 pub(crate) struct Registers {
