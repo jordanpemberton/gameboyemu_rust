@@ -12,6 +12,7 @@ pub(crate) struct Flags {
     
 }
 
+#[derive(Copy, Clone)]
 pub(crate) enum RegIndex {
     A, B, C, D, E, F, H, L,
     AF, BC, DE, HL,

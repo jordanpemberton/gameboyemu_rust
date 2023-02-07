@@ -1,4 +1,8 @@
-use crate::registers::{Flags, RegIndex};
+#![allow(unused_variables)]
+
+use crate::cpu::Cpu;
+use crate::mmu::Mmu;
+use crate::registers::{RegIndex};
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
@@ -20,28 +24,51 @@ pub(crate) enum Instruction {
 }
 */
 
-type Args = [u8; 4];
-
-pub(crate) struct Instruction {
-    _args: Args,
-    _fn: fn (Args) -> u16,
+#[derive(Copy, Clone)]
+pub(crate) struct InstrArgs {
+    pub(crate) source: RegIndex,
+    pub(crate) target: RegIndex,
 }
 
-impl Instruction {
-    pub(crate) fn exec(&self) -> u16 {
-        (self._fn)(self._args)
+impl InstrArgs {
+    pub(crate) fn new() -> Self {
+        Self {
+            source: RegIndex::A,
+            target: RegIndex::A,
+        }
     }
 }
 
-#[allow(unused_parameters)]
-fn nop(args: Args) -> u16 {
-    0
+pub(crate) struct Instruction {
+    size: usize,
+    time: usize,
+    _fn: fn(&Instruction, cpu: &mut Cpu, mmu: &mut Mmu, args: InstrArgs) -> (usize, usize),
+    args: InstrArgs,
 }
 
-pub(crate) fn get_instruction(opcode: u8) -> Instruction {
-    match opcode {
-        0x00 => Instruction{_args: [0; 4], _fn: nop},
-        _ => Instruction{_args: [0; 4], _fn: nop},
+impl Instruction {
+    pub(crate) fn get_instruction(opcode: u16) -> Instruction {
+        match opcode {
+            0x0000 => Instruction{ size: 1, time: 4, _fn: Instruction::nop, args: InstrArgs::new() },
+            0x0002 => Instruction{ size: 1, time: 8, _fn: Instruction::ld, args: InstrArgs { source: RegIndex::A, target: RegIndex::BC } },
+            _ => Instruction{ size: 1, time: 4, _fn: Instruction::nop, args: InstrArgs::new() },
+        }
+    }
+
+    pub(crate) fn exec(&self, cpu: &mut Cpu, mmu: &mut Mmu) -> (usize, usize) {
+        (self._fn)(self, cpu, mmu, self.args)
+    }
+
+
+    fn nop(&self, cpu: &mut Cpu, mmu: &mut Mmu, args: InstrArgs) -> (usize, usize) {
+        (self.size, self.time)
+    }
+
+    fn ld(&self, cpu: &mut Cpu, mmu: &mut Mmu, args: InstrArgs) -> (usize, usize) {
+        let value = cpu.registers.get_byte(args.source) as u16;
+        cpu.registers.set_word(args.target, value);
+
+        (self.size, self.time)
     }
 }
 

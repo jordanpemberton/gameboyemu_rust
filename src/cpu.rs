@@ -3,16 +3,15 @@
 #![allow(unreachable_patterns)]
 #![allow(unused_variables)]
 
-use crate::instructions::{get_instruction, Instruction, LoadType, PREFIX_BYTE};
-use crate::memory_bus::{MemoryBus};
-use crate::registers::{Flags, RegIndex, Registers};
+use crate::instructions::{Instruction, PREFIX_BYTE};
+use crate::mmu::Mmu;
+use crate::registers::{Registers};
 
 pub(crate) struct Cpu {
     pub(crate) is_halted: bool,
     pub(crate) pc: u16,
     pub(crate) sp: u16,
     pub(crate) registers: Registers,
-    pub(crate) bus: MemoryBus,
 }
 
 impl Cpu {
@@ -22,60 +21,69 @@ impl Cpu {
             pc: 0,
             sp: 0,
             registers: Registers::new(),
-            bus: MemoryBus::new(),
         }
     }
 
-    pub(crate) fn run(&mut self) {
-        while !self.is_halted {
-            self.step()
+    pub(crate) fn step(&mut self, mmu: &mut Mmu) -> usize {
+        let mut time = 0;
+
+        if !self.is_halted {
+            let opcode = self.fetch_opcode(mmu);
+            let instruction = Instruction::get_instruction(opcode);
+            time = self.execute_instruction(instruction, mmu);
         }
+
+        time
     }
 
-    fn step(&mut self) {
-        let mut opcode = self.bus.read_byte(self.pc);
-        let is_prefixed = opcode == PREFIX_BYTE;
-        if is_prefixed {
-            opcode = self.bus.read_byte(self.pc + 1);
+    fn fetch_opcode(&mut self, mmu: &mut Mmu) -> u16 {
+        let opcode: u16;
+        let byte = mmu.read_byte(self.pc as usize);
+
+        if byte == PREFIX_BYTE {
+            opcode = mmu.read_word(self.pc as usize);
         }
-        let instruction = get_instruction(opcode);
-        self.pc = self.execute(instruction);
+        else {
+            opcode = byte as u16;
+        }
+
+        opcode
     }
 
-    pub(crate) fn execute(&mut self, instruction: Instruction) -> u16 {
-        instruction.exec()
-        /*
-        match instruction {
-            Instruction::ADD(target) => self.add(target),
-
-            Instruction::HALT => self.halt(),
-
-            Instruction::JP(conditions) => self.jump(conditions),
-
-            Instruction::LD(load_type, target, source) => self.load(load_type, target, source),
-
-            Instruction::NOP => self.nop(),
-
-            Instruction::POP => self.pop(),
-
-            Instruction::PUSH(target) => self.push(target),
-
-            Instruction::RET(conditions) => self.ret(conditions),
-
-            _ => self.pc
-        }*/
+    fn execute_instruction(&mut self, instruction: Instruction, mmu: &mut Mmu) -> usize {
+        let (size, time) = instruction.exec(self, mmu);
+        self.pc = self.pc.wrapping_add(size as u16);
+        time
     }
 
-    fn read_next_byte(&mut self) -> u8 {
-        // TODO
-        0
-    }
 
-    fn read_next_word(&mut self) -> u16 {
-        // TODO
-        0
-    }
+    /*
+    pub(crate) fn execute(&mut self, instruction: Instruction) -> (usize, usize) {
+       instruction.exec()
+       match instruction {
+           Instruction::ADD(target) => self.add(target),
 
+           Instruction::HALT => self.halt(),
+
+           Instruction::JP(conditions) => self.jump(conditions),
+
+           Instruction::LD(load_type, target, source) => self.load(load_type, target, source),
+
+           Instruction::NOP => self.nop(),
+
+           Instruction::POP => self.pop(),
+
+           Instruction::PUSH(target) => self.push(target),
+
+           Instruction::RET(conditions) => self.ret(conditions),
+
+           _ => self.pc
+       }
+    }
+    */
+
+    // TODO Move these
+    /*
     fn add(&mut self, target: RegIndex) -> u16 {
         let value = self.registers.get_byte(target);
         let (result, did_overflow) = self.registers.a.overflowing_add(value); // or hl? bc?
@@ -187,9 +195,5 @@ impl Cpu {
             self.pc.wrapping_add(1)
         }
     }
-
-    fn rlc(&mut self, target: RegIndex) -> u16 {
-        // TODO
-        0
-    }
+    */
 }
