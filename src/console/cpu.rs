@@ -3,9 +3,11 @@
 #![allow(unreachable_patterns)]
 #![allow(unused_variables)]
 
-use crate::console::instructions::{Instruction, PREFIX_BYTE};
+use crate::console::instructions::{Instruction};
 use crate::console::mmu::Mmu;
 use crate::console::registers::Registers;
+
+pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
 pub(crate) struct Cpu {
     pub(crate) is_halted: bool,
