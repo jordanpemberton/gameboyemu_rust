@@ -2,6 +2,7 @@
 
 // Tile data is stored between 0x8000 and 0x97FF
 pub(crate) const TILE_SET_SIZE: usize = 384;
+// VRAM Sprite Attribute Table = OAM (Object Attribute Memory)
 pub(crate) const VRAM_BEGIN: usize = 0x8000;
 pub(crate) const VRAM_END: usize = 0x9FFF;
 pub(crate) const VRAM_SIZE: usize = VRAM_END - VRAM_BEGIN + 1;

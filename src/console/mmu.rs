@@ -1,7 +1,7 @@
 const RAM_SIZE: usize = 65536;
 
 pub(crate) struct Mmu {
-    ram: [u8; RAM_SIZE]
+    pub(crate) ram: [u8; RAM_SIZE]
 }
 
 impl Mmu {

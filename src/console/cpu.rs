@@ -3,9 +3,9 @@
 #![allow(unreachable_patterns)]
 #![allow(unused_variables)]
 
-use crate::instructions::{Instruction, PREFIX_BYTE};
-use crate::mmu::Mmu;
-use crate::registers::{Registers};
+use crate::console::instructions::{Instruction, PREFIX_BYTE};
+use crate::console::mmu::Mmu;
+use crate::console::registers::Registers;
 
 pub(crate) struct Cpu {
     pub(crate) is_halted: bool,
@@ -51,36 +51,10 @@ impl Cpu {
     }
 
     fn execute_instruction(&mut self, instruction: Instruction, mmu: &mut Mmu) -> usize {
-        let (size, time) = instruction.exec(self, mmu);
+        let (size, time) = instruction.execute(self, mmu);
         self.pc = self.pc.wrapping_add(size as u16);
         time
     }
-
-
-    /*
-    pub(crate) fn execute(&mut self, instruction: Instruction) -> (usize, usize) {
-       instruction.exec()
-       match instruction {
-           Instruction::ADD(target) => self.add(target),
-
-           Instruction::HALT => self.halt(),
-
-           Instruction::JP(conditions) => self.jump(conditions),
-
-           Instruction::LD(load_type, target, source) => self.load(load_type, target, source),
-
-           Instruction::NOP => self.nop(),
-
-           Instruction::POP => self.pop(),
-
-           Instruction::PUSH(target) => self.push(target),
-
-           Instruction::RET(conditions) => self.ret(conditions),
-
-           _ => self.pc
-       }
-    }
-    */
 
     // TODO Move these
     /*

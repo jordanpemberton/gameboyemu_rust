@@ -1,4 +1,4 @@
-use crate::gpu::{Gpu, VRAM_BEGIN, VRAM_END};
+use crate::console::gpu::{Gpu, VRAM_BEGIN, VRAM_END};
 
 pub(crate) struct MemoryBus {
     gpu: Gpu

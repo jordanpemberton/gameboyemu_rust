@@ -2,24 +2,33 @@
 #![allow(non_snake_case)]
 #![allow(unreachable_patterns)]
 
-mod cpu;
-mod gpu;
-mod instructions;
-mod mmu;
-mod registers;
+mod console;
 
-use crate::cpu::{Cpu};
-use crate::mmu::Mmu;
+use crate::console::cpu::Cpu;
+use crate::console::mmu::Mmu;
 
-pub(crate) fn run(cpu: &mut Cpu, mmu: &mut Mmu) {
+use std::fs::{File};
+use std::io::{Read};
+use std::path::{Path};
+
+pub(crate) fn load_rom(path: &Path) -> Vec<u8> {
+    let mut f = File::open(path).expect("Failed to open file");
+    let mut buf = Vec::new();
+    f.read_to_end(&mut buf).expect("Failed to read file");
+    buf
+}
+
+pub(crate) fn run(rom: &[u8]) {
+    let mut cpu = Cpu::new();
+    let mut mmu = Mmu::new();
+    mmu.ram[..rom.len()].clone_from_slice(&rom); // TODO: this is temporary hack
     loop {
-        cpu.step(mmu);
+        cpu.step(&mut mmu);
     }
 }
 
 fn main() {
-    let mut cpu = Cpu::new();
-    let mut mmu = Mmu::new();
-
-    run(&mut cpu, &mut mmu);
+    let file_path = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/individual/06-ld r,r.gb";
+    let rom = load_rom(Path::new(&file_path));
+    run(&rom);
 }
