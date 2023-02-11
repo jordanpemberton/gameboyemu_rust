@@ -68,10 +68,6 @@ impl Registers {
         }
     }
 
-    pub(crate) fn bytes_to_word(&self, reg1: u8, reg2: u8) -> u16 {
-        (reg1 as u16) << 8 | (reg2 as u16)
-    }
-
     pub(crate) fn get_flags(&mut self) -> Flags {
         Flags {
             zero: ((self.f >> FLAG_ZERO_BYTE) & 0b1) != 0,
@@ -80,14 +76,6 @@ impl Registers {
             carry: ((self.f >> FLAG_CARRY_BYTE) & 0b1) != 0,
             always: false,
         }
-    }
-
-    pub(crate) fn set_f(&mut self, flags: Flags) {
-        self.f =
-            (if flags.zero { 1 } else { 0 }) << FLAG_ZERO_BYTE |
-                (if flags.subtract { 1 } else { 0 }) << FLAG_SUBTRACT_BYTE |
-                (if flags.half_carry { 1 } else { 0 }) << FLAG_HALF_CARRY_BYTE |
-                (if flags.carry { 1 } else { 0 }) << FLAG_CARRY_BYTE;
     }
 
     pub(crate) fn set_byte(&mut self, index: RegIndex, value: u8) {
@@ -102,6 +90,14 @@ impl Registers {
             RegIndex::L => { self.l = value; }
             _ => { }
         }
+    }
+
+    pub(crate) fn set_f(&mut self, flags: Flags) {
+        self.f =
+            (if flags.zero { 1 } else { 0 }) << FLAG_ZERO_BYTE |
+                (if flags.subtract { 1 } else { 0 }) << FLAG_SUBTRACT_BYTE |
+                (if flags.half_carry { 1 } else { 0 }) << FLAG_HALF_CARRY_BYTE |
+                (if flags.carry { 1 } else { 0 }) << FLAG_CARRY_BYTE;
     }
 
     pub(crate) fn set_word(&mut self, index: RegIndex, value: u16) {
@@ -124,5 +120,9 @@ impl Registers {
             }
             _ => ()
         }
+    }
+
+    fn bytes_to_word(&self, reg1: u8, reg2: u8) -> u16 {
+        (reg1 as u16) << 8 | (reg2 as u16)
     }
 }

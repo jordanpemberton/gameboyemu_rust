@@ -21,7 +21,7 @@ pub(crate) fn load_rom(path: &Path) -> Vec<u8> {
 pub(crate) fn run(rom: &[u8]) {
     let mut cpu = Cpu::new();
     let mut mmu = Mmu::new();
-    mmu.ram[..rom.len()].clone_from_slice(&rom); // TODO: this is temporary hack
+    mmu.cartridge_rom[..rom.len()].clone_from_slice(&rom); // TODO: this is temporary hack
     loop {
         cpu.step(&mut mmu);
     }
