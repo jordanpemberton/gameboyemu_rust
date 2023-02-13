@@ -10,7 +10,7 @@ use crate::console::registers::Registers;
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
 pub(crate) struct Cpu {
-    pub(crate) is_halted: bool,
+    is_halted: bool,
     pub(crate) pc: u16,
     pub(crate) sp: u16,
     pub(crate) registers: Registers,

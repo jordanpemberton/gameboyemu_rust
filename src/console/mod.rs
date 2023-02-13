@@ -3,5 +3,5 @@ pub(crate) mod mmu;
 
 mod gpu;
 mod instructions;
-mod memory_bus;
 mod registers;
+mod boot_rom;

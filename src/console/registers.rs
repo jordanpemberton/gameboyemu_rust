@@ -9,7 +9,6 @@ pub(crate) struct Flags {
     pub(crate) half_carry: bool,
     pub(crate) carry: bool,
     pub(crate) always: bool,
-    
 }
 
 #[derive(Copy, Clone)]
@@ -20,14 +19,14 @@ pub(crate) enum RegIndex {
 }
 
 pub(crate) struct Registers {
-    pub(crate) a: u8,
-    pub(crate) b: u8,
-    pub(crate) c: u8,
-    pub(crate) d: u8,
-    pub(crate) e: u8,
-    pub(crate) f: u8,
-    pub(crate) h: u8,
-    pub(crate) l: u8,
+    a: u8,
+    b: u8,
+    c: u8,
+    d: u8,
+    e: u8,
+    f: u8,
+    h: u8,
+    l: u8,
 }
 
 impl Registers {

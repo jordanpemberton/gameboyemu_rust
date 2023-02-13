@@ -2,19 +2,19 @@
 
 // Tile data is stored between 0x8000 and 0x97FF
 pub(crate) const TILE_SET_SIZE: usize = 384;
+
 // VRAM Sprite Attribute Table = OAM (Object Attribute Memory)
 pub(crate) const VRAM_BEGIN: usize = 0x8000;
 pub(crate) const VRAM_END: usize = 0x9FFF;
 pub(crate) const VRAM_SIZE: usize = VRAM_END - VRAM_BEGIN + 1;
 
-
 #[derive(Clone, Copy)]
-enum PixelColor { _0, _1, _2, _3 }
+enum PixelColor { _00, _01, _10, _11 }
 
 type Tile = [[PixelColor; 8]; 8];
 
 fn empty_tile() -> Tile {
-    [[PixelColor::_0; 8]; 8]
+    [[PixelColor::_00; 8]; 8]
 }
 
 fn empty_tile_set() -> [Tile; TILE_SET_SIZE] {
@@ -27,30 +27,35 @@ pub(crate) struct Gpu {
 }
 
 impl Gpu {
-     pub(crate) fn default() -> Gpu {
-        Gpu {
-            vram: [0; VRAM_SIZE],
+    pub(crate) fn new() -> Self {
+        Self {
             tile_set: empty_tile_set(),
+            vram: [0; VRAM_SIZE],
         }
     }
 
-    pub(crate) fn read_vram(&self,addr: usize) -> u8 { 0 }
+    fn read_vram(&self, address: usize) -> u8 {
+        self.vram[address]
+    }
 
-    pub(crate) fn write_vram(&mut self, index: usize, value: u8) {
-        self.vram[index] = value;
+    fn write_vram(&mut self, address: usize, value: u8) {
+        self.vram[address] = value;
+    }
 
-        if index >= 0x1800 { return }
+    fn update_tileset(&mut self, address: usize) {
+        if address >= 0x1800 {
+            return
+        }
 
         // Tiles rows are two bytes starting on an even address.
-        // Bitwise ANDing the address with 0xffe gives us the address of the first byte.
-        let normalized_index = index & 0xFFFE;
-
+        // Bitwise ANDing the address with 0xFFFE gives us the address of the first byte.
+        let normalized_index = address & 0xFFFE;
         let byte1 = self.vram[normalized_index];
         let byte2 = self.vram[normalized_index + 1];
 
         // 8 rows of 2 byte tiles = 16 bytes
-        let tile_index = index / 16;
-        let row_index = (index % 16) / 2;
+        let tile_index = address / 16;
+        let row_index = (address % 16) / 2;
 
         // Get the 8 pixels that make up a given row.
         for pixel_index in 0..8 {
@@ -60,10 +65,10 @@ impl Gpu {
             let msb = byte2 & mask;
 
             let color = match (lsb != 0, msb != 0) {
-                (false, false) => PixelColor::_0,
-                (true, false) => PixelColor::_1,
-                (false, true) => PixelColor::_2,
-                (true, true) => PixelColor::_3,
+                (false, false) => PixelColor::_00,
+                (true, false) => PixelColor::_01,
+                (false, true) => PixelColor::_10,
+                (true, true) => PixelColor::_11,
             };
 
             self.tile_set[tile_index][row_index][pixel_index] = color;

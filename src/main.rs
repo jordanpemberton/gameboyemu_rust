@@ -3,6 +3,7 @@
 #![allow(unreachable_patterns)]
 
 mod console;
+mod cartridge;
 
 use crate::console::cpu::Cpu;
 use crate::console::mmu::Mmu;
@@ -18,10 +19,9 @@ pub(crate) fn load_rom(path: &Path) -> Vec<u8> {
     buf
 }
 
-pub(crate) fn run(rom: &[u8]) {
+pub(crate) fn run(_rom: &[u8]) {
     let mut cpu = Cpu::new();
     let mut mmu = Mmu::new();
-    mmu.cartridge_rom[..rom.len()].clone_from_slice(&rom); // TODO: this is temporary hack
     loop {
         cpu.step(&mut mmu);
     }
