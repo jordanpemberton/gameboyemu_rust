@@ -52,7 +52,7 @@ impl Cpu {
         opcode
     }
 
-    fn execute_instruction(&mut self, instruction: Instruction, mmu: &mut Mmu) -> usize {
+    fn execute_instruction(&mut self, mut instruction: Instruction, mmu: &mut Mmu) -> usize {
         let (size, time) = instruction.execute(self, mmu);
         self.pc = self.pc.wrapping_add(size as u16);
         time

@@ -4,10 +4,10 @@ const FLAG_HALF_CARRY_BYTE: u8 = 5;
 const FLAG_CARRY_BYTE: u8 = 4;
 
 pub(crate) struct Flags {
-    pub(crate) zero: bool,
-    pub(crate) subtract: bool,
-    pub(crate) half_carry: bool,
-    pub(crate) carry: bool,
+    pub(crate) zero: bool,          // Z
+    pub(crate) subtract: bool,      // N
+    pub(crate) half_carry: bool,    // H
+    pub(crate) carry: bool,         // C
     pub(crate) always: bool,
 }
 
