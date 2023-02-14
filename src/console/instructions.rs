@@ -21,6 +21,8 @@ impl Instruction {
             0x0006 => Instruction{ opcode, mnemonic: "LD B,d8", size: 2, cycles: 8, _fn: Instruction::op_0006 },
             0x000C => Instruction{ opcode, mnemonic: "INC C", size: 1, cycles: 4, _fn: Instruction::op_000c },
             0x000E => Instruction{ opcode, mnemonic: "LD C,d8", size: 2, cycles: 8, _fn: Instruction::op_000e },
+            0x0011 => Instruction{ opcode, mnemonic: "LD DE,d16", size: 3, cycles: 12, _fn: Instruction::op_0011 },
+            0x001A => Instruction{ opcode, mnemonic: "LD A, (DE)", size: 1, cycles: 8, _fn: Instruction::op_001a },
             0x0020 => Instruction{ opcode, mnemonic: "JR NZ,r8", size: 2, cycles: 8, _fn: Instruction::op_0020 },
             0x0021 => Instruction{ opcode, mnemonic: "LD HL,d16", size: 3, cycles: 12, _fn: Instruction::op_0021 },
             0x0031 => Instruction{ opcode, mnemonic: "LD SP,d16", size: 3, cycles: 12, _fn: Instruction::op_0031 },
@@ -28,6 +30,7 @@ impl Instruction {
             0x003E => Instruction{ opcode, mnemonic: "LD A,d8", size: 2, cycles: 8, _fn: Instruction::op_003e },
             0x0077 => Instruction{ opcode, mnemonic: "LD (HL),A", size: 1, cycles: 8, _fn: Instruction::op_0077 },
             0x00AF => Instruction{ opcode, mnemonic: "XOR A", size: 1, cycles: 4, _fn: Instruction::op_00af },
+            0x00CD => Instruction{ opcode, mnemonic: "CALL a16", size: 3, cycles: 24, _fn: Instruction::op_00cd },
             0x00E0 => Instruction{ opcode, mnemonic: "LDH (a8), A", size: 2, cycles: 12, _fn: Instruction::op_00e0 },
             0x00E2 => Instruction{ opcode, mnemonic: "LD ($FF00+C),A", size: 1, cycles: 8, _fn: Instruction::op_00e2 },
             0xCB7C => Instruction{ opcode, mnemonic: "BIT 7,H", size: 2, cycles: 8, _fn: Instruction::op_cb7c },
@@ -42,7 +45,7 @@ impl Instruction {
     }
 
     fn unimplemented(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
-        panic!("Opcode {:#06X}(\"{}\") is unimplemented.", self.opcode, self.mnemonic);
+        panic!("Opcode {:#06X} (\"{}\") is unimplemented.", self.opcode, self.mnemonic);
     }
 
     /// UN-PREFIXED
@@ -91,6 +94,24 @@ impl Instruction {
         let d8 = mmu.read_byte(cpu.pc);
         cpu.increment_pc(1);
         cpu.registers.set_byte(RegIndex::C, d8);
+    }
+
+    /// LD DE,d16
+    /// 3  12
+    /// - - - -
+    fn op_0011(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
+        let d16 = mmu.read_word(cpu.pc);
+        cpu.increment_pc(2);
+        cpu.registers.set_word(RegIndex::DE, d16);
+    }
+
+    /// LD A,(DE)
+    /// 1  8
+    /// - - - -
+    fn op_001a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
+        let source_address = cpu.registers.get_word(RegIndex::DE);
+        let value = mmu.read_byte(source_address);
+        cpu.registers.set_byte(RegIndex::A, value);
     }
 
     /// JR NZ,r8
@@ -167,6 +188,18 @@ impl Instruction {
             carry: false,
         };
         cpu.registers.set_f(flags);
+    }
+
+    /// CALL a16
+    /// 3  24
+    /// - - - -
+    fn op_00cd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
+        let mut a16 = mmu.read_word(cpu.pc);
+        // Fix endian order elsewhere?
+        a16 = (a16 << 8) | (a16 >> 8);
+        cpu.increment_pc(2);
+        cpu.push(cpu.pc);
+        cpu.pc = a16;
     }
 
     /// LDH (a8),A

@@ -30,6 +30,11 @@ impl Cpu {
         self.pc = self.pc.wrapping_add(increment_by);
     }
 
+    pub(crate) fn push(&mut self, address: u16) {
+        // lsb/msb order? decre/incre?
+        self.sp = address;
+    }
+
     pub(crate) fn step(&mut self, mmu: &mut Mmu) -> u16 {
         let mut cycles = 0;
 

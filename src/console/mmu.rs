@@ -48,6 +48,7 @@ impl Mmu {
     }
 
     pub(crate) fn read_word(&self, address: u16) -> u16 {
+        // Is endian order correct?
         if BOOT_ROM_BEGIN <= address && address < BOOT_ROM_END {
             (self.boot_rom[(address - BOOT_ROM_BEGIN) as usize] as u16) << 8
                 | self.boot_rom[(address - BOOT_ROM_BEGIN + 1) as usize] as u16
@@ -71,6 +72,7 @@ impl Mmu {
     }
 
     pub(crate) fn load_word(&mut self, address: u16, value: u16) {
+        // Endian order correct?
         let lsb = ((value & 0xFF00) >> 8) as u8;
         let msb = (value & 0x00FF) as u8;
 
