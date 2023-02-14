@@ -8,14 +8,13 @@ pub(crate) struct Flags {
     pub(crate) subtract: bool,      // N
     pub(crate) half_carry: bool,    // H
     pub(crate) carry: bool,         // C
-    pub(crate) always: bool,
 }
 
 #[derive(Copy, Clone)]
 pub(crate) enum RegIndex {
     A, B, C, D, E, F, H, L,
     AF, BC, DE, HL,
-    //D8,
+    //D8, SP
 }
 
 pub(crate) struct Registers {
@@ -73,7 +72,6 @@ impl Registers {
             subtract: ((self.f >> FLAG_SUBTRACT_BYTE) & 0b1) != 0,
             half_carry: ((self.f >> FLAG_HALF_CARRY_BYTE) & 0b1) != 0,
             carry: ((self.f >> FLAG_CARRY_BYTE) & 0b1) != 0,
-            always: false,
         }
     }
 
