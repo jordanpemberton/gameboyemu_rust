@@ -4,15 +4,15 @@
 #![allow(unused_variables)]
 
 use crate::console::instructions::{Instruction};
-use crate::console::mmu::Mmu;
-use crate::console::registers::Registers;
+use crate::console::mmu::{Mmu, Endianness};
+use crate::console::registers::{Registers};
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
 pub(crate) struct Cpu {
     is_halted: bool,
-    pub(crate) pc: u16,
-    pub(crate) sp: u16,
+    pc: u16,
+    sp: u16,
     pub(crate) registers: Registers,
 }
 
@@ -26,13 +26,24 @@ impl Cpu {
         }
     }
 
+    pub(crate) fn get_pc(&mut self) -> u16 {
+        self.pc
+    }
+
+    pub(crate) fn set_pc(&mut self, value: u16) {
+        self.pc = value;
+    }
+
     pub(crate) fn increment_pc(&mut self, increment_by: u16) {
         self.pc = self.pc.wrapping_add(increment_by);
     }
 
     pub(crate) fn push(&mut self, address: u16) {
-        // lsb/msb order? decre/incre?
         self.sp = address;
+    }
+
+    pub(crate) fn pop(&mut self) -> u16 {
+        self.sp
     }
 
     pub(crate) fn step(&mut self, mmu: &mut Mmu) -> u16 {
@@ -54,7 +65,7 @@ impl Cpu {
         self.increment_pc(1);
 
         if byte == PREFIX_BYTE {
-            opcode = mmu.read_word(self.pc - 1);
+            opcode = mmu.read_word(self.pc - 1, Endianness::LITTLE);
             self.increment_pc(1);
         } else {
             opcode = byte as u16;
