@@ -18,6 +18,7 @@ impl Instruction {
         match opcode {
             0x0000 => Instruction{ opcode, mnemonic: "NOP", size: 1, cycles: 4, _fn: Instruction::op_0000 },
             0x0002 => Instruction{ opcode, mnemonic: "LD (BC),A", size: 1, cycles: 8, _fn: Instruction::op_0002 },
+            0x0005 => Instruction{opcode, mnemonic: "DEC B", size: 1, cycles: 4, _fn: Instruction::op_0005 },
             0x0006 => Instruction{ opcode, mnemonic: "LD B,d8", size: 2, cycles: 8, _fn: Instruction::op_0006 },
             0x000C => Instruction{ opcode, mnemonic: "INC C", size: 1, cycles: 4, _fn: Instruction::op_000c },
             0x000E => Instruction{ opcode, mnemonic: "LD C,d8", size: 2, cycles: 8, _fn: Instruction::op_000e },
@@ -70,6 +71,19 @@ impl Instruction {
         mmu.load_byte(target_address, value);
     }
 
+    /// DEC B
+    /// 1  4
+    /// Z 1 H -
+    fn op_0005(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
+        let a = cpu.registers.get_byte(RegIndex::B);
+        cpu.registers.decrement(RegIndex::B, 1);
+        let b = cpu.registers.get_byte(RegIndex::B);
+        let mut flags = cpu.registers.get_flags();
+        flags.zero = b == 0;
+        flags.subtract = true;
+        flags.half_carry =  (b & 0xF0) < (a & 0xF0);
+    }
+
     /// LD B,d8
     /// 2  8
     /// - - - -
@@ -118,7 +132,8 @@ impl Instruction {
     /// Z 0 0 C
     fn op_0017(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
         let value = cpu.registers.get_byte(RegIndex::A);
-        let flags = alu::rl(value);
+        let mut flags = cpu.registers.get_flags();
+        flags = alu::rl(value, flags.carry);
         cpu.registers.set_f(flags);
     }
 
@@ -282,7 +297,8 @@ impl Instruction {
     /// Z 0 0 C
     fn op_cb11(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
         let value = cpu.registers.get_byte(RegIndex::C);
-        let flags = alu::rl(value);
+        let mut flags = cpu.registers.get_flags();
+        flags = alu::rl(value, flags.carry);
         cpu.registers.set_f(flags);
     }
 

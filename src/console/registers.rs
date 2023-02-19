@@ -145,6 +145,44 @@ impl Registers {
 
     pub(crate) fn decrement(&mut self, register: RegIndex, decrement_by: u16) {
         match register {
+            RegIndex::A => {
+                self.a = self.a.wrapping_sub(decrement_by as u8);
+            }
+            RegIndex::B => {
+                self.b = self.b.wrapping_sub(decrement_by as u8);
+            }
+            RegIndex::C => {
+                self.c = self.c.wrapping_sub(decrement_by as u8);
+            }
+            RegIndex::D => {
+                self.d = self.d.wrapping_sub(decrement_by as u8);
+            }
+            RegIndex::E => {
+                self.e = self.e.wrapping_sub(decrement_by as u8);
+            }
+            RegIndex::F => {
+                self.f = self.f.wrapping_sub(decrement_by as u8);
+            }
+            RegIndex::H => {
+                self.h = self.h.wrapping_sub(decrement_by as u8);
+            }
+            RegIndex::L => {
+                self.l = self.l.wrapping_sub(decrement_by as u8);
+            }
+            /*
+            RegIndex::AF => {
+                self.af = self.af.wrapping_sub(decrement_by);
+            }
+            RegIndex::BC => {
+                self.bc = self.bc.wrapping_sub(decrement_by);
+            }
+            RegIndex::DE => {
+                self.de = self.de.wrapping_sub(decrement_by);
+            }
+            RegIndex::HL => {
+                self.hl = self.hl.wrapping_sub(decrement_by);
+            }
+            */
             RegIndex::PC => {
                 self.pc = self.pc.wrapping_sub(decrement_by);
             }
