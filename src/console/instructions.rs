@@ -27,6 +27,8 @@ impl Instruction {
             0x001A => Instruction{ opcode, mnemonic: "LD A, (DE)", size: 1, cycles: 8, _fn: Instruction::op_001a },
             0x0020 => Instruction{ opcode, mnemonic: "JR NZ,r8", size: 2, cycles: 8, _fn: Instruction::op_0020 },
             0x0021 => Instruction{ opcode, mnemonic: "LD HL,d16", size: 3, cycles: 12, _fn: Instruction::op_0021 },
+            0x0022 => Instruction{ opcode, mnemonic: "LD (HL+),A", size: 1, cycles: 8, _fn: Instruction::op_0022 },
+            0x0023 => Instruction{ opcode, mnemonic: "INC HL", size: 1, cycles: 8, _fn: Instruction::op_0023 },
             0x0031 => Instruction{ opcode, mnemonic: "LD SP,d16", size: 3, cycles: 12, _fn: Instruction::op_0031 },
             0x0032 => Instruction{ opcode, mnemonic: "LD (HL-),A", size: 1, cycles: 8, _fn: Instruction::op_0032 },
             0x003E => Instruction{ opcode, mnemonic: "LD A,d8", size: 2, cycles: 8, _fn: Instruction::op_003e },
@@ -35,6 +37,7 @@ impl Instruction {
             0x00AF => Instruction{ opcode, mnemonic: "XOR A", size: 1, cycles: 4, _fn: Instruction::op_00af },
             0x00C1 => Instruction{ opcode, mnemonic: "POP BC", size: 1, cycles: 12, _fn: Instruction::op_00c1 },
             0x00C5 => Instruction{ opcode, mnemonic: "PUSH BC", size: 1, cycles: 16, _fn: Instruction::op_00c5 },
+            0x00C9 => Instruction{ opcode, mnemonic: "RET", size: 1, cycles: 16, _fn: Instruction::op_00c9 },
             0x00CD => Instruction{ opcode, mnemonic: "CALL a16", size: 3, cycles: 24, _fn: Instruction::op_00cd },
             0x00E0 => Instruction{ opcode, mnemonic: "LDH (a8), A", size: 2, cycles: 12, _fn: Instruction::op_00e0 },
             0x00E2 => Instruction{ opcode, mnemonic: "LD ($FF00+C),A", size: 1, cycles: 8, _fn: Instruction::op_00e2 },
@@ -152,12 +155,12 @@ impl Instruction {
     fn op_0020(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
         let source_address = cpu.registers.get_word(RegIndex::PC);
         let value = mmu.read_byte(source_address);
-        let jump = alu::signed(value);
+        let jump_by = alu::signed(value);
         cpu.registers.increment(RegIndex::PC, 1);
 
         let should_jump = !(cpu.registers.get_flags().zero);
         if should_jump {
-            cpu.registers.increment(RegIndex::PC, jump);
+            cpu.registers.increment(RegIndex::PC, jump_by);
             self.cycles += 4;
         }
     }
@@ -170,6 +173,23 @@ impl Instruction {
         let d16 = mmu.read_word(source_address, Endianness::BIG);
         cpu.registers.increment(RegIndex::PC, 2);
         cpu.registers.set_word(RegIndex::HL, d16);
+    }
+
+    /// LD (HL+),A
+    /// 1  8
+    /// - - - -
+    fn op_0022(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
+        let target_address = cpu.registers.get_word(RegIndex::HL);
+        let value = cpu.registers.get_byte(RegIndex::A);
+        mmu.load_byte(target_address, value);
+        cpu.registers.increment(RegIndex::HL, 1);
+    }
+
+    /// INC HL
+    /// 1  8
+    /// - - - -
+    fn op_0023(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
+        cpu.registers.increment(RegIndex::HL, 1);
     }
 
     /// LD SP,d16
@@ -241,8 +261,8 @@ impl Instruction {
     /// - - - -
     fn op_00c1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
         // rr=(SP) SP=SP+2 ; rr may be BC,DE,HL,AF
-        let source_address = cpu.registers.get_word(RegIndex::SP);
-        let value = mmu.read_word(source_address, Endianness::BIG);
+        let sp = cpu.registers.get_word(RegIndex::SP);
+        let value = mmu.read_word(sp, Endianness::BIG);
         cpu.registers.set_word(RegIndex::BC, value);
         cpu.registers.increment(RegIndex::SP, 2);
     }
@@ -251,21 +271,42 @@ impl Instruction {
     /// 1  16
     /// - - - -
     fn op_00c5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
-        // SP=SP-2 (SP)=rr ; rr may be BC,DE,HL,AF
+        // SP=SP-2
         cpu.registers.decrement(RegIndex::SP, 2);
+        // (SP)=BC
+        let sp = cpu.registers.get_word(RegIndex::SP);
+        let target_address = mmu.read_word(sp, Endianness::BIG);
         let value = cpu.registers.get_word(RegIndex::BC);
-        let target_address = cpu.registers.get_word(RegIndex::SP);
         mmu.load_word(target_address, value, Endianness::BIG);
+    }
+
+    /// RET
+    /// 1 16
+    /// - - - -
+    fn op_00c9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
+        // PC=(SP)
+        let sp = cpu.registers.get_word(RegIndex::SP);
+        let jump_to_address = mmu.read_word(sp, Endianness::BIG);
+        cpu.registers.set_word(RegIndex::PC, jump_to_address);
+        // SP=SP+2
+        cpu.registers.increment(RegIndex::SP, 2);
     }
 
     /// CALL a16
     /// 3  24
     /// - - - -
     fn op_00cd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
-        let source_address = cpu.registers.get_word(RegIndex::PC);
-        let a16 = mmu.read_word(source_address, Endianness::BIG);
+        // read a16 aka (PC)
+        let mut pc = cpu.registers.get_word(RegIndex::PC);
         cpu.registers.increment(RegIndex::PC, 2);
-        cpu.registers.set_word(RegIndex::SP, source_address);
+        let a16 = mmu.read_word(pc, Endianness::BIG);
+        // SP=SP-2
+        cpu.registers.decrement(RegIndex::SP, 2);
+        let target_address = cpu.registers.get_word(RegIndex::SP);
+        // (SP)=PC
+        pc = cpu.registers.get_word(RegIndex::PC);
+        mmu.load_word(target_address, pc, Endianness::BIG);
+        // PC=a16
         cpu.registers.set_word(RegIndex::PC, a16);
     }
 

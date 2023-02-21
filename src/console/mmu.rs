@@ -1,14 +1,5 @@
-const BOOT_ROM_BEGIN: u16 = 0x0000;
-const BOOT_ROM_END: u16 = 0x0100;
-const BOOT_ROM_SIZE: u16 = BOOT_ROM_END - BOOT_ROM_BEGIN + 1;
-
-const CARTRIDGE_ROM_BEGIN: u16 = 0x0000;
-const CARTRIDGE_ROM_END: u16 = 0x7fff;
-const CARTRIDGE_ROM_SIZE: u16 = CARTRIDGE_ROM_END - CARTRIDGE_ROM_BEGIN + 1;
-
-const VRAM_BEGIN: u16 = 0x8000;
-const VRAM_END: u16 = 0x9FFF;
-const VRAM_SIZE: u16 = VRAM_END - VRAM_BEGIN + 1;
+use std::collections::HashMap;
+use std::hash::Hash;
 
 #[derive(PartialEq)]
 pub(crate) enum Endianness {
@@ -17,74 +8,147 @@ pub(crate) enum Endianness {
 }
 
 #[allow(non_camel_case_types)]
-enum Memory {
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub(crate) enum MemoryType {
     BOOT_ROM,
     CARTRIDGE_ROM,
     VRAM,
+    HRAM,
+    DEBUG,
 }
 
-const BOOT_ROM: &[u8] = include_bytes!("DMG_ROM.bin");
+struct MemoryLocation {
+    begin: u16,
+    end: u16,
+    size: u16,
+}
+
+impl MemoryLocation {
+    fn new(begin: u16, end: u16) -> MemoryLocation {
+        MemoryLocation {
+            begin,
+            end,
+            size: end - begin,
+        }
+    }
+}
 
 pub(crate) struct Mmu {
-    boot_rom: [u8; BOOT_ROM_SIZE as usize],
-    cartridge_rom: [u8; CARTRIDGE_ROM_SIZE as usize],
-    vram: [u8; VRAM_SIZE as usize],
+    memory: [u8; 0xFFFF as usize],
+    memory_locations: HashMap<MemoryType, MemoryLocation>,
 }
 
 impl Mmu {
     pub(crate) fn new() -> Mmu {
-        let mut _boot_rom = [0; BOOT_ROM_SIZE as usize];
-        _boot_rom[..BOOT_ROM.len()].clone_from_slice(&BOOT_ROM);
+        let mut memory = [0; 0xFFFF];
+        let boot_rom = include_bytes!("DMG_ROM.bin");
+        memory[..boot_rom.len()].clone_from_slice(boot_rom);
 
         Mmu {
-            boot_rom: _boot_rom,
-            cartridge_rom: [0; CARTRIDGE_ROM_SIZE as usize],
-            vram: [0; VRAM_SIZE as usize],
+            memory,
+            memory_locations: HashMap::from([
+                ( MemoryType::BOOT_ROM, MemoryLocation::new(0x0000, 0x0100) ),
+                ( MemoryType::CARTRIDGE_ROM, MemoryLocation::new(0x0000, 0x7FFF) ),
+                ( MemoryType::VRAM, MemoryLocation::new(0x8000, 0x9FFF) ),
+                ( MemoryType::HRAM, MemoryLocation::new(0xFF80, 0xFFFF) ),
+                ( MemoryType::DEBUG, MemoryLocation::new(0x0000, 0xFFFF) ),
+            ]),
         }
     }
 
+    fn validate_address_in_bounds(&self, address: u16, begin: u16, end: u16) {
+        if address < begin || end < address {
+            panic!("Out of bounds error: Address {} is not in range {}..{}.", address, begin, end);
+        }
+    }
+
+    fn get_memory_type_from_address(&self, address: u16) -> MemoryType {
+        for (memory_type, location) in self.memory_locations.iter() {
+            if location.begin <= address && address <= location.end {
+                return *memory_type;
+            }
+        }
+        panic!("Out of bounds error: No memory type found for address {}", address);
+    }
+
     pub(crate) fn read_byte(&self, address: u16) -> u8 {
-        if BOOT_ROM_BEGIN <= address && address <= BOOT_ROM_END {
-            self.boot_rom[(address - BOOT_ROM_BEGIN) as usize]
-        } else if CARTRIDGE_ROM_BEGIN <= address && address <= CARTRIDGE_ROM_END {
-            self.cartridge_rom[(address - CARTRIDGE_ROM_BEGIN) as usize]
-        } else if VRAM_BEGIN <= address && address <= VRAM_END {
-            self.vram[(address - VRAM_BEGIN) as usize]
-        } else { 0 }
+        let memory_type = self.get_memory_type_from_address(address);
+        self.read_byte_from_internal(address, memory_type)
+    }
+
+    pub(crate) fn read_byte_from(&self, address: u16, memory_type: MemoryType) -> u8 {
+        let location = self.memory_locations.get(&memory_type).unwrap();
+        self.validate_address_in_bounds(address, location.begin, location.end);
+        self.read_byte_from_internal(address, memory_type)
+    }
+
+    fn read_byte_from_internal(&self, address: u16, memory_type: MemoryType) -> u8 {
+        match memory_type {
+            _ => {
+                self.memory[address as usize]
+            }
+        }
     }
 
     pub(crate) fn read_word(&self, address: u16, endian: Endianness) -> u16 {
-        let mut lsb: u8 = 0;
-        let mut msb: u8 = 0;
+        let memory_type = self.get_memory_type_from_address(address);
+        self.read_word_from_internal(address, endian, memory_type)
+    }
 
-        if BOOT_ROM_BEGIN <= address && address < BOOT_ROM_END {
-            lsb = self.boot_rom[(address - BOOT_ROM_BEGIN) as usize];
-            msb = self.boot_rom[(address - BOOT_ROM_BEGIN + 1) as usize];
-        } else if CARTRIDGE_ROM_BEGIN <= address && address < CARTRIDGE_ROM_END {
-            lsb = self.cartridge_rom[(address - CARTRIDGE_ROM_BEGIN) as usize];
-            msb = self.cartridge_rom[(address - CARTRIDGE_ROM_BEGIN + 1) as usize];
-        } else if VRAM_BEGIN <= address && address < VRAM_END {
-            lsb = self.vram[(address - VRAM_BEGIN) as usize];
-            msb = self.vram[(address - VRAM_BEGIN + 1) as usize];
+    pub(crate) fn read_word_from(&self, address: u16, endian: Endianness, memory_type: MemoryType) -> u16 {
+        let location = self.memory_locations.get(&memory_type).unwrap();
+        self.validate_address_in_bounds(address, location.begin, location.end);
+        self.read_word_from_internal(address, endian, memory_type)
+    }
+
+    fn read_word_from_internal(&self, address: u16, endian: Endianness, memory_type: MemoryType) -> u16 {
+        let lsb: u8;
+        let msb: u8;
+
+        match memory_type {
+            _ => {
+                lsb = self.memory[address as usize];
+                msb = self.memory[(address + 1) as usize];
+            }
         }
 
         match endian {
             Endianness::BIG => (msb as u16) << 8 | lsb as u16,
-            Endianness::LITTLE | _ =>  (lsb as u16) << 8 | msb as u16,
+            Endianness::LITTLE | _ => (lsb as u16) << 8 | msb as u16,
         }
     }
 
     pub(crate) fn load_byte(&mut self, address: u16, value: u8) {
-        if BOOT_ROM_BEGIN <= address && address <= BOOT_ROM_END {
-            self.boot_rom[(address - BOOT_ROM_BEGIN) as usize] = value;
-        } else if CARTRIDGE_ROM_BEGIN <= address && address <= CARTRIDGE_ROM_END {
-            self.cartridge_rom[(address - CARTRIDGE_ROM_BEGIN) as usize] = value;
-        } else if VRAM_BEGIN <= address && address <= VRAM_END {
-            self.vram[(address - VRAM_BEGIN) as usize] = value;
-        } else { }
+        let memory_type = self.get_memory_type_from_address(address);
+        self.load_byte_to_internal(address, value, memory_type);
+    }
+
+    pub(crate) fn load_byte_to(&mut self, address: u16, value: u8, memory_type: MemoryType) {
+        let location = self.memory_locations.get(&memory_type).unwrap();
+        self.validate_address_in_bounds(address, location.begin, location.end);
+        self.load_byte_to_internal(address, value, memory_type);
+    }
+
+    fn load_byte_to_internal(&mut self, address: u16, value: u8, memory_type: MemoryType) {
+        match memory_type {
+            _ => {
+                self.memory[address as usize] = value;
+            }
+        }
     }
 
     pub(crate) fn load_word(&mut self, address: u16, value: u16, endian: Endianness) {
+        let memory_type = self.get_memory_type_from_address(address);
+        self.load_word_to_internal(address, value, endian, memory_type);
+    }
+
+    pub(crate) fn load_word_to(&mut self, address: u16, value: u16, endian: Endianness, memory_type: MemoryType) {
+        let location = self.memory_locations.get(&memory_type).unwrap();
+        self.validate_address_in_bounds(address, location.begin, location.end);
+        self.load_word_to_internal(address, value, endian, memory_type);
+    }
+
+    fn load_word_to_internal(&mut self, address: u16, value: u16, endian: Endianness, memory_type: MemoryType) {
         let mut lsb = ((value & 0xFF00) >> 8) as u8;
         let mut msb = (value & 0x00FF) as u8;
         if endian == Endianness::BIG {
@@ -93,15 +157,11 @@ impl Mmu {
             msb = temp;
         }
 
-        if BOOT_ROM_BEGIN <= address && address < BOOT_ROM_END {
-            self.boot_rom[(address - BOOT_ROM_BEGIN) as usize] = lsb;
-            self.boot_rom[(address - BOOT_ROM_BEGIN + 1) as usize] = msb;
-        } else if CARTRIDGE_ROM_BEGIN <= address && address < CARTRIDGE_ROM_END {
-            self.cartridge_rom[(address - CARTRIDGE_ROM_BEGIN) as usize] = lsb;
-            self.cartridge_rom[(address - CARTRIDGE_ROM_BEGIN + 1) as usize] = msb;
-        } else if VRAM_BEGIN <= address && address < VRAM_END {
-            self.vram[(address - VRAM_BEGIN) as usize] = lsb;
-            self.vram[(address - VRAM_BEGIN + 1) as usize] = msb;
-        } else { }
+        match memory_type {
+            _ => {
+                self.memory[address as usize] = lsb;
+                self.memory[(address + 1) as usize] = msb;
+            }
+        }
     }
 }
