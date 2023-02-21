@@ -2,6 +2,8 @@
 #![allow(non_snake_case)]
 #![allow(unreachable_patterns)]
 
+extern crate core;
+
 mod console;
 mod cartridge;
 

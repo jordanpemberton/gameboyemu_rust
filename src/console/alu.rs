@@ -14,7 +14,7 @@ pub(crate) fn signed(value: u8) -> u16 {
 /// and previous most significant bit becomes the new carry flag.
 pub(crate) fn rl(mut value: u8, carry: bool) -> Flags {
     let bit_7 = value >> 7;
-    value = (value << 1) | if carry { 1 } else { 0 } ;
+    value = (value << 1) | if carry { 1 } else { 0 };
     // OR value = value.wrapping_shl(1);
 
     Flags {
@@ -46,7 +46,7 @@ pub(crate) fn add_byte(a: u8, b: u8) -> (u8, Flags) {
     let (_, half_carry) = (a & 0x0F).overflowing_add(b & 0x0F);
     let (result, carry) = a.overflowing_add(b);
 
-    (result, Flags{
+    (result, Flags {
         zero: result == 0,
         subtract: false,
         half_carry,
@@ -58,7 +58,7 @@ pub(crate) fn subtract_byte(a: u8, b: u8) -> (u8, Flags) {
     let (_, half_carry) = (a & 0x0F).overflowing_sub(b & 0x0F);
     let (result, carry) = a.overflowing_sub(b);
 
-    (result, Flags{
+    (result, Flags {
         zero: result == 0,
         subtract: true,
         half_carry,

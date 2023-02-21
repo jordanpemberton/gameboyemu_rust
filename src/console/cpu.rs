@@ -10,15 +10,15 @@ use crate::console::registers::{RegIndex, Registers};
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
 pub(crate) struct Cpu {
-    is_halted: bool,
     pub(crate) registers: Registers,
+    is_halted: bool,
 }
 
 impl Cpu {
     pub(crate) fn new() -> Cpu {
         Cpu {
-            is_halted: false,
             registers: Registers::new(),
+            is_halted: false,
         }
     }
 
