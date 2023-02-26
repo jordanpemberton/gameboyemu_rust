@@ -52,8 +52,8 @@ impl Instruction {
     }
 
     pub(crate) fn execute(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> u16 {
-        println!("${:#06X}\t{:#06X}:\t{}",
-            cpu.registers.get_word(RegIndex::PC), self.opcode, self.mnemonic);
+        // println!("${:#06X}\t{:#06X}:\t{}",
+        //     cpu.registers.get_word(RegIndex::PC), self.opcode, self.mnemonic);
         (self._fn)(self, cpu, mmu);
         self.cycles
     }

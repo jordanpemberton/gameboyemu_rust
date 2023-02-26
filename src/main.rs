@@ -21,16 +21,16 @@ pub(crate) fn load_rom(path: &Path) -> Vec<u8> {
     buf
 }
 
-pub(crate) fn run(_rom: &[u8]) {
+pub(crate) fn run(game_filepath: &Path) {
     let mut cpu = Cpu::new();
     let mut mmu = Mmu::new();
+    mmu.load_rom_from_file(game_filepath);
     loop {
         cpu.step(&mut mmu);
     }
 }
 
 fn main() {
-    let file_path = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/individual/06-ld r,r.gb";
-    let rom = load_rom(Path::new(&file_path));
-    run(&rom);
+    let game_filepath = "/home/jordan/Games/GameBoy/GB/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb";
+    run(game_filepath.as_ref());
 }

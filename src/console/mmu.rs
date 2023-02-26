@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::fs::read;
 use std::hash::Hash;
+use std::path::Path;
 
 #[derive(PartialEq)]
 pub(crate) enum Endianness {
@@ -40,20 +42,33 @@ pub(crate) struct Mmu {
 
 impl Mmu {
     pub(crate) fn new() -> Mmu {
-        let mut memory = [0; 0xFFFF];
-        let boot_rom = include_bytes!("DMG_ROM.bin");
-        memory[..boot_rom.len()].clone_from_slice(boot_rom);
+        let mut mmu = Mmu {
+            memory: [0; 0xFFFF],
+            memory_locations: Default::default(),
+        };
+        mmu.init();
+        mmu
+    }
 
-        Mmu {
-            memory,
-            memory_locations: HashMap::from([
-                ( MemoryType::BOOT_ROM, MemoryLocation::new(0x0000, 0x0100) ),
-                ( MemoryType::CARTRIDGE_ROM, MemoryLocation::new(0x0000, 0x7FFF) ),
-                ( MemoryType::VRAM, MemoryLocation::new(0x8000, 0x9FFF) ),
-                ( MemoryType::HRAM, MemoryLocation::new(0xFF80, 0xFFFF) ),
-                ( MemoryType::DEBUG, MemoryLocation::new(0x0000, 0xFFFF) ),
-            ]),
-        }
+    pub(crate) fn init(&mut self) {
+        let bootrom_filepath = "/home/jordan/RustProjs/GameBoyEmu/src/console/DMG_ROM.bin";
+        self.load_rom_from_file(bootrom_filepath.as_ref());
+
+        self.memory_locations = HashMap::from([
+            ( MemoryType::BOOT_ROM, MemoryLocation::new(0x0000, 0x0100) ),
+            ( MemoryType::CARTRIDGE_ROM, MemoryLocation::new(0x0000, 0x7FFF) ),
+            ( MemoryType::VRAM, MemoryLocation::new(0x8000, 0x9FFF) ),
+            ( MemoryType::HRAM, MemoryLocation::new(0xFF80, 0xFFFF) ),
+            ( MemoryType::DEBUG, MemoryLocation::new(0x0000, 0xFFFF) ),
+        ]);
+    }
+
+    pub(crate) fn load_rom_from_file(&mut self, filepath: &Path) {
+        let rom = &*(read(filepath).unwrap());
+        // TODO read cartridges correctly
+        let s: usize = 0;
+        let n: usize = if rom.len() <= self.memory.len() { rom.len() } else { self.memory.len() };
+        self.memory[s..n].clone_from_slice(&rom[..n]);
     }
 
     fn validate_address_in_bounds(&self, address: u16, begin: u16, end: u16) {
