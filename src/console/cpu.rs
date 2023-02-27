@@ -22,10 +22,6 @@ impl Cpu {
         }
     }
 
-    pub(crate) fn boot(&mut self, mmu: &mut Mmu) {
-        //
-    }
-
     pub(crate) fn step(&mut self, mmu: &mut Mmu) -> u16 {
         let mut cycles = 0;
 

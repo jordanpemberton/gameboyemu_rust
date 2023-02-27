@@ -1,10 +1,11 @@
 use crate::console::registers::{Flags};
 
-pub(crate) fn signed(value: u8) -> u16 {
-    if value & 0x0080 == 0 {
-        value as u16
+// Two's compliment, converted to i16
+pub(crate) fn signed(value: u8) -> i16 {
+    if value & 0x80 == 0 {
+        value as i16
     } else {
-        0xFF00 | value as u16
+        -(value.wrapping_neg() as i16)
     }
 }
 

@@ -1,7 +1,8 @@
 #![allow(dead_code)]
-#![allow(unused_variables)]
 #![allow(non_snake_case)]
 #![allow(unreachable_patterns)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
 
 extern crate core;
 
@@ -33,7 +34,7 @@ fn run_game(cpu: &mut Cpu, mmu: &mut Mmu, game: &Cartridge) {
     mmu.load_rom(bootrom.as_ref(), 0, bootrom.len());
 
     mmu.load_rom(&game.data[0x100..], 0x100, 0x8000 - 0x100);
-    cpu.registers.set_word(RegIndex::PC, 0x100);
+    // cpu.registers.set_word(RegIndex::PC, 0x100);
 
     loop {
         cpu.step(mmu);
