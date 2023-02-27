@@ -1,7 +1,5 @@
 use std::collections::HashMap;
-use std::fs::read;
 use std::hash::Hash;
-use std::path::Path;
 
 #[derive(PartialEq)]
 pub(crate) enum Endianness {
@@ -9,14 +7,22 @@ pub(crate) enum Endianness {
     LITTLE,
 }
 
+const CARTRIDGE_ROM_BANK_SIZE: u16 = 0x4000;
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub(crate) enum MemoryType {
     BOOT_ROM,
     CARTRIDGE_ROM,
     VRAM,
+    EXTERNAL_RAM,
+    INTERNAL_RAM,
+    INVALID,
+    OAM_RAM,
+    IO,
     HRAM,
     DEBUG,
+    __,
 }
 
 struct MemoryLocation {
@@ -51,24 +57,32 @@ impl Mmu {
     }
 
     pub(crate) fn init(&mut self) {
-        let bootrom_filepath = "/home/jordan/RustProjs/GameBoyEmu/src/console/DMG_ROM.bin";
-        self.load_rom_from_file(bootrom_filepath.as_ref());
+        // let bootrom_filepath = "/home/jordan/RustProjs/GameBoyEmu/src/console/DMG_ROM.bin";
+        // let bootrom = read(bootrom_filepath.as_ref()).unwrap();
+        // self.load_rom(bootrom.as_ref(), 0, bootrom.len());
 
         self.memory_locations = HashMap::from([
             ( MemoryType::BOOT_ROM, MemoryLocation::new(0x0000, 0x0100) ),
             ( MemoryType::CARTRIDGE_ROM, MemoryLocation::new(0x0000, 0x7FFF) ),
             ( MemoryType::VRAM, MemoryLocation::new(0x8000, 0x9FFF) ),
+            ( MemoryType::EXTERNAL_RAM, MemoryLocation::new(0xA000, 0xBFFF) ),
+            ( MemoryType::INTERNAL_RAM, MemoryLocation::new(0xC000, 0xDFFF) ),
+            ( MemoryType::INVALID, MemoryLocation::new(0xE000, 0xFDFF) ),
+            ( MemoryType::EXTERNAL_RAM, MemoryLocation::new(0xA000, 0xBFFF) ),
+            ( MemoryType::OAM_RAM, MemoryLocation::new(0xFE00, 0xFF9F) ),
+            ( MemoryType::__, MemoryLocation::new(0xFEA0, 0xFEFF) ),
+            ( MemoryType::IO, MemoryLocation::new(0xFF00, 0xFF79) ),
             ( MemoryType::HRAM, MemoryLocation::new(0xFF80, 0xFFFF) ),
             ( MemoryType::DEBUG, MemoryLocation::new(0x0000, 0xFFFF) ),
         ]);
     }
 
-    pub(crate) fn load_rom_from_file(&mut self, filepath: &Path) {
-        let rom = &*(read(filepath).unwrap());
-        // TODO read cartridges correctly
-        let s: usize = 0;
-        let n: usize = if rom.len() <= self.memory.len() { rom.len() } else { self.memory.len() };
-        self.memory[s..n].clone_from_slice(&rom[..n]);
+    pub(crate) fn load_rom(&mut self, rom: &[u8], start: usize, size: usize) {
+        let mut n = start + size;
+        if n >= self.memory.len() {
+            n = self.memory.len()
+        }
+        self.memory[start..n].clone_from_slice(&rom[..size]);
     }
 
     fn validate_address_in_bounds(&self, address: u16, begin: u16, end: u16) {

@@ -1,8 +1,9 @@
 pub(crate) mod cpu;
 pub(crate) mod mmu;
 
+mod alu;
+mod boot_rom;
 mod gpu;
 mod instructions;
-mod registers;
-mod boot_rom;
-mod alu;
+mod ppu;
+pub(crate) mod registers;
