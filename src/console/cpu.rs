@@ -22,6 +22,10 @@ impl Cpu {
         }
     }
 
+    pub(crate) fn halt(&mut self) {
+        self.is_halted = true;
+    }
+
     pub(crate) fn step(&mut self, mmu: &mut Mmu) -> u16 {
         let mut cycles = 0;
 
