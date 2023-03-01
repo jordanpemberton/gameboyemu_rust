@@ -1,6 +1,11 @@
 use std::fs::read;
 use std::path::Path;
 
+pub(crate) enum CartridgeOption {
+    NONE,
+    SOME(Cartridge),
+}
+
 pub(crate) struct Cartridge {
     pub(crate) data: Vec<u8>,
 }

@@ -393,7 +393,8 @@ impl Instruction {
     fn op_cb7c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
         let value = cpu.registers.get_byte(RegIndex::H);
         let mut flags = cpu.registers.get_flags();
-        flags.zero = value & (1 << 7) == 0;
+        // The opposite of the nth bit of the second operand is written into the Z flag.
+        flags.zero = value & 0b1000_0000 != 0;
         flags.subtract = false;
         flags.half_carry = true;
         cpu.registers.set_f(flags);
