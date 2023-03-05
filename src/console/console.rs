@@ -1,16 +1,23 @@
 use std::fs::read;
 
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::Sdl;
+use sdl2::{
+    event::Event,
+    keyboard::Keycode,
+    Sdl
+};
 
-use crate::cartridge::cartridge::{Cartridge, CartridgeOption};
-use crate::console::cpu::Cpu;
-use crate::console::display::Display;
-use crate::console::input::{CallbackAction, Input};
-use crate::console::mmu::{MemoryType, Mmu};
-use crate::console::ppu::Ppu;
-use crate::console::registers::RegIndex;
+use crate::cartridge::{
+    cartridge::{Cartridge, CartridgeOption}
+};
+use crate::console::{
+    cpu::Cpu,
+    debugger::{DebugAction, Debugger},
+    display::Display,
+    input::{CallbackAction, Input},
+    mmu::{MemoryType, Mmu},
+    ppu::Ppu,
+    registers::RegIndex
+};
 
 const SCREEN_PIXEL_WIDTH: u32 = 300;
 const SCREEN_PIXEL_HEIGHT: u32 = 500;
@@ -23,11 +30,13 @@ pub(crate) struct Console {
     ppu: Ppu,
     display: Display,
     input: Input,
+    debugger: Debugger,
 }
 
 impl Console {
-    pub(crate) fn new() -> Console {
+    pub(crate) fn new(debug: bool) -> Console {
         let sdl_context: Sdl = sdl2::init().unwrap();
+        let debugger = Debugger::new(debug);
 
         Console {
             cpu: Cpu::new(),
@@ -46,6 +55,7 @@ impl Console {
                 WINDOW_TITLE
             ),
             input: Input::new(&sdl_context),
+            debugger: debugger,
         }
     }
 
@@ -80,30 +90,37 @@ impl Console {
         self.main_loop();
     }
 
-    fn main_loop(&mut self) {
-        let mut max_pc: u16 = 0; // for debugging
+    fn step(&mut self) {
+        self.cpu.step(&mut self.mmu, &mut self.debugger);
 
+        // self.ppu.step();
+
+        let vram = self.mmu.get_memory_buffer(&MemoryType::VRAM);
+        let pixel_buffer = self.ppu.get_pixel_buffer(vram, 0);
+        self.display.draw_screen(pixel_buffer);
+    }
+
+    fn main_loop(&mut self) {
         loop {
             let action = self.input.poll();
             match action {
                 CallbackAction::ESCAPE => {
                     break;
                 }
-                CallbackAction::STEP => {
-                    let pc = self.cpu.registers.get_word(RegIndex::PC);
-                    if pc > max_pc {
-                        max_pc = pc;
+                CallbackAction::DEBUG(debug_action) => {
+                    match debug_action {
+                        DebugAction::STEP => {
+                            self.debugger.toggle_stepping();
+                            self.step();
+                        }
+                        _ => { }
                     }
-                    self.cpu.step(&mut self.mmu);
-                    // self.ppu.step();
-                    let vram = self.mmu.get_memory_buffer(&MemoryType::VRAM);
-                    let pixel_buffer = self.ppu.get_pixel_buffer(vram, 0);
-                    self.display.draw_screen(pixel_buffer);
+                }
+                CallbackAction::STEP => {
+                    self.step();
                 }
                 _ => { }
             }
         }
-
-        println!("\nMax address reached in program: {:#06X}", max_pc);
     }
 }

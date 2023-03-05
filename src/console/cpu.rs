@@ -3,6 +3,9 @@
 #![allow(unreachable_patterns)]
 #![allow(unused_variables)]
 
+use std::collections::HashMap;
+use sdl2::keyboard::Keycode::Hash;
+use crate::console::debugger::Debugger;
 use crate::console::instructions::{Instruction};
 use crate::console::mmu::{Mmu};
 use crate::console::registers::{RegIndex, Registers};
@@ -26,14 +29,19 @@ impl Cpu {
         self.is_halted = true;
     }
 
-    pub(crate) fn step(&mut self, mmu: &mut Mmu) -> u16 {
+    pub(crate) fn step(&mut self, mmu: &mut Mmu, debugger: &mut Debugger) -> u16 {
         let mut cycles = 0;
 
         if !self.is_halted {
+            debugger.dump_cpu(self);
+            debugger.dump_mmu(mmu);
+
             let opcode = self.fetch_opcode(mmu);
             let instruction = Instruction::get_instruction(opcode);
             cycles = self.execute_instruction(instruction, mmu);
         }
+
+        self.is_halted = debugger.enabled && debugger.stepping;
 
         cycles
     }

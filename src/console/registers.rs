@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 const FLAG_ZERO_BYTE: u8 = 7;
 const FLAG_SUBTRACT_BYTE: u8 = 6;
 const FLAG_HALF_CARRY_BYTE: u8 = 5;
@@ -195,5 +197,32 @@ impl Registers {
 
     fn bytes_to_word(&self, reg1: u8, reg2: u8) -> u16 {
         (reg1 as u16) << 8 | (reg2 as u16)
+    }
+}
+
+impl Display for Registers {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f,
+            "\ta: {:#04X}\n\
+            \tb: {:#04X}\n\
+            \tc: {:#04X}\n\
+            \td: {:#04X}\n\
+            \te: {:#04X}\n\
+            \tf: {:#04X}\n\
+            \th: {:#04X}\n\
+            \tl: {:#04X}\n\
+            \tpc: {:#06X}\n\
+            \tsp: {:#06X}",
+            self.a,
+            self.b,
+            self.c,
+            self.d,
+            self.e,
+            self.f,
+            self.h,
+            self.l,
+            self.pc,
+            self.sp
+        )
     }
 }

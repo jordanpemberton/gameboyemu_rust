@@ -1,8 +1,15 @@
-use sdl2::{EventPump, Sdl};
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
+use sdl2::{
+    EventPump,
+    event::Event,
+    Sdl,
+    keyboard::Keycode
+};
+use crate::console::{
+    debugger::DebugAction
+};
 
 pub(crate) enum CallbackAction {
+    DEBUG(DebugAction),
     ESCAPE,
     PANIC,
     STEP,
@@ -27,7 +34,10 @@ impl Input {
                 Event::Quit { .. }
                 | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     CallbackAction::ESCAPE
-                },
+                }
+                Event::KeyDown { keycode: Some(Keycode::N ), .. } => {
+                    CallbackAction::DEBUG(DebugAction::STEP)
+                }
                 _ => {
                     CallbackAction::STEP
                 }
