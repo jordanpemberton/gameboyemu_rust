@@ -25,10 +25,10 @@ pub(crate) enum MemoryType {
     __,
 }
 
-struct MemoryLocation {
-    begin: u16,
-    end: u16,
-    size: u16,
+pub(crate) struct MemoryLocation {
+    pub(crate) begin: u16,
+    pub(crate) end: u16,
+    pub(crate) size: u16,
 }
 
 impl MemoryLocation {
@@ -98,6 +98,21 @@ impl Mmu {
             }
         }
         panic!("Out of bounds error: No memory type found for address {}", address);
+    }
+
+    pub(crate) fn get_memory_buffer_at(&self, address: u16, length: u16) -> &[u8] {
+        &self.memory[(address as usize)..((address + length + 1) as usize)]
+    }
+
+    pub(crate) fn get_memory_buffer(&self, memory_type: &MemoryType) -> &[u8] {
+        match self.memory_locations.get(memory_type) {
+            Some(memory_location) => {
+                let begin = memory_location.begin as usize;
+                let end = begin + (memory_location.size + 1) as usize;
+                &self.memory[begin..end]
+            },
+            None => &[]
+        }
     }
 
     pub(crate) fn read_byte(&self, address: u16) -> u8 {

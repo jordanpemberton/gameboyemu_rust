@@ -8,16 +8,19 @@ use crate::cartridge::cartridge::{Cartridge, CartridgeOption};
 use crate::console::cpu::Cpu;
 use crate::console::display::Display;
 use crate::console::input::{CallbackAction, Input};
-use crate::console::mmu::Mmu;
+use crate::console::mmu::{MemoryType, Mmu};
+use crate::console::ppu::Ppu;
 use crate::console::registers::RegIndex;
 
-const WINDOW_WIDTH: u32 = 300;
-const WINDOW_HEIGHT: u32 = 500;
+const SCREEN_PIXEL_WIDTH: u32 = 300;
+const SCREEN_PIXEL_HEIGHT: u32 = 500;
+const WINDOW_SCALE: u32 = 10;
 const WINDOW_TITLE: &str = "_GAMBOY_";
 
 pub(crate) struct Console {
     cpu: Cpu,
     mmu: Mmu,
+    ppu: Ppu,
     display: Display,
     input: Input,
 }
@@ -29,7 +32,19 @@ impl Console {
         Console {
             cpu: Cpu::new(),
             mmu: Mmu::new(),
-            display: Display::new(&sdl_context, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE),
+            ppu: Ppu::new([
+                [0,1,2,3],
+                [0,1,2,3],
+                [0,1,2,3],
+                [0,1,2,3],
+            ]),
+            display: Display::new(
+                &sdl_context,
+                SCREEN_PIXEL_WIDTH,
+                SCREEN_PIXEL_HEIGHT,
+                WINDOW_SCALE,
+                WINDOW_TITLE
+            ),
             input: Input::new(&sdl_context),
         }
     }
@@ -80,6 +95,10 @@ impl Console {
                         max_pc = pc;
                     }
                     self.cpu.step(&mut self.mmu);
+                    // self.ppu.step();
+                    let vram = self.mmu.get_memory_buffer(&MemoryType::VRAM);
+                    let pixel_buffer = self.ppu.get_pixel_buffer(vram, 0);
+                    self.display.draw_screen(pixel_buffer);
                 }
                 _ => { }
             }
