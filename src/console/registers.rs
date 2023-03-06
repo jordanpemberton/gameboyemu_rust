@@ -58,7 +58,7 @@ impl Registers {
             RegIndex::F => self.f,
             RegIndex::H => self.h,
             RegIndex::L => self.l,
-            _ => 0
+            _ => panic!("Invalid RegIndex"),
         }
     }
 
@@ -70,7 +70,7 @@ impl Registers {
             RegIndex::HL => self.bytes_to_word(self.h, self.l),
             RegIndex::PC => self.pc,
             RegIndex::SP => self.sp,
-            _ => 0
+            _ => panic!("Invalid RegIndex"),
         }
     }
 
@@ -93,7 +93,7 @@ impl Registers {
             RegIndex::F => { self.f = value; }
             RegIndex::H => { self.h = value; }
             RegIndex::L => { self.l = value; }
-            _ => { }
+            _ => panic!("Invalid RegIndex"),
         }
     }
 
@@ -129,19 +129,59 @@ impl Registers {
             RegIndex::SP => {
                 self.sp = value;
             }
-            _ => { }
+            _ => panic!("Invalid RegIndex"),
         }
     }
 
     pub(crate) fn increment(&mut self, register: RegIndex, increment_by: u16) {
         match register {
+            RegIndex::A => {
+                self.a = self.a.wrapping_add(increment_by as u8);
+            }
+            RegIndex::B => {
+                self.b = self.b.wrapping_add(increment_by as u8);
+            }
+            RegIndex::C => {
+                self.c = self.c.wrapping_add(increment_by as u8);
+            }
+            RegIndex::D => {
+                self.d = self.d.wrapping_add(increment_by as u8);
+            }
+            RegIndex::E => {
+                self.e = self.e.wrapping_add(increment_by as u8);
+            }
+            RegIndex::F => {
+                self.f = self.f.wrapping_add(increment_by as u8);
+            }
+            RegIndex::H => {
+                self.h = self.h.wrapping_add(increment_by as u8);
+            }
+            RegIndex::L => {
+                self.l = self.l.wrapping_add(increment_by as u8);
+            }
+            RegIndex::AF => {
+                let af = self.get_word(RegIndex::AF).wrapping_add(increment_by);
+                self.set_word(RegIndex::AF, af);
+            }
+            RegIndex::BC => {
+                let bc = self.get_word(RegIndex::BC).wrapping_add(increment_by);
+                self.set_word(RegIndex::BC, bc);
+            }
+            RegIndex::DE => {
+                let de = self.get_word(RegIndex::DE).wrapping_add(increment_by);
+                self.set_word(RegIndex::DE, de);
+            }
+            RegIndex::HL => {
+                let hl = self.get_word(RegIndex::HL).wrapping_add(increment_by);
+                self.set_word(RegIndex::HL, hl);
+            }
             RegIndex::PC => {
                 self.pc = self.pc.wrapping_add(increment_by);
             }
             RegIndex::SP => {
                 self.sp = self.sp.wrapping_add(increment_by);
             }
-            _ => { }
+            _ => panic!("Invalid RegIndex"),
         }
     }
 
@@ -171,27 +211,29 @@ impl Registers {
             RegIndex::L => {
                 self.l = self.l.wrapping_sub(decrement_by as u8);
             }
-            /*
             RegIndex::AF => {
-                self.af = self.af.wrapping_sub(decrement_by);
+                let af = self.get_word(RegIndex::AF).wrapping_sub(decrement_by);
+                self.set_word(RegIndex::AF, af);
             }
             RegIndex::BC => {
-                self.bc = self.bc.wrapping_sub(decrement_by);
+                let bc = self.get_word(RegIndex::BC).wrapping_sub(decrement_by);
+                self.set_word(RegIndex::BC, bc);
             }
             RegIndex::DE => {
-                self.de = self.de.wrapping_sub(decrement_by);
+                let de = self.get_word(RegIndex::DE).wrapping_sub(decrement_by);
+                self.set_word(RegIndex::DE, de);
             }
             RegIndex::HL => {
-                self.hl = self.hl.wrapping_sub(decrement_by);
+                let hl = self.get_word(RegIndex::HL).wrapping_sub(decrement_by);
+                self.set_word(RegIndex::HL, hl);
             }
-            */
             RegIndex::PC => {
                 self.pc = self.pc.wrapping_sub(decrement_by);
             }
             RegIndex::SP => {
                 self.sp = self.sp.wrapping_sub(decrement_by);
             }
-            _ => { }
+            _ => panic!("Invalid RegIndex"),
         }
     }
 

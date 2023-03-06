@@ -227,14 +227,14 @@ impl Instruction {
         let target_address = cpu.registers.get_word(RegIndex::HL);
         let value = cpu.registers.get_byte(RegIndex::A);
         mmu.load_byte(target_address, value);
-        cpu.registers.set_word(RegIndex::HL, target_address.wrapping_sub(1));
+        cpu.registers.decrement(RegIndex::HL, 1);
     }
 
     /// INC (HL)
     /// 1 12
     /// Z 0 H -
     fn op_0034(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
-
+        cpu.registers.increment(RegIndex::HL, 1);
     }
 
     /// LD A,d8
