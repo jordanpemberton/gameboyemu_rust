@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::fs::read;
-
+use std::env::current_dir;
+use std::path::Path;
 use sdl2::{
     event::Event,
     keyboard::Keycode,
@@ -72,7 +74,7 @@ impl Console {
 
     fn boot(&mut self) {
         // TODO load roms correctly, map memory correctly /MBCs
-        let bootrom_filepath = "/home/jordan/RustProjs/GameBoyEmu/src/console/DMG_ROM.bin";
+        let bootrom_filepath = "src/console/DMG_ROM.bin";
         let bootrom = read(bootrom_filepath).unwrap();
         self.mmu.load_rom(bootrom.as_ref(), 0, bootrom.len());
     }
@@ -91,7 +93,7 @@ impl Console {
     }
 
     fn step(&mut self) {
-        self.cpu.step(&mut self.mmu, &mut self.debugger);
+        self.cpu.step(&mut self.mmu);
 
         // self.ppu.step();
 
@@ -110,14 +112,22 @@ impl Console {
                 CallbackAction::DEBUG(debug_action) => {
                     match debug_action {
                         DebugAction::STEP => {
-                            self.debugger.toggle_stepping();
-                            self.step();
+                            self.debugger.active =  self.debugger.enabled && !self.debugger.active;
+                            if self.debugger.active {
+                                self.debugger.dump(Option::from(&mut self.cpu),
+                                    Option::from(&self.mmu),
+                                    Option::from(HashMap::from([("Locals", "test value")])));
+                            } else {
+                                self.step();
+                            }
                         }
                         _ => { }
                     }
                 }
                 CallbackAction::STEP => {
-                    self.step();
+                    if !self.debugger.active {
+                        self.step();
+                    }
                 }
                 _ => { }
             }

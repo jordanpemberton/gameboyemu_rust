@@ -57,10 +57,6 @@ impl Mmu {
     }
 
     pub(crate) fn init(&mut self) {
-        // let bootrom_filepath = "/home/jordan/RustProjs/GameBoyEmu/src/console/DMG_ROM.bin";
-        // let bootrom = read(bootrom_filepath.as_ref()).unwrap();
-        // self.load_rom(bootrom.as_ref(), 0, bootrom.len());
-
         self.memory_locations = HashMap::from([
             ( MemoryType::BOOT_ROM, MemoryLocation::new(0x0000, 0x0100) ),
             ( MemoryType::CARTRIDGE_ROM, MemoryLocation::new(0x0000, 0x7FFF) ),
