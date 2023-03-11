@@ -35,6 +35,12 @@ impl Input {
                 | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     CallbackAction::ESCAPE
                 }
+                Event::KeyDown { keycode: Some(Keycode::B ), .. } => {
+                    CallbackAction::DEBUG(DebugAction::BREAK)
+                }
+                Event::KeyDown { keycode: Some(Keycode::P ), .. } => {
+                    CallbackAction::DEBUG(DebugAction::PEEK)
+                }
                 Event::KeyDown { keycode: Some(Keycode::N ), .. } => {
                     CallbackAction::DEBUG(DebugAction::STEP)
                 }

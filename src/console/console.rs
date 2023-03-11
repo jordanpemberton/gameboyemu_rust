@@ -21,9 +21,9 @@ use crate::console::{
     registers::RegIndex
 };
 
-const SCREEN_PIXEL_WIDTH: u32 = 300;
-const SCREEN_PIXEL_HEIGHT: u32 = 500;
-const WINDOW_SCALE: u32 = 10;
+const SCREEN_PIXEL_WIDTH: u32 = 160;
+const SCREEN_PIXEL_HEIGHT: u32 = 144;
+const WINDOW_SCALE: u32 = 4;
 const WINDOW_TITLE: &str = "_GAMBOY_";
 
 pub(crate) struct Console {
@@ -37,8 +37,8 @@ pub(crate) struct Console {
 
 impl Console {
     pub(crate) fn new(debug: bool) -> Console {
-        let sdl_context: Sdl = sdl2::init().unwrap();
         let debugger = Debugger::new(debug);
+        let sdl_context: Sdl = sdl2::init().unwrap();
 
         Console {
             cpu: Cpu::new(),
@@ -50,11 +50,11 @@ impl Console {
                 [0,1,2,3],
             ]),
             display: Display::new(
-                &sdl_context,
                 SCREEN_PIXEL_WIDTH,
                 SCREEN_PIXEL_HEIGHT,
                 WINDOW_SCALE,
-                WINDOW_TITLE
+                WINDOW_TITLE,
+                &sdl_context
             ),
             input: Input::new(&sdl_context),
             debugger: debugger,
@@ -97,39 +97,46 @@ impl Console {
 
         // self.ppu.step();
 
+        // TODO draw correctly
         let vram = self.mmu.get_memory_buffer(&MemoryType::VRAM);
         let pixel_buffer = self.ppu.get_pixel_buffer(vram, 0);
-        self.display.draw_screen(pixel_buffer);
+        self.display.draw(pixel_buffer);
     }
 
     fn main_loop(&mut self) {
+        let mut is_paused: bool = false;
+
         loop {
-            let action = self.input.poll();
-            match action {
+            match self.input.poll() {
                 CallbackAction::ESCAPE => {
                     break;
                 }
                 CallbackAction::DEBUG(debug_action) => {
                     match debug_action {
-                        DebugAction::STEP => {
-                            self.debugger.active =  self.debugger.enabled && !self.debugger.active;
-                            if self.debugger.active {
-                                self.debugger.dump(Option::from(&mut self.cpu),
-                                    Option::from(&self.mmu),
-                                    Option::from(HashMap::from([("Locals", "test value")])));
-                            } else {
-                                self.step();
-                            }
+                        DebugAction::BREAK => {
+                            self.debugger.break_or_cont(
+                                Option::from(&mut self.cpu),
+                                Option::from(&self.mmu),
+                                Option::from(HashMap::from([("Locals", "test value")]))
+                            );
+                            is_paused = self.debugger.is_active();
                         }
-                        _ => { }
-                    }
-                }
-                CallbackAction::STEP => {
-                    if !self.debugger.active {
-                        self.step();
+                        DebugAction::PEEK => {
+                            self.debugger.peek(
+                                Option::from(&mut self.cpu),
+                                Option::from(&self.mmu),
+                                Option::from(HashMap::from([("Locals", "test value")]))
+                            );
+                        }
+                        DebugAction::STEP
+                        | _ => { }
                     }
                 }
                 _ => { }
+            }
+
+            if !is_paused {
+                self.step();
             }
         }
     }

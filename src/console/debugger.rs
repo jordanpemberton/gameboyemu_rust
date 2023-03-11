@@ -6,8 +6,8 @@ use crate::console::{
 use crate::console::mmu::{MemoryType, Mmu};
 
 pub(crate) enum DebugAction {
-    CONT,
-    DUMP,
+    BREAK,
+    PEEK,
     STEP,
 }
 
@@ -24,7 +24,30 @@ impl Debugger {
         }
     }
 
-    pub(crate) fn dump(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn is_active(&self) -> bool {
+        self.enabled && self.active
+    }
+
+    pub(crate) fn break_or_cont(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, locals: Option<HashMap<&str, &str>>) {
+        if self.enabled {
+            self.active = !self.active;
+            if self.active {
+                self.dump(cpu, mmu, locals);
+            }
+        }
+    }
+
+    pub(crate) fn peek(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, locals: Option<HashMap<&str, &str>>) {
+        if self.enabled {
+            self.dump(cpu, mmu, locals);
+        }
+    }
+
+    pub(crate) fn step(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, locals: Option<HashMap<&str, &str>>) {
+        // todo
+    }
+
+    fn dump(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, locals: Option<HashMap<&str, &str>>) {
         if let Some(_cpu) = cpu {
             self.dump_cpu_state(_cpu);
         }
@@ -49,14 +72,32 @@ impl Debugger {
     }
 
     fn dump_mmu_state(&self, mmu: &Mmu) {
-        let vram_forst_8: &[u8] = &mmu.get_memory_buffer(&MemoryType::VRAM)[0..8];
+        let cols: usize = 16;
+
         let mut vram_values_str = String::new();
-        for x in vram_forst_8 {
-            vram_values_str.push_str(format!("\t{:#06X}", x).as_str());
+        let vram: &[u8] = &mmu.get_memory_buffer(&MemoryType::VRAM);
+        let rows: usize = vram.len() / cols;
+
+        let mut i = 0;
+        for row in 0..rows {
+            vram_values_str.push_str(format!("\n{:#06X} :", i).as_str());
+
+            for col in 0..cols {
+                if vram[i] > 0 {
+                    vram_values_str.push_str(format!("\t{:#06X}", vram[i]).as_str());
+                } else {
+                    vram_values_str.push_str("\t______");
+                }
+                i += 1;
+            }
+            vram_values_str.push_str("\n");
         }
 
         self.dump_key_value_pairs(HashMap::from([
-            ("VRAM[0..8]", format!("\n{}\n", vram_values_str).as_str()),
+            (
+                format!("VRAM[0..{}]", (rows * cols)).as_str(),
+                format!("\n{}\n", vram_values_str).as_str()
+            )
         ]));
     }
 }

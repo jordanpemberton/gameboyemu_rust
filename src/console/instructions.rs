@@ -214,8 +214,8 @@ impl Instruction {
     /// 3  12
     /// - - - -
     fn op_0031(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
-        let source_address = cpu.registers.get_word(RegIndex::PC);
-        let d16 = mmu.read_word(source_address, Endianness::BIG);
+        let pc = cpu.registers.get_word(RegIndex::PC);
+        let d16 = mmu.read_word(pc, Endianness::BIG);
         cpu.registers.increment(RegIndex::PC, 2);
         cpu.registers.set_word(RegIndex::SP, d16);
     }
@@ -293,10 +293,11 @@ impl Instruction {
     /// 1  12
     /// - - - -
     fn op_00c1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
-        // rr=(SP) SP=SP+2 ; rr may be BC,DE,HL,AF
-        let source_address = cpu.registers.get_word(RegIndex::SP);
-        let value = mmu.read_word(source_address, Endianness::BIG);
+        // rr=(SP)
+        let sp = cpu.registers.get_word(RegIndex::SP);
+        let value = mmu.read_word(sp, Endianness::BIG);
         cpu.registers.set_word(RegIndex::BC, value);
+        // SP=SP+2
         cpu.registers.increment(RegIndex::SP, 2);
     }
 
@@ -307,9 +308,9 @@ impl Instruction {
         // SP=SP-2
         cpu.registers.decrement(RegIndex::SP, 2);
         // (SP)=BC
-        let target_address = cpu.registers.get_word(RegIndex::SP);
         let value = cpu.registers.get_word(RegIndex::BC);
-        mmu.load_word(target_address, value, Endianness::BIG);
+        let sp = cpu.registers.get_word(RegIndex::SP);
+        mmu.load_word(sp, value, Endianness::BIG);
     }
 
     /// RET
@@ -328,17 +329,18 @@ impl Instruction {
     /// 3  24
     /// - - - -
     fn op_00cd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) {
-        // read a16 aka (PC)
+        // read a16 from pc
         let mut pc = cpu.registers.get_word(RegIndex::PC);
-        cpu.registers.increment(RegIndex::PC, 2);
         let a16 = mmu.read_word(pc, Endianness::BIG);
+        cpu.registers.increment(RegIndex::PC, 2);
+
         // SP=SP-2
         cpu.registers.decrement(RegIndex::SP, 2);
-        let target_address = cpu.registers.get_word(RegIndex::SP);
         // (SP)=PC
+        let sp = cpu.registers.get_word(RegIndex::SP);
         pc = cpu.registers.get_word(RegIndex::PC);
-        mmu.load_word(target_address, pc, Endianness::BIG);
-        // PC=a16
+        mmu.load_word(sp, pc, Endianness::BIG);
+        // PC=nn
         cpu.registers.set_word(RegIndex::PC, a16);
     }
 
