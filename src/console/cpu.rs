@@ -12,15 +12,15 @@ use crate::console::registers::{RegIndex, Registers};
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
 pub(crate) struct Cpu {
-    pub(crate) registers: Registers,
     is_halted: bool,
+    pub(crate) registers: Registers,
 }
 
 impl Cpu {
     pub(crate) fn new() -> Cpu {
         Cpu {
-            registers: Registers::new(),
             is_halted: false,
+            registers: Registers::new(),
         }
     }
 
@@ -28,7 +28,7 @@ impl Cpu {
         self.is_halted = true;
     }
 
-    pub(crate) fn step(&mut self, mmu: &mut Mmu) -> u16 {
+    pub(crate) fn step(&mut self, mmu: &mut Mmu) -> i16 {
         let mut cycles = 0;
 
         if !self.is_halted {
@@ -60,7 +60,7 @@ impl Cpu {
         opcode
     }
 
-    fn execute_instruction(&mut self, mut instruction: Instruction, mmu: &mut Mmu) -> u16 {
+    fn execute_instruction(&mut self, mut instruction: Instruction, mmu: &mut Mmu) -> i16 {
         instruction.execute(self, mmu)
     }
 }

@@ -92,15 +92,18 @@ impl Console {
         self.main_loop();
     }
 
-    fn step(&mut self) {
-        self.cpu.step(&mut self.mmu);
+    fn step(&mut self) -> i16 {
+        let status = self.cpu.step(&mut self.mmu);
+        if status >= 0 {
+            // self.ppu.step();
 
-        // self.ppu.step();
+            // TODO draw correctly
+            let vram = self.mmu.get_memory_buffer(&MemoryType::VRAM);
+            let pixel_buffer = self.ppu.get_pixel_buffer(vram, 0);
+            self.display.draw(pixel_buffer);
+        }
 
-        // TODO draw correctly
-        let vram = self.mmu.get_memory_buffer(&MemoryType::VRAM);
-        let pixel_buffer = self.ppu.get_pixel_buffer(vram, 0);
-        self.display.draw(pixel_buffer);
+        status
     }
 
     fn main_loop(&mut self) {
@@ -136,7 +139,16 @@ impl Console {
             }
 
             if !is_paused {
-                self.step();
+                let status = self.step();
+                if status < 0 {
+                    self.debugger.peek(
+                        Option::from(&mut self.cpu),
+                        Option::from(&self.mmu),
+                        Option::from(HashMap::from([("Locals", "test value")]))
+                    );
+                    panic!("Console step attempt failed with status {} at address {:#06X}.",
+                        status, self.cpu.registers.get_word(RegIndex::PC));
+                }
             }
         }
     }
