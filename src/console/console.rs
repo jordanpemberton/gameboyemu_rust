@@ -2,11 +2,10 @@ use std::collections::HashMap;
 use std::fs::read;
 use std::env::current_dir;
 use std::path::Path;
-use sdl2::{
-    event::Event,
-    keyboard::Keycode,
-    Sdl
-};
+
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::Sdl;
 
 use crate::cartridge::{
     cartridge::{Cartridge, CartridgeOption}
@@ -21,6 +20,7 @@ use crate::console::{
     registers::RegIndex
 };
 
+const DISPLAY_ENABLED: bool = true;
 const SCREEN_PIXEL_WIDTH: u32 = 160;
 const SCREEN_PIXEL_HEIGHT: u32 = 144;
 const WINDOW_SCALE: u32 = 4;
@@ -97,10 +97,9 @@ impl Console {
         if status >= 0 {
             // self.ppu.step();
 
-            // TODO draw correctly
-            let vram = self.mmu.get_memory_buffer(&MemoryType::VRAM);
-            let pixel_buffer = self.ppu.get_pixel_buffer(vram, 0);
-            self.display.draw(pixel_buffer);
+            if DISPLAY_ENABLED {
+                self.display.draw(&mut self.mmu, &mut self.ppu);
+            }
         }
 
         status

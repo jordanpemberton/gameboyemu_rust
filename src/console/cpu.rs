@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use sdl2::keyboard::Keycode::Hash;
 use crate::console::instructions::{Instruction};
-use crate::console::mmu::{Mmu};
+use crate::console::mmu::{Endianness, Mmu};
 use crate::console::registers::{RegIndex, Registers};
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
@@ -40,18 +40,28 @@ impl Cpu {
         cycles
     }
 
+    pub(crate) fn read_byte_at_pc(&mut self, mmu: &mut Mmu) -> u8 {
+        let pc = self.registers.get_word(RegIndex::PC);
+        let d8 = mmu.read_byte(pc);
+        self.registers.increment(RegIndex::PC, 1);
+        d8
+    }
+
+    pub(crate) fn read_word_at_pc(&mut self, mmu: &mut Mmu) -> u16 {
+        let pc = self.registers.get_word(RegIndex::PC);
+        let d16 = mmu.read_word(pc, Endianness::BIG);
+        self.registers.increment(RegIndex::PC, 2);
+        d16
+    }
+
     fn fetch_opcode(&mut self, mmu: &mut Mmu) -> u16 {
         let mut opcode: u16;
 
-        let mut source_address = self.registers.get_word(RegIndex::PC);
-        let mut byte = mmu.read_byte(source_address);
-        self.registers.increment(RegIndex::PC, 1);
+        let mut byte = self.read_byte_at_pc(mmu);
 
         if byte == PREFIX_BYTE {
             opcode = (byte as u16) << 8;
-            source_address = self.registers.get_word(RegIndex::PC);
-            byte = mmu.read_byte(source_address);
-            self.registers.increment(RegIndex::PC, 1);
+            byte = self.read_byte_at_pc(mmu);
             opcode |= byte as u16;
         } else {
             opcode = byte as u16;

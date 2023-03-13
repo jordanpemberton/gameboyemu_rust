@@ -66,3 +66,27 @@ pub(crate) fn subtract_byte(a: u8, b: u8) -> (u8, Flags) {
         carry,
     })
 }
+
+/// Original carry flag is preserved
+pub(crate) fn increment_byte(a: u8, original_carry: bool) -> (u8, Flags) {
+    let (result, add_flags) = add_byte(a, 1);
+
+    (result, Flags {
+        zero: add_flags.zero,
+        subtract: add_flags.subtract,
+        half_carry: add_flags.half_carry,
+        carry: original_carry,
+    })
+}
+
+/// Original carry flag is preserved
+pub(crate) fn decrement_byte(a: u8, original_carry: bool) -> (u8, Flags) {
+    let (result, sub_flags) = subtract_byte(a, 1);
+
+    (result, Flags {
+        zero: sub_flags.zero,
+        subtract: sub_flags.subtract,
+        half_carry: sub_flags.half_carry,
+        carry: original_carry,
+    })
+}

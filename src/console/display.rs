@@ -1,14 +1,12 @@
 use std::collections::HashMap;
-use sdl2::{
-    event::Event,
-    EventPump,
-    keyboard::Keycode,
-    pixels::Color,
-    rect::Rect,
-    render::WindowCanvas,
-    Sdl,
-    video::Window
-};
+
+use sdl2::pixels::Color;
+use sdl2::rect::Rect;
+use sdl2::render::WindowCanvas;
+use sdl2::Sdl;
+
+use crate::console::mmu::{MemoryType, Mmu};
+use crate::console::ppu::Ppu;
 
 pub(crate) struct Display {
     gbpixel_width: u32,
@@ -38,7 +36,15 @@ impl Display {
         }
     }
 
-    pub(crate) fn draw(&mut self, pixel_buffer: Vec<Color>) {
+    pub(crate) fn draw(&mut self, mmu: &mut Mmu, ppu: &mut Ppu) {
+        self.draw_sdl(mmu, ppu);
+    }
+
+    fn draw_sdl(&mut self, mmu: &mut Mmu, ppu: &mut Ppu) {
+        // TODO diplay correctly (this just displays raw VRAM mem data)
+        let vram = mmu.get_memory_buffer(&MemoryType::VRAM);
+        let pixel_buffer = ppu.get_pixel_buffer(vram, 0);
+
         self.canvas.clear();
 
         let mut i: usize = 0;
@@ -65,7 +71,7 @@ impl Display {
         self.canvas.present();
     }
 
-    pub(crate) fn draw_to_stdout(&mut self, pixel_buffer: &[u8]) {
+    fn draw_to_stdout(&mut self, pixel_buffer: &[u8]) {
         let mut s: String = String::new();
 
         let mut i: usize = 0;
@@ -95,7 +101,6 @@ fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, w
         .unwrap();
 
     window.into_canvas()
-        .present_vsync()
         .build()
         .unwrap()
 }
