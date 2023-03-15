@@ -1,64 +1,91 @@
 use std::collections::HashMap;
 use sdl2::pixels::Color;
 
-const COLORS: [Color; 4] = [
-    Color::RGB(255, 255, 255),
-    Color::RGB(255, 255, 0),
-    Color::RGB(255, 0, 255),
-    Color::RGB(0, 255, 255),
-];
+/*
+    COLORS / PALETTES
+
+    Memory location 0xFF47 is mapped to a special register of the LCD Display device.
+    The register does the mapping between the four possible values of the Game Boy’s colors (0, 1, 2, 3)
+    to actual colors (white, light gray, dark gray and black); ie, it initializes the color palette.
+
+    The register at 0xFF47 is divided as follows:
+        – Bits 7-6 – defines color number 3
+        – Bits 5-4 – defines color number 2
+        – Bits 3-2 – defines color number 1
+        – Bits 1-0 – defines color number 0
+
+    Each pair of bits can hold a value from 0 to 3. These values are interpreted as follows:
+        - 0 is white
+        - 1 is light gray
+        - 2 is dark fray
+        - 3 is black
+
+    Example:
+        In bootrom, the register was written with value 0xF3, which is binary 11110011.
+        This means that color number 0 is assigned black, as well as colors number 2 and 3;
+        color number 1 is assigned white.
+ */
 
 /*
-Memory location 0xFF47 is mapped to a special register of the LCD Display device.
-The register does the mapping between the four possible values of the Game Boy’s colors (0, 1, 2, 3)
-to actual colors (white, light gray, dark gray and black); ie, it initializes the color palette.
+    TILE DATA
 
-The register at 0xFF47 is divided as follows:
-– Bits 7-6 – defines color number 3
-– Bits 5-4 – defines color number 2
-– Bits 3-2 – defines color number 1
-– Bits 1-0 – defines color number 0
+    Tile data is stored in VRAM in the memory area at $8000-$97FF; with each tile taking 16 bytes,
+    this area defines data for 384 tiles.
 
-Each pair of bits can hold a value from 0 to 3. These values are interpreted as follows:
-- 0 is white
-- 1 is light gray
-- 2 is dark fray
-- 3 is black
+    There are three “blocks” of 128 tiles each:
+        $8000–$87FF
+        $8800–$8FFF
+        $9000–$97FF 	(Can't use)
 
-Example: In bootrom, the register was written with value 0xF3, which is binary 11110011.
-This means that color number 0 is assigned black, as well as colors number 2 and 3;
-color number 1 is assigned white.
- */
+    Each tile occupies 16 bytes, where each line is represented by 2 bytes:
+        Byte 0-1    Topmost line  (top 8 pixels)
+        Byte 2-3    Second line   (next 8 pixels)
+        ...
+        Byte 14-15  Bottom line
+
+    Gameboy tile example:
+        0x3C 0x7E 0x42 0x42 0x42 0x42 0x42 0x42
+        0x7E 0x5E 0x7E 0x0A 0x7C 0x56 0x38 0x7C
+*/
+
+/*
+    TILE MAPS
+
+    The Game Boy contains two 32x32 tile maps in VRAM at the memory areas $9800-$9BFF and $9C00-$9FFF.
+    Any of these maps can be used to display the Background or the Window.
+
+    Each tile map contains the 1-byte indexes of the tiles to be displayed.
+    Tiles are obtained from the Tile Data Table using either of the two addressing modes,
+    selected via the LCDC register.
+
+    Since one tile has 8x8 pixels, each map holds a 256x256 pixels picture.
+    Only 160x144 of those pixels are displayed on the LCD at any given time.
+*/
+
 
 pub(crate) struct Ppu {
     palettes: [[u8; 4]; 4],
-    colors: [Color; 4],
 }
 
 impl Ppu {
     pub(crate) fn new(palettes: [[u8; 4]; 4]) -> Ppu {
         Ppu {
             palettes: palettes,
-            colors: COLORS,
         }
     }
 
-    pub(crate) fn get_pixel_buffer(&self, memory_buffer: &[u8], palette_index: u8) -> Vec<Color> {
-        memory_buffer.iter()
-            .map(|byte|
-                Color::RGB(
-                    byte & 0b1110_0000,
-                    (byte & 0b0001_1000) << 3,
-                    (byte & 0b0000_0111) << 5,
-                )
-                // self.colors[self.palettes[palette_index as usize][
-                //     match byte {
-                //         0x00 => 0,
-                //         0x10 => 1,
-                //         0x01 => 2,
-                //         _ => 3,
-                //     }] as usize]
-            )
-            .collect()
+    pub(crate) fn read_tile(&self, tile_bytes: [u8; 16]) -> [[u8; 8]; 8] {
+        let mut tile = [[0; 8]; 8];
+
+        for row in 0..8 {
+            println!("{:#06X}, {:#06X}", tile_bytes[row * 2],  tile_bytes[row * 2 + 1]);
+            for col in 0..8 {
+                // Possible values = 0,1,2,3 (0b00,0b01,0b10,0b11)
+                let low = ((tile_bytes[row * 2] << col) >> 7) << 1;
+                let high = (tile_bytes[row * 2 + 1] << col) >> 7;
+                tile[row][col] = high + low;
+            }
+        }
+        tile
     }
 }

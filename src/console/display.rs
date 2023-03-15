@@ -8,6 +8,13 @@ use sdl2::Sdl;
 use crate::console::mmu::{MemoryType, Mmu};
 use crate::console::ppu::Ppu;
 
+const COLORS: [Color; 4] = [
+    Color::RGB(0, 0, 0),
+    Color::RGB(255, 255, 0),
+    Color::RGB(255, 0, 255),
+    Color::RGB(0, 255, 255),
+];
+
 pub(crate) struct Display {
     gbpixel_width: u32,
     gbpixel_height: u32,
@@ -37,23 +44,48 @@ impl Display {
     }
 
     pub(crate) fn draw(&mut self, mmu: &mut Mmu, ppu: &mut Ppu) {
-        self.draw_sdl(mmu, ppu);
-    }
-
-    fn draw_sdl(&mut self, mmu: &mut Mmu, ppu: &mut Ppu) {
-        // TODO diplay correctly (this just displays raw VRAM mem data)
-        let vram = mmu.get_memory_buffer(&MemoryType::VRAM);
-        let pixel_buffer = ppu.get_pixel_buffer(vram, 0);
+        // TODO Read data from memory for bg, tiles, window, etc.
 
         self.canvas.clear();
 
+        //self.draw_sdl(pixel_buffer);
+
+        let tile_bytes: [u8; 16] = [
+            0x3C, 0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
+            0x7E, 0x5E, 0x7E, 0x0A, 0x7C, 0x56, 0x38, 0x7C,
+        ];
+        let tile = ppu.read_tile(tile_bytes);
+        self.draw_tile(0, 0, tile);
+        self.draw_tile(9, 18, tile);
+
+        self.canvas.present();
+    }
+
+    fn draw_tile(&mut self, x: usize, y: usize, tile: [[u8; 8]; 8]) {
+        for i in 0..8 {
+            for j in 0..8 {
+                let color = COLORS[tile[i][j] as usize];
+                self.canvas.set_draw_color(color);
+
+                let gbpixel = Rect::new(
+                    ((x + j) as u32 * self.gbpixel_size) as i32,
+                    ((y + i) as u32 * self.gbpixel_size) as i32,
+                    self.gbpixel_size,
+                    self.gbpixel_size);
+
+                self.canvas.fill_rect(gbpixel).unwrap();
+            }
+        }
+    }
+
+    fn draw_sdl(&mut self, buffer: Vec<Color>) {
         let mut i: usize = 0;
         for row in 0..self.gbpixel_height {
             for column in 0..self.gbpixel_width {
-                if i >= pixel_buffer.len() {
+                if i >= buffer.len() {
                     break
                 };
-                let color = pixel_buffer[i];
+                let color = buffer[i];
                 i += 1;
 
                 self.canvas.set_draw_color(color);
@@ -67,8 +99,6 @@ impl Display {
                 self.canvas.fill_rect(gbpixel).unwrap();
             }
         }
-
-        self.canvas.present();
     }
 
     fn draw_to_stdout(&mut self, pixel_buffer: &[u8]) {

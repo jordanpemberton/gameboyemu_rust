@@ -42,14 +42,14 @@ impl MemoryLocation {
 }
 
 pub(crate) struct Mmu {
-    memory: [u8; 0xFFFF as usize],
+    memory: [u8; 0xFFFF + 1 as usize],
     memory_locations: HashMap<MemoryType, MemoryLocation>,
 }
 
 impl Mmu {
     pub(crate) fn new() -> Mmu {
         let mut mmu = Mmu {
-            memory: [0; 0xFFFF],
+            memory: [0; 0xFFFF + 1],
             memory_locations: Default::default(),
         };
         mmu.init();
