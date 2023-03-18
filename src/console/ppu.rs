@@ -62,6 +62,7 @@ use sdl2::pixels::Color;
     Only 160x144 of those pixels are displayed on the LCD at any given time.
 */
 
+type Tile = [[u8; 8]; 8];
 
 pub(crate) struct Ppu {
     palettes: [[u8; 4]; 4],
@@ -74,11 +75,10 @@ impl Ppu {
         }
     }
 
-    pub(crate) fn read_tile(&self, tile_bytes: [u8; 16]) -> [[u8; 8]; 8] {
-        let mut tile = [[0; 8]; 8];
+    pub(crate) fn read_tile(&self, tile_bytes: [u8; 16]) -> Tile {
+        let mut tile: Tile = [[0; 8]; 8];
 
         for row in 0..8 {
-            println!("{:#06X}, {:#06X}", tile_bytes[row * 2],  tile_bytes[row * 2 + 1]);
             for col in 0..8 {
                 // Possible values = 0,1,2,3 (0b00,0b01,0b10,0b11)
                 let low = ((tile_bytes[row * 2] << col) >> 7) << 1;
@@ -87,5 +87,22 @@ impl Ppu {
             }
         }
         tile
+    }
+
+    pub(crate) fn read_tiles(&self, tile_data_buffer: &[u8]) -> Vec<Tile> {
+        let mut tiles: Vec<Tile> = Vec::from([]);
+        let n = tile_data_buffer.len();
+        let mut tile_data: [u8; 16];
+        let mut i = 0;
+
+        while i + 16 <= n {
+            tile_data = [0; 16];
+            tile_data.clone_from_slice(&tile_data_buffer[i..i+16]);
+            let tile = self.read_tile(tile_data);
+            tiles.push(tile);
+            i += 16;
+        }
+
+        tiles
     }
 }

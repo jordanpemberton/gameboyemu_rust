@@ -15,7 +15,7 @@ use crate::console::{
     debugger::{DebugAction, Debugger},
     display::Display,
     input::{CallbackAction, Input},
-    mmu::{MemoryType, Mmu},
+    mmu::{Mmu},
     ppu::Ppu,
     registers::RegIndex
 };

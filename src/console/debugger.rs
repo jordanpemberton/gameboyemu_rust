@@ -3,7 +3,7 @@ use std::hash::Hash;
 use crate::console::{
     cpu::Cpu
 };
-use crate::console::mmu::{MemoryType, Mmu};
+use crate::console::mmu::{Endianness, Mmu};
 
 pub(crate) enum DebugAction {
     BREAK,
@@ -75,8 +75,8 @@ impl Debugger {
         let cols: usize = 16;
 
         let mut vram_values_str = String::new();
-        let vram: &[u8] = &mmu.get_memory_buffer(&MemoryType::VRAM);
-        let rows: usize = 16; // vram.len() / cols;
+        let vram: &[u8] = &mmu.read_buffer(0x8000, 0xA000, Endianness::BIG);
+        let rows: usize = 32; // vram.len() / cols;
 
         let mut i = 0;
         for row in 0..rows {
@@ -84,9 +84,9 @@ impl Debugger {
 
             for col in 0..cols {
                 if vram[i] > 0 {
-                    vram_values_str.push_str(format!("\t{:#06X}", vram[i]).as_str());
+                    vram_values_str.push_str(format!("\t{:#04X}", vram[i]).as_str());
                 } else {
-                    vram_values_str.push_str("\t______");
+                    vram_values_str.push_str("\t____");
                 }
                 i += 1;
             }
