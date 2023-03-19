@@ -1,6 +1,7 @@
 pub(crate) mod console;
 pub(crate) mod cpu;
 pub(crate) mod debugger;
+pub(crate) mod disassembler;
 pub(crate) mod input;
 pub(crate) mod mmu;
 pub(crate) mod registers;

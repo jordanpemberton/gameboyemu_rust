@@ -81,9 +81,9 @@ impl Console {
 
     fn run_game(&mut self, game: &Cartridge) {
         // TODO load roms correctly, map memory correctly /MBCs
-        self.boot();
+        // self.boot();
         self.mmu.load_rom(&game.data[0x100..], 0x100, 0x8000 - 0x100);
-        // self.cpu.registers.set_word(RegIndex::PC, 0x100);
+        self.cpu.registers.set_word(RegIndex::PC, 0x100);
         self.main_loop();
     }
 

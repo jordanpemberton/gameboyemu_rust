@@ -11,6 +11,8 @@ use crate::console::registers::{RegIndex, Registers};
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
+const DISASSMBLE: bool = true;
+
 pub(crate) struct Cpu {
     is_halted: bool,
     pub(crate) registers: Registers,
@@ -34,6 +36,7 @@ impl Cpu {
         if !self.is_halted {
             let opcode = self.fetch_opcode(mmu);
             let instruction = Instruction::get_instruction(opcode);
+
             cycles = self.execute_instruction(instruction, mmu);
         }
 

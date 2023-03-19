@@ -6,9 +6,9 @@ use crate::console::mmu::{Endianness, Mmu};
 use crate::console::registers::{Flags, RegIndex};
 
 pub(crate) struct Instruction {
-    opcode: u16,
-    mnemonic: &'static str,
-    size: u16,
+    pub(crate) opcode: u16,
+    pub(crate) mnemonic: &'static str,
+    pub(crate) size: u16,
     pub(crate) cycles: u16,
     _fn: fn(&mut Instruction, cpu: &mut Cpu, mmu: &mut Mmu) -> i16,
 }
@@ -48,6 +48,7 @@ impl Instruction {
             0x007B => Instruction { opcode, mnemonic: "LD A,E", size: 1, cycles: 4, _fn: Instruction::op_007b },
             0x00AF => Instruction { opcode, mnemonic: "XOR A", size: 1, cycles: 4, _fn: Instruction::op_00af },
             0x00C1 => Instruction { opcode, mnemonic: "POP BC", size: 1, cycles: 12, _fn: Instruction::op_00c1 },
+            0x00C3 => Instruction { opcode, mnemonic: "JP a16", size: 3, cycles: 16, _fn: Instruction::op_00c3 },
             0x00C5 => Instruction { opcode, mnemonic: "PUSH BC", size: 1, cycles: 16, _fn: Instruction::op_00c5 },
             0x00C9 => Instruction { opcode, mnemonic: "RET", size: 1, cycles: 16, _fn: Instruction::op_00c9 },
             0x00CD => Instruction { opcode, mnemonic: "CALL a16", size: 3, cycles: 24, _fn: Instruction::op_00cd },
@@ -202,7 +203,7 @@ impl Instruction {
     /// - - - -
     fn op_0018(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
         let d8 = cpu.read_byte_at_pc(mmu);
-        let jump_by = alu::signed(d8);
+        let jump_by = alu::signed_byte(d8);
         self.jump(cpu, jump_by);
         self.cycles as i16
     }
@@ -231,7 +232,7 @@ impl Instruction {
     /// - - - -
     fn op_0020(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
         let d8 = cpu.read_byte_at_pc(mmu);
-        let jump_by = alu::signed(d8);
+        let jump_by = alu::signed_byte(d8);
         if !(cpu.registers.get_flags().zero) {
             self.jump(cpu, jump_by);
         }
@@ -271,7 +272,7 @@ impl Instruction {
     /// - - - -
     fn op_0028(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
         let d8 = cpu.read_byte_at_pc(mmu);
-        let jump_by = alu::signed(d8);
+        let jump_by = alu::signed_byte(d8);
         if cpu.registers.get_flags().zero {
             self.jump(cpu, jump_by)
         }
@@ -406,6 +407,16 @@ impl Instruction {
         cpu.registers.set_word(RegIndex::BC, value);
         // SP=SP+2
         cpu.registers.increment(RegIndex::SP, 2);
+        self.cycles as i16
+    }
+
+    /// JP a16
+    /// 3 16
+    /// - - - -
+    fn op_00c3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+        let a16 = cpu.read_word_at_pc(mmu);
+        let jump_by = alu::signed_word(a16);
+        self.jump(cpu, jump_by);
         self.cycles as i16
     }
 
