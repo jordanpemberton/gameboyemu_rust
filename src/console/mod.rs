@@ -10,4 +10,5 @@ mod alu;
 mod boot_rom;
 mod display;
 mod instructions;
+mod interrupts;
 mod ppu;

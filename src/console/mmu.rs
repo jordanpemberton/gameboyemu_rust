@@ -71,12 +71,18 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn read_buffer(&self, begin: u16, end: u16, endian: Endianness) -> Vec<u8> {
+    pub(crate) fn read_buffer(&self, begin: usize, mut end: usize, endian: Endianness) -> Vec<u8> {
         let slice: &[u8];
         if begin < 0x8000 {
-            slice = &self.rom[begin as usize..end as usize];
+            if end > self.rom.len() {
+                end = self.rom.len();
+            }
+            slice = &self.rom[begin..end];
         } else {
-            slice = &self.ram[(begin - 0x8000) as usize..(end - 0x8000) as usize];
+            if end - 0x8000 as usize > self.ram.len() {
+                end = self.ram.len();
+            }
+            slice = &self.ram[begin - 0x8000 as usize..end - 0x8000 as usize];
         }
 
         let mut buffer: Vec<u8> = vec![];

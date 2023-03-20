@@ -19,12 +19,14 @@ use crate::console::{
     ppu::Ppu,
     registers::RegIndex
 };
+use crate::console::interrupts::Interrupts;
 
-const DISPLAY_ENABLED: bool = true;
-const SCREEN_PIXEL_WIDTH: u32 = 160;
-const SCREEN_PIXEL_HEIGHT: u32 = 144;
+pub(crate) const SCREEN_PIXEL_WIDTH: u32 = 160;
+pub(crate) const SCREEN_PIXEL_HEIGHT: u32 = 144;
 const WINDOW_SCALE: u32 = 4;
 const WINDOW_TITLE: &str = "_GAMBOY_";
+
+const DISPLAY_ENABLED: bool = true;
 
 pub(crate) struct Console {
     cpu: Cpu,
@@ -80,10 +82,8 @@ impl Console {
     }
 
     fn run_game(&mut self, game: &Cartridge) {
-        // TODO load roms correctly, map memory correctly /MBCs
-        // self.boot();
+        self.boot();
         self.mmu.load_rom(&game.data[0x100..], 0x100, 0x8000 - 0x100);
-        self.cpu.registers.set_word(RegIndex::PC, 0x100);
         self.main_loop();
     }
 
@@ -93,16 +93,27 @@ impl Console {
     }
 
     fn step(&mut self) -> i16 {
-        let status = self.cpu.step(&mut self.mmu);
-        if status >= 0 {
-            // self.ppu.step();
+        let cycles: i16 = self.cpu.step(&mut self.mmu);
+        // cycles += self.cpu.check_interupt();
+
+        if cycles >= 0 {
+            // TODO
+            let mut interrupt_request = Interrupts{
+                enabled: false,
+                hblank: false,
+                lcd: false,
+                oam: false,
+                vblank: false,
+            };
+
+            self.ppu.step(cycles as u16, &mut interrupt_request, &mut self.mmu);
 
             if DISPLAY_ENABLED {
                 self.display.draw(&mut self.mmu, &mut self.ppu);
             }
         }
 
-        status
+        cycles
     }
 
     fn main_loop(&mut self) {

@@ -96,10 +96,21 @@ impl Display {
     }
 
     pub(crate) fn draw(&mut self, mmu: &mut Mmu, ppu: &mut Ppu) {
-        // TODO Read data from memory for bg, tiles, window, etc.
-
         self.canvas.clear();
 
+        // TODO Read data from memory for bg, tiles, window, etc.
+        let mut colors: Vec<Color> = vec![];
+        for row in ppu.background.map {
+            for x in row {
+                colors.push(COLORS[x as usize]);
+            }
+        }
+        self.draw_sdl(colors);
+
+        self.canvas.present();
+    }
+
+    fn draw_raw_vram(&mut self, mmu: &mut Mmu, ppu: &mut Ppu) {
         // Drawing raw tiles stored in vraw
         let tile_bytes: Vec<u8> = mmu.read_buffer(0x8000, 0x9800, Endianness::BIG);
 
@@ -107,15 +118,13 @@ impl Display {
         let mut x = 0;
         let mut y = 0;
         for tile in tiles {
-            self.draw_tile(x, y, tile);
+            self.draw_tile(x, y, tile.data);
             x += 8;
             if x > self.gbpixel_width as usize {
                 x = 0;
                 y += 8;
             }
         }
-
-        self.canvas.present();
     }
 
     fn draw_tile(&mut self, x: usize, y: usize, tile: [[u8; 8]; 8]) {
