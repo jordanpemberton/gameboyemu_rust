@@ -7,22 +7,17 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::Sdl;
 
-use crate::cartridge::{
-    cartridge::{Cartridge, CartridgeOption}
-};
-use crate::console::{
-    cpu::Cpu,
-    debugger::{DebugAction, Debugger},
-    display::Display,
-    input::{CallbackAction, Input},
-    mmu::{Mmu},
-    ppu::Ppu,
-    registers::RegIndex
-};
-use crate::console::interrupts::Interrupts;
+use crate::cartridge::cartridge::{Cartridge, CartridgeOption};
 
-pub(crate) const SCREEN_PIXEL_WIDTH: u32 = 160;
-pub(crate) const SCREEN_PIXEL_HEIGHT: u32 = 144;
+use crate::console::cpu::{Cpu};
+use crate::console::debugger::{DebugAction, Debugger};
+use crate::console::display::{Display};
+use crate::console::input::{CallbackAction, Input};
+use crate::console::interrupts::{Interrupts};
+use crate::console::mmu::{Mmu};
+use crate::console::ppu::{LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT, Ppu};
+use crate::console::registers::{RegIndex};
+
 const WINDOW_SCALE: u32 = 4;
 const WINDOW_TITLE: &str = "_GAMBOY_";
 
@@ -52,8 +47,8 @@ impl Console {
                 [0,1,2,3],
             ]),
             display: Display::new(
-                SCREEN_PIXEL_WIDTH,
-                SCREEN_PIXEL_HEIGHT,
+                LCD_PIXEL_WIDTH,
+                LCD_PIXEL_HEIGHT,
                 WINDOW_SCALE,
                 WINDOW_TITLE,
                 &sdl_context
@@ -93,19 +88,21 @@ impl Console {
     }
 
     fn step(&mut self) -> i16 {
-        let cycles: i16 = self.cpu.step(&mut self.mmu);
-        // cycles += self.cpu.check_interupt();
+        let mut cycles: i16 = self.cpu.step(&mut self.mmu);
+        // cycles += self.cpu.check_interrupt();
+        // TEMP
+        cycles += 240;
+
+        // TODO
+        let mut interrupt_request = Interrupts{
+            enabled: false,
+            hblank: false,
+            lcd: false,
+            oam: false,
+            vblank: false,
+        };
 
         if cycles >= 0 {
-            // TODO
-            let mut interrupt_request = Interrupts{
-                enabled: false,
-                hblank: false,
-                lcd: false,
-                oam: false,
-                vblank: false,
-            };
-
             self.ppu.step(cycles as u16, &mut interrupt_request, &mut self.mmu);
 
             if DISPLAY_ENABLED {

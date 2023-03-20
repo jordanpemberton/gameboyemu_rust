@@ -6,7 +6,7 @@ use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
 
 use crate::console::mmu::{Endianness, Mmu};
-use crate::console::ppu::Ppu;
+use crate::console::ppu::{LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
 
 const GB_CONSOLE_SPRITE: [u8; 16] = [
     0x3C, 0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
@@ -99,32 +99,14 @@ impl Display {
         self.canvas.clear();
 
         // TODO Read data from memory for bg, tiles, window, etc.
-        let mut colors: Vec<Color> = vec![];
-        for row in ppu.background.map {
-            for x in row {
-                colors.push(COLORS[x as usize]);
-            }
+        let background_lcd = ppu.background.to_lcd(ppu.palettes[ppu.palette as usize]);
+        for y in 0..LCD_PIXEL_HEIGHT {
+            let colors: [Color; LCD_PIXEL_WIDTH as usize] = background_lcd[y as usize].map(|pixel| COLORS[pixel as usize]);
+            self.draw_scanline(y, colors);
         }
-        self.draw_sdl(colors);
 
         self.canvas.present();
-    }
-
-    fn draw_raw_vram(&mut self, mmu: &mut Mmu, ppu: &mut Ppu) {
-        // Drawing raw tiles stored in vraw
-        let tile_bytes: Vec<u8> = mmu.read_buffer(0x8000, 0x9800, Endianness::BIG);
-
-        let tiles = ppu.read_tiles(tile_bytes.as_ref());
-        let mut x = 0;
-        let mut y = 0;
-        for tile in tiles {
-            self.draw_tile(x, y, tile.data);
-            x += 8;
-            if x > self.gbpixel_width as usize {
-                x = 0;
-                y += 8;
-            }
-        }
+        self.canvas.set_draw_color(COLORS[0]);
     }
 
     fn draw_tile(&mut self, x: usize, y: usize, tile: [[u8; 8]; 8]) {
@@ -144,26 +126,18 @@ impl Display {
         }
     }
 
-    fn draw_sdl(&mut self, buffer: Vec<Color>) {
-        let mut i: usize = 0;
-        for row in 0..self.gbpixel_height {
-            for column in 0..self.gbpixel_width {
-                if i >= buffer.len() {
-                    break
-                };
-                let color = buffer[i];
-                i += 1;
+    fn draw_scanline(&mut self, y: u32, scanline: [Color; LCD_PIXEL_WIDTH as usize]) {
+        for x in 0..LCD_PIXEL_WIDTH {
+            let color = scanline[x as usize];
+            self.canvas.set_draw_color(color);
 
-                self.canvas.set_draw_color(color);
+            let pixel_rect = Rect::new(
+                (x * self.gbpixel_size) as i32,
+                (y * self.gbpixel_size) as i32,
+                self.gbpixel_size,
+                self.gbpixel_size);
 
-                let gbpixel = Rect::new(
-                    (column * self.gbpixel_size) as i32,
-                    (row * self.gbpixel_size) as i32,
-                    self.gbpixel_size,
-                    self.gbpixel_size);
-
-                self.canvas.fill_rect(gbpixel).unwrap();
-            }
+            self.canvas.fill_rect(pixel_rect).unwrap();
         }
     }
 

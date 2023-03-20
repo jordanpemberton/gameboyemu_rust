@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use sdl2::event::Event::Window;
 use sdl2::pixels::Color;
 
-use crate::console::console::{SCREEN_PIXEL_HEIGHT, SCREEN_PIXEL_WIDTH};
 use crate::console::display::Display;
 use crate::console::interrupts::Interrupts;
 use crate::console::mmu::{Endianness, Mmu};
@@ -72,10 +71,14 @@ use crate::console::mmu::{Endianness, Mmu};
 
 const TILE_PIXEL_WIDTH: u16 = 8;
 const TILE_PIXEL_HEIGHT: u16 = 8;
+const MAP_TILE_WIDTH: u16 = 32;
+const MAP_TILE_HEIGHT: u16 = 32;
 const MAP_PIXEL_WIDTH: u16 = 256;
 const MAP_PIXEL_HEIGHT: u16 = 256;
-const MAP_TILE_WIDTH: u16 = MAP_PIXEL_WIDTH / TILE_PIXEL_WIDTH;
-const MAP_TILE_HEIGHT: u16 = MAP_PIXEL_WIDTH / TILE_PIXEL_WIDTH;
+pub(crate) const LCD_PIXEL_WIDTH: u32 = 160;
+pub(crate) const LCD_PIXEL_HEIGHT: u32 = 144;
+
+type Lcd = [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize];
 
 #[derive(Clone,Copy)]
 pub(crate) struct Tile {
@@ -90,31 +93,47 @@ impl Tile {
     }
 }
 
+pub(crate) struct TileMap {
+    enabled: bool,
+    position: (u8, u8),
+    tile_map: [[Tile; MAP_TILE_WIDTH as usize]; MAP_TILE_HEIGHT as usize],
+}
+
+impl TileMap {
+    fn new() -> TileMap {
+        TileMap {
+            enabled: true,
+            position: (0, 0),
+            tile_map: [[Tile::new(); MAP_TILE_WIDTH as usize]; MAP_TILE_HEIGHT as usize],
+        }
+    }
+
+    pub(crate) fn to_lcd(&self, palette: [u8; 4]) -> [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize] {
+        let mut lcd = [[0; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize];
+
+        // TODO map position offset
+        for row in 0..LCD_PIXEL_HEIGHT as usize {
+            for col in 0..LCD_PIXEL_WIDTH as usize {
+                let tile_row = row / TILE_PIXEL_HEIGHT as usize;
+                let tile_col = col / TILE_PIXEL_WIDTH as usize;
+                let tile_y = row % TILE_PIXEL_HEIGHT as usize;
+                let tile_x = col % TILE_PIXEL_WIDTH as usize;
+                let tile = self.tile_map[tile_row][tile_col];
+                let pixel = palette[tile.data[tile_y][tile_x] as usize];
+                lcd[row][col] = pixel;
+            }
+        }
+
+        lcd
+    }
+}
+
 #[derive(Clone, Copy)]
 enum PpuMode {
     HBLANK,
     OAM,
     VBLANK,
     VRAM,
-}
-
-pub(crate) struct BackgroundMap {
-    enabled: bool,
-    position: (u8, u8),
-    pub(crate) map: [[u8; MAP_PIXEL_WIDTH as usize]; MAP_PIXEL_HEIGHT as usize],
-}
-
-pub(crate) struct WindowMap {
-    enabled: bool,
-    position: (u8, u8),
-    pub(crate) window: [[u8; MAP_PIXEL_WIDTH as usize]; MAP_PIXEL_HEIGHT as usize],
-}
-
-pub(crate) struct Sprites {
-    enabled: bool,
-    positions: [(u8, u8); 14],
-    sprite_tiles: [Tile; 14],
-    pub(crate) sprites: [[u8; SCREEN_PIXEL_WIDTH as usize]; SCREEN_PIXEL_HEIGHT as usize],
 }
 
 pub(crate) struct Ppu {
@@ -140,13 +159,14 @@ pub(crate) struct Ppu {
     scy: u8,
 
     mode: PpuMode,
-    palettes: [[u8; 4]; 4],
+    pub(crate) palette: u8,
+    pub(crate) palettes: [[u8; 4]; 4],
     interrupts: Interrupts,
 
     // Display output buffers
-    pub(crate) background: BackgroundMap,
-    pub(crate) window: WindowMap,
-    pub(crate) sprites: Sprites,
+    pub(crate) background: TileMap,
+    pub(crate) window: TileMap,
+    pub(crate) sprites: TileMap,
 }
 
 impl Ppu {
@@ -160,7 +180,8 @@ impl Ppu {
             scy: 0,
             scx: 0,
 
-            mode: PpuMode::VRAM, // PpuMode::HBLANK,
+            mode: PpuMode::HBLANK,
+            palette: 0,
             palettes: palettes,
             interrupts: Interrupts{
                 enabled: true,
@@ -170,41 +191,31 @@ impl Ppu {
                 vblank: false,
             },
 
-            background: BackgroundMap {
-                enabled: true,
-                position: (0, 0),
-                map: [[0; MAP_PIXEL_WIDTH as usize]; MAP_PIXEL_HEIGHT as usize],
-            },
-            window: WindowMap {
-                enabled: true,
-                position: (0, 0),
-                window: [[0; MAP_PIXEL_WIDTH as usize]; MAP_PIXEL_HEIGHT as usize],
-            },
-            sprites: Sprites {
-                enabled: true,
-                positions: [(0, 0); 14],
-                sprite_tiles: [Tile::new(); 14],
-                sprites: [[0; SCREEN_PIXEL_WIDTH as usize]; SCREEN_PIXEL_HEIGHT as usize],
-            },
+            background: TileMap::new(),
+            window: TileMap::new(),
+            sprites: TileMap::new(),
         }
     }
 
     pub(crate) fn step(&mut self, cycles: u16, interrupt_request: &mut Interrupts, mmu: &mut Mmu) {
-        let mut tick: u16 = 0;
-        let mut mode: PpuMode = PpuMode::HBLANK;
+        let mut new_tick: u16 = 0;
+        let mut new_mode: PpuMode = PpuMode::HBLANK;
 
         match self.mode {
             PpuMode::HBLANK => {
                 if cycles >= 240 {
-                    (tick, mode) = self.hblank_mode_step(interrupt_request);
+                    (new_tick, new_mode) = self.hblank_mode_step(interrupt_request);
                 }
             }
+            PpuMode::VBLANK => {
+                panic!("VBLANK!");
+            }
             PpuMode::VRAM => {
-                // if self.tick >= 172 { // TEMP
-                    (tick, mode) = self.vram_mode_step(interrupt_request, mmu);
-                // } else {
-                //     (tick, mode) = (cycles, PpuMode::VRAM);
-                // }
+                if self.tick >= 172 {
+                    (new_tick, new_mode) = self.vram_mode_step(interrupt_request, mmu);
+                } else {
+                    (new_tick, new_mode) = (cycles, PpuMode::VRAM);
+                }
             }
             _ => { }
         }
@@ -213,11 +224,11 @@ impl Ppu {
             interrupt_request.lcd = true;
         }
 
-        self.tick = tick;
-        self.mode = mode;
+        self.tick = new_tick;
+        self.mode = new_mode;
     }
 
-    pub(crate) fn read_tile(&self, tile_bytes: [u8; 16]) -> Tile {
+    fn read_tile(&self, tile_bytes: [u8; 16]) -> Tile {
         let mut tile = Tile::new();
 
         for row in 0..8 {
@@ -231,16 +242,16 @@ impl Ppu {
         tile
     }
 
-    pub(crate) fn read_tiles(&self, tile_data_buffer: &Vec<u8>) -> Vec<Tile> {
+    fn read_tiles(&self, tile_data_buffer: &Vec<u8>) -> Vec<Tile> {
         let mut tiles: Vec<Tile> = Vec::from([]);
         let n = tile_data_buffer.len();
-        let mut tile_data: [u8; 16];
+        let mut tile_bytes: [u8; 16];
         let mut i = 0;
 
         while i + 16 <= n {
-            tile_data = [0; 16];
-            tile_data.clone_from_slice(&tile_data_buffer[i..i+16]);
-            let tile = self.read_tile(tile_data);
+            tile_bytes = [0; 16];
+            tile_bytes.clone_from_slice(&tile_data_buffer[i..i+16]);
+            let tile = self.read_tile(tile_bytes);
             tiles.push(tile);
             i += 16;
         }
@@ -248,49 +259,40 @@ impl Ppu {
         tiles
     }
 
-    fn get_display_data(&mut self, mmu: &mut Mmu) {
-        if self.ly >= SCREEN_PIXEL_HEIGHT as u8 {
+    fn fetch_maps(&mut self, mmu: &mut Mmu) {
+        if self.ly >= LCD_PIXEL_HEIGHT as u8 {
             return;
         }
 
         if self.background.enabled {
-            self.get_background_map(mmu);
+            self.fetch_background_map(mmu);
         }
     }
 
-    fn get_background_map(&mut self, mmu: &mut Mmu) {
-        self.background.position = (0, 0); // TODO
+    fn fetch_background_map(&mut self, mmu: &mut Mmu) {
+        // TODO read position
+        self.background.position = (0, 0);
 
-        // TODO read bg map from vram
+        // TODO read background map from vram correctly
         // Map tiles at $9800-$9BFF and $9C00-$9FFF.
         let begin = 0x9800;
         let end = 0x10000;
         let ram = mmu.read_buffer(begin, end, Endianness::BIG);
-        let tiles = self.read_tiles(&ram);
-        let palette = self.palettes[0]; // TODO
 
-        let mut line: usize = 0;
-        let mut col: usize = 0;
-        for tile in tiles {
-            for tile_row in 0..tile.data.len() {
-                if line + tile_row as usize > MAP_TILE_HEIGHT as usize {
+        let tiles = self.read_tiles(&ram);
+
+        for row in 0..MAP_TILE_HEIGHT as usize {
+            for col in 0..MAP_TILE_WIDTH as usize {
+                let index = row * MAP_TILE_WIDTH as usize + col;
+                if index >= tiles.len() {
                     break;
                 }
-                for pixel in 0..tile.data[tile_row].len() {
-                    if col + pixel as usize > MAP_TILE_WIDTH as usize {
-                        break;
-                    }
-                    self.background.map[line + tile_row as usize][col + pixel] = tile.data[tile_row][pixel];
-                }
-            }
-            col += TILE_PIXEL_WIDTH as usize;
-            if col >= MAP_PIXEL_WIDTH as usize {
-                col = 0;
-                line += TILE_PIXEL_HEIGHT as usize;
+                self.background.tile_map[row][col] = tiles[index];
             }
         }
     }
 
+    // TODO interrupts
     fn hblank_mode_step(&mut self, interrupt_request: &mut Interrupts) -> (u16, PpuMode) {
         let tick = 0;
         let mode: PpuMode;
@@ -320,13 +322,13 @@ impl Ppu {
         let mode: PpuMode;
 
         // Write data to buffers
-        self.get_display_data(mmu);
+        self.fetch_maps(mmu);
         // (draw)
 
         if self.interrupts.hblank {
             interrupt_request.lcd = true;
         }
-        mode = PpuMode::VRAM; // TEMP PpuMode::HBLANK;
+        mode = PpuMode::HBLANK;
 
         (tick, mode)
     }
