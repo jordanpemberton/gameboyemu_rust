@@ -20,8 +20,7 @@ use crate::console::registers::{RegIndex};
 
 const WINDOW_SCALE: u32 = 4;
 const WINDOW_TITLE: &str = "_GAMBOY_";
-
-const DISPLAY_ENABLED: bool = true;
+const DISPLAY_ENABLED: bool = false;
 
 pub(crate) struct Console {
     cpu: Cpu,
@@ -89,9 +88,7 @@ impl Console {
 
     fn step(&mut self) -> i16 {
         let mut cycles: i16 = self.cpu.step(&mut self.mmu);
-        // cycles += self.cpu.check_interrupt();
-        // TEMP
-        cycles += 240;
+        cycles += self.cpu.check_interrupt();
 
         // TODO
         let mut interrupt_request = Interrupts{

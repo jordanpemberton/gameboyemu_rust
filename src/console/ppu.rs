@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use sdl2::event::Event::Window;
 use sdl2::pixels::Color;
+use sdl2::render::TextureAccess::Static;
 
 use crate::console::display::Display;
 use crate::console::interrupts::Interrupts;
@@ -69,6 +70,20 @@ use crate::console::mmu::{Endianness, Mmu};
     Only 160x144 of those pixels are displayed on the LCD at any given time.
 */
 
+/*
+FF40 — LCDC: LCD control
+
+LCDC is the main LCD Control register. Its bits toggle what elements are displayed on the screen, and how.
+*/
+
+/*
+SCROLLING
+
+FF42–FF43 — SCY, SCX: Viewport Y position, X position
+
+Those specify the top-left coordinates of the visible 160×144 pixel area within the 256×256 pixels BG map. Values in the range 0–255 may be used.
+*/
+
 const TILE_PIXEL_WIDTH: u16 = 8;
 const TILE_PIXEL_HEIGHT: u16 = 8;
 const MAP_TILE_WIDTH: u16 = 32;
@@ -78,49 +93,116 @@ const MAP_PIXEL_HEIGHT: u16 = 256;
 pub(crate) const LCD_PIXEL_WIDTH: u32 = 160;
 pub(crate) const LCD_PIXEL_HEIGHT: u32 = 144;
 
+const STAT_REG_ADDRESS: u16 = 0xFF41;
+const LY_REG_ADDRESS: u16 = 0xFF44;
+const LYC_REG_ADDRESS: u16 = 0xFF45;
+
 type Lcd = [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize];
 
 #[derive(Clone,Copy)]
 pub(crate) struct Tile {
+    /// OAM VRAM = $FE00-FE9F (40 sprites)
+    /// OAM Entry:
+    tile_index: u8,     // byte 2
+    x: u8,              // byte 1
+    y: u8,              // byte 0
+    flip_x: u8,
+    flip_y: u8,
+    priority: u8,
+    palette: u8,
+
     pub(crate) data: [[u8; TILE_PIXEL_WIDTH as usize]; TILE_PIXEL_HEIGHT as usize],
 }
 
 impl Tile {
     fn new() -> Tile {
         Tile {
+            tile_index: 0,
+            x: 0,
+            y: 0,
+            flip_x: 0,
+            flip_y: 0,
+            priority: 0,
+            palette: 0,
+
             data: [[0; TILE_PIXEL_WIDTH as usize]; TILE_PIXEL_HEIGHT as usize],
         }
+    }
+
+    pub(crate) fn read_tile(tile_bytes: [u8; 16]) -> Tile {
+        let mut tile = Tile::new();
+
+        for row in 0..8 {
+            for col in 0..8 {
+                // Possible values = 0,1,2,3 (0b00,0b01,0b10,0b11)
+                let low = ((tile_bytes[row * 2] << col) >> 7) << 1;
+                let high = (tile_bytes[row * 2 + 1] << col) >> 7;
+                tile.data[row][col] = high + low;
+            }
+        }
+
+        tile
+    }
+
+    fn read_tiles(tile_data_buffer: &Vec<u8>) -> Vec<Tile> {
+        let mut tiles: Vec<Tile> = Vec::from([]);
+        let n = tile_data_buffer.len();
+        let mut tile_bytes: [u8; 16];
+        let mut i = 0;
+
+        while i + 16 <= n {
+            tile_bytes = [0; 16];
+            tile_bytes.clone_from_slice(&tile_data_buffer[i..i+16]);
+
+            let mut tile = Tile::new();
+            for row in 0..8 {
+                for col in 0..8 {
+                    // Possible values = 0,1,2,3 (0b00,0b01,0b10,0b11)
+                    let low = ((tile_bytes[row * 2] << col) >> 7) << 1;
+                    let high = (tile_bytes[row * 2 + 1] << col) >> 7;
+                    tile.data[row][col] = high + low;
+                }
+            }
+            tiles.push(tile);
+
+            i += 16;
+        }
+
+        tiles
     }
 }
 
 pub(crate) struct TileMap {
-    enabled: bool,
-    position: (u8, u8),
-    tile_map: [[Tile; MAP_TILE_WIDTH as usize]; MAP_TILE_HEIGHT as usize],
+    start_address: usize,
+    end_address: usize,
+    tiles: Vec<Tile>,
 }
 
 impl TileMap {
-    fn new() -> TileMap {
+    fn new(start_address: usize, end_address: usize) -> TileMap {
         TileMap {
-            enabled: true,
-            position: (0, 0),
-            tile_map: [[Tile::new(); MAP_TILE_WIDTH as usize]; MAP_TILE_HEIGHT as usize],
+            start_address: start_address,
+            end_address: end_address,
+            tiles: vec![],
         }
     }
 
-    pub(crate) fn to_lcd(&self, palette: [u8; 4]) -> [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize] {
+    pub(crate) fn fetch_tiles(&mut self, mmu: &mut Mmu) {
+        let ram = mmu.read_buffer(self.start_address, self.end_address, Endianness::BIG);
+        self.tiles = Tile::read_tiles(&ram);
+    }
+
+    pub(crate) fn to_lcd(&self, palettes: &[[u8; 4]; 4]) -> [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize] {
         let mut lcd = [[0; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize];
 
-        // TODO map position offset
-        for row in 0..LCD_PIXEL_HEIGHT as usize {
-            for col in 0..LCD_PIXEL_WIDTH as usize {
-                let tile_row = row / TILE_PIXEL_HEIGHT as usize;
-                let tile_col = col / TILE_PIXEL_WIDTH as usize;
-                let tile_y = row % TILE_PIXEL_HEIGHT as usize;
-                let tile_x = col % TILE_PIXEL_WIDTH as usize;
-                let tile = self.tile_map[tile_row][tile_col];
-                let pixel = palette[tile.data[tile_y][tile_x] as usize];
-                lcd[row][col] = pixel;
+        // TODO sort by priority
+        for tile in self.tiles.clone().into_iter() {
+            for i in 0..8 {
+                for j in 0..8 {
+                    let pixel = tile.data[i as usize][j as usize];
+                    let palette = palettes[tile.palette as usize];
+                    lcd[tile.y as usize][tile.x as usize] = palette[pixel as usize];
+                }
             }
         }
 
@@ -128,11 +210,41 @@ impl TileMap {
     }
 }
 
+/*
+FF41 — STAT: LCD status
+
+Bit 6 - LYC=LY STAT Interrupt source         (1=Enable) (Read/Write)
+Bit 5 - Mode 2 OAM STAT Interrupt source     (1=Enable) (Read/Write)
+Bit 4 - Mode 1 VBlank STAT Interrupt source  (1=Enable) (Read/Write)
+Bit 3 - Mode 0 HBlank STAT Interrupt source  (1=Enable) (Read/Write)
+Bit 2 - LYC=LY Flag                          (0=Different, 1=Equal) (Read Only)
+Bit 1-0 - Mode Flag                          (Mode 0-3, see below) (Read Only)
+          0: HBlank
+          1: VBlank
+          2: Searching OAM
+          3: Transferring Data to LCD Controller
+ */
+
 #[derive(Clone, Copy)]
-enum PpuMode {
+enum StatMode {
+    /// 0	No action (HBlank)
+    /// Duration: 85 to 208 dots, depending on previous mode 3 duration
+    /// Accessible video memory: VRAM, OAM, CGB palettes
     HBLANK,
-    OAM,
+
+    /// 1	No action (VBlank)
+    /// Duration: 4560 dots (10 scanlines)
+    /// Accessible video memory: VRAM, OAM, CGB palettes
     VBLANK,
+
+    /// 2	Searching OAM for OBJs whose Y coordinate overlap this line
+    /// Duration: 80 dots
+    /// Accessible video memory: VRAM, CGB palettes
+    OAM,
+
+    /// 3	Reading OAM and VRAM to generate the picture
+    /// Duration: 168 to 291 dots, depending on sprite count
+    /// Accessible video memory: None
     VRAM,
 }
 
@@ -146,9 +258,10 @@ pub(crate) struct Ppu {
     // Bit 3-2 - Color for index 1
     // Bit 1-0 - Color for index 0
 
-    ly: u8,    // scanline
+    ly: u8,    // scanline,     0xFF44
     // LY can hold any value from 0 to 153, with values from 144 to 153 indicating the VBlank period.
-    lyc: u8,   // LY compare
+
+    lyc: u8,   // LY compare,   0xFF45
     // The Game Boy constantly compares the value of the LYC and LY registers.
     // When both values are identical, the “LYC=LY” flag in the STAT register is set,
     // and (if enabled) a STAT interrupt is requested.
@@ -158,7 +271,7 @@ pub(crate) struct Ppu {
     scx: u8,
     scy: u8,
 
-    mode: PpuMode,
+    mode: StatMode,     // 0xFF41
     pub(crate) palette: u8,
     pub(crate) palettes: [[u8; 4]; 4],
     interrupts: Interrupts,
@@ -180,7 +293,7 @@ impl Ppu {
             scy: 0,
             scx: 0,
 
-            mode: PpuMode::HBLANK,
+            mode: StatMode::HBLANK,
             palette: 0,
             palettes: palettes,
             interrupts: Interrupts{
@@ -191,144 +304,126 @@ impl Ppu {
                 vblank: false,
             },
 
-            background: TileMap::new(),
-            window: TileMap::new(),
-            sprites: TileMap::new(),
+            background: TileMap::new(0x9800, 0x9C00),
+            window: TileMap::new(0x8000, 0x10000), // TODO
+            sprites: TileMap::new(0xFE00, 0xFE9F),
         }
     }
 
     pub(crate) fn step(&mut self, cycles: u16, interrupt_request: &mut Interrupts, mmu: &mut Mmu) {
-        let mut new_tick: u16 = 0;
-        let mut new_mode: PpuMode = PpuMode::HBLANK;
+        self.tick += cycles;
 
+        let (new_tick, new_mode): (u16, StatMode) =
+        /*
+            The LCD controller operates on a 2^22 Hz = 4.194 MHz dot clock.
+            An entire frame is 154 scanlines = 70224 dots = 16.74 ms. (456/line)
+            On scanlines 0 through 143, the PPU cycles through modes 2, 3, and 0 once every 456 dots.
+            Scanlines 144 through 153 are mode 1.
+        */
         match self.mode {
-            PpuMode::HBLANK => {
-                if cycles >= 240 {
-                    (new_tick, new_mode) = self.hblank_mode_step(interrupt_request);
-                }
-            }
-            PpuMode::VBLANK => {
-                panic!("VBLANK!");
-            }
-            PpuMode::VRAM => {
-                if self.tick >= 172 {
-                    (new_tick, new_mode) = self.vram_mode_step(interrupt_request, mmu);
+            StatMode::HBLANK => {
+                if self.tick >= 204 {
+                    self.hblank_mode_step(interrupt_request, mmu)
                 } else {
-                    (new_tick, new_mode) = (cycles, PpuMode::VRAM);
+                    (self.tick, StatMode::HBLANK)
                 }
             }
-            _ => { }
-        }
+            StatMode::VBLANK => {
+                if self.tick >= 456 {
+                    self.vblank_mode_step(interrupt_request, mmu)
+                } else {
+                    (self.tick, StatMode::VBLANK)
+                }
+            }
+            StatMode::VRAM => {
+                if self.tick >= 172 {
+                    self.vram_mode_step(interrupt_request, mmu)
+                } else {
+                    (self.tick, StatMode::VRAM)
+                }
+            }
+            _ => {
+                (self.tick, StatMode::HBLANK)
+            }
+        };
 
+        // Checl LYC
+        // interrupt ?
         if self.interrupts.lcd && self.ly == self.lyc {
             interrupt_request.lcd = true;
+        }
+        // or ?
+        if self.ly == self.lyc {
+            let stat_reg = mmu.read_byte(STAT_REG_ADDRESS) | 0b0000_0100;
+            mmu.load_byte(STAT_REG_ADDRESS, stat_reg);
         }
 
         self.tick = new_tick;
         self.mode = new_mode;
     }
 
-    fn read_tile(&self, tile_bytes: [u8; 16]) -> Tile {
-        let mut tile = Tile::new();
-
-        for row in 0..8 {
-            for col in 0..8 {
-                // Possible values = 0,1,2,3 (0b00,0b01,0b10,0b11)
-                let low = ((tile_bytes[row * 2] << col) >> 7) << 1;
-                let high = (tile_bytes[row * 2 + 1] << col) >> 7;
-                tile.data[row][col] = high + low;
-            }
-        }
-        tile
-    }
-
-    fn read_tiles(&self, tile_data_buffer: &Vec<u8>) -> Vec<Tile> {
-        let mut tiles: Vec<Tile> = Vec::from([]);
-        let n = tile_data_buffer.len();
-        let mut tile_bytes: [u8; 16];
-        let mut i = 0;
-
-        while i + 16 <= n {
-            tile_bytes = [0; 16];
-            tile_bytes.clone_from_slice(&tile_data_buffer[i..i+16]);
-            let tile = self.read_tile(tile_bytes);
-            tiles.push(tile);
-            i += 16;
-        }
-
-        tiles
-    }
-
-    fn fetch_maps(&mut self, mmu: &mut Mmu) {
-        if self.ly >= LCD_PIXEL_HEIGHT as u8 {
-            return;
-        }
-
-        if self.background.enabled {
-            self.fetch_background_map(mmu);
-        }
-    }
-
-    fn fetch_background_map(&mut self, mmu: &mut Mmu) {
-        // TODO read position
-        self.background.position = (0, 0);
-
-        // TODO read background map from vram correctly
-        // Map tiles at $9800-$9BFF and $9C00-$9FFF.
-        let begin = 0x9800;
-        let end = 0x10000;
-        let ram = mmu.read_buffer(begin, end, Endianness::BIG);
-
-        let tiles = self.read_tiles(&ram);
-
-        for row in 0..MAP_TILE_HEIGHT as usize {
-            for col in 0..MAP_TILE_WIDTH as usize {
-                let index = row * MAP_TILE_WIDTH as usize + col;
-                if index >= tiles.len() {
-                    break;
-                }
-                self.background.tile_map[row][col] = tiles[index];
-            }
-        }
-    }
-
     // TODO interrupts
-    fn hblank_mode_step(&mut self, interrupt_request: &mut Interrupts) -> (u16, PpuMode) {
+    fn hblank_mode_step(&mut self, interrupt_request: &mut Interrupts, mmu: &mut Mmu) -> (u16, StatMode) {
         let tick = 0;
-        let mode: PpuMode;
+        let mode: StatMode;
 
+        // Increment line count
         self.ly += 1;
+        mmu.load_byte(LY_REG_ADDRESS, self.ly);
 
-        if self.ly == 143 { // or 144 ?
+
+        // On scanlines 0 through 143, the PPU cycles through modes 2, 3, and 0 once every 456 dots (line).
+        if self.ly < 0x90 {     // 0d144
+            if self.interrupts.oam {
+                interrupt_request.lcd = true;
+            }
+            mode = StatMode::OAM;
+        }
+        // Scanlines 144 through 153 are mode 1.
+        else {
             if interrupt_request.enabled {
                 interrupt_request.vblank = true; // ?
             }
             if self.interrupts.vblank {
                 interrupt_request.lcd = true; // ?
             }
-            mode = PpuMode::VBLANK;
-        } else {
-            if self.interrupts.oam {
-                interrupt_request.lcd = true;
-            }
-            mode = PpuMode::OAM;
+            mode = StatMode::VBLANK;
         }
 
         (tick, mode)
     }
 
-    fn vram_mode_step(&mut self, interrupt_request: &mut Interrupts, mmu: &mut Mmu) -> (u16, PpuMode) {
-        let tick = 0;
-        let mode: PpuMode;
+    fn vblank_mode_step(&mut self, interrupt_request: &mut Interrupts, mmu: &mut Mmu) -> (u16, StatMode) {
+        self.ly += 1;
 
-        // Write data to buffers
-        self.fetch_maps(mmu);
+        if self.ly > 153 {
+            self.ly = 0;
+            if self.interrupts.oam {
+                interrupt_request.lcd = true;
+            }
+            (0, StatMode::OAM)
+        } else {
+            (0, StatMode::VBLANK)
+        }
+    }
+
+    fn vram_mode_step(&mut self, interrupt_request: &mut Interrupts, mmu: &mut Mmu) -> (u16, StatMode) {
+        let tick = 0;
+        let mode: StatMode;
+
+        if self.ly < LCD_PIXEL_HEIGHT as u8 {
+            // TODO pick one
+            self.background.fetch_tiles(mmu);
+            self.window.fetch_tiles(mmu);
+            self.sprites.fetch_tiles(mmu);
+        }
+
         // (draw)
 
         if self.interrupts.hblank {
             interrupt_request.lcd = true;
         }
-        mode = PpuMode::HBLANK;
+        mode = StatMode::VRAM; // HBLANK;
 
         (tick, mode)
     }

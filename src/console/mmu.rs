@@ -71,21 +71,22 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn read_buffer(&self, begin: usize, mut end: usize, endian: Endianness) -> Vec<u8> {
-        let slice: &[u8];
-        if begin < 0x8000 {
-            if end > self.rom.len() {
-                end = self.rom.len();
-            }
-            slice = &self.rom[begin..end];
-        } else {
-            if end - 0x8000 as usize > self.ram.len() {
-                end = self.ram.len();
-            }
-            slice = &self.ram[begin - 0x8000 as usize..end - 0x8000 as usize];
+    pub(crate) fn read_buffer(&self, mut begin: usize, mut end: usize, endian: Endianness) -> Vec<u8> {
+        let mut buffer: Vec<u8> = vec![];
+
+        if begin >= 0x8000 {
+            begin -= 0x8000;
+            end -= 0x8000;
+        }
+        if end > self.rom.len() {
+            end = self.rom.len();
+        }
+        if begin >= end {
+            panic!("invalid range of {}..{}", begin, end);
         }
 
-        let mut buffer: Vec<u8> = vec![];
+        let slice: &[u8] = &self.rom[begin..end];
+
         match endian {
             Endianness::BIG => {
                 let mut i = 0;

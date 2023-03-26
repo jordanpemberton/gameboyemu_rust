@@ -99,11 +99,14 @@ impl Display {
         self.canvas.clear();
 
         // TODO Read data from memory for bg, tiles, window, etc.
-        let background_lcd = ppu.background.to_lcd(ppu.palettes[ppu.palette as usize]);
-        for y in 0..LCD_PIXEL_HEIGHT {
-            let colors: [Color; LCD_PIXEL_WIDTH as usize] = background_lcd[y as usize].map(|pixel| COLORS[pixel as usize]);
-            self.draw_scanline(y, colors);
-        }
+        let background_lcd = ppu.background.to_lcd(&ppu.palettes);
+        // self.draw_screen(&background_lcd);
+
+        let window_lcd = ppu.window.to_lcd(&ppu.palettes);
+        self.draw_screen(&window_lcd);
+
+        let sprites_lcd = ppu.sprites.to_lcd(&ppu.palettes);
+        // self.draw_screen(&sprites_lcd);
 
         self.canvas.present();
         self.canvas.set_draw_color(COLORS[0]);
@@ -138,6 +141,13 @@ impl Display {
                 self.gbpixel_size);
 
             self.canvas.fill_rect(pixel_rect).unwrap();
+        }
+    }
+
+    fn draw_screen(&mut self, lcd: &[[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize]) {
+        for y in 0..LCD_PIXEL_HEIGHT {
+            let colors: [Color; LCD_PIXEL_WIDTH as usize] = lcd[y as usize].map(|pixel| COLORS[pixel as usize]);
+            self.draw_scanline(y, colors);
         }
     }
 

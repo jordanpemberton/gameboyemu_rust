@@ -32,7 +32,7 @@ fn disassemble_roms() {
 fn main() {
     let mut gamboy = Console::new(true);
 
-    // gamboy.run(CartridgeOption::NONE);
+    gamboy.run(CartridgeOption::NONE);
     // gamboy.run(CartridgeOption::SOME(Cartridge::new(TEST_ROM_FILEPATH.as_ref())));
-    gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())));
+    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())));
 }

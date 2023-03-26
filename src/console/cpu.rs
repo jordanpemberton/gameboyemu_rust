@@ -57,6 +57,11 @@ impl Cpu {
         d16
     }
 
+    pub(crate) fn check_interrupt(&self) -> i16 {
+        // TODO
+        0
+    }
+
     fn fetch_opcode(&mut self, mmu: &mut Mmu) -> u16 {
         let mut opcode: u16;
 
