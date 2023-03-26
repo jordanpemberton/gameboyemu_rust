@@ -313,45 +313,52 @@ impl Ppu {
     pub(crate) fn step(&mut self, cycles: u16, interrupt_request: &mut Interrupts, mmu: &mut Mmu) {
         self.tick += cycles;
 
-        let (new_tick, new_mode): (u16, StatMode) =
         /*
             The LCD controller operates on a 2^22 Hz = 4.194 MHz dot clock.
             An entire frame is 154 scanlines = 70224 dots = 16.74 ms. (456/line)
             On scanlines 0 through 143, the PPU cycles through modes 2, 3, and 0 once every 456 dots.
             Scanlines 144 through 153 are mode 1.
         */
-        match self.mode {
-            StatMode::HBLANK => {
-                if self.tick >= 204 {
-                    self.hblank_mode_step(interrupt_request, mmu)
-                } else {
+        let (new_tick, new_mode): (u16, StatMode) =
+            match self.mode {
+                StatMode::HBLANK => {
+                    if self.tick >= 204 {
+                        self.hblank_mode_step(interrupt_request, mmu)
+                    } else {
+                        (self.tick, StatMode::HBLANK)
+                    }
+                }
+                StatMode::VBLANK => {
+                    if self.tick >= 456 {
+                        self.vblank_mode_step(interrupt_request, mmu)
+                    } else {
+                        (self.tick, StatMode::VBLANK)
+                    }
+                }
+                StatMode::OAM => {
+                    if self.tick >= 80 {
+                        (0, StatMode::VRAM)
+                    } else {
+                        (self.tick, StatMode::OAM)
+                    }
+                }
+                StatMode::VRAM => {
+                    if self.tick >= 172 {
+                        self.vram_mode_step(interrupt_request, mmu)
+                    } else {
+                        (self.tick, StatMode::VRAM)
+                    }
+                }
+                _ => {
                     (self.tick, StatMode::HBLANK)
                 }
-            }
-            StatMode::VBLANK => {
-                if self.tick >= 456 {
-                    self.vblank_mode_step(interrupt_request, mmu)
-                } else {
-                    (self.tick, StatMode::VBLANK)
-                }
-            }
-            StatMode::VRAM => {
-                if self.tick >= 172 {
-                    self.vram_mode_step(interrupt_request, mmu)
-                } else {
-                    (self.tick, StatMode::VRAM)
-                }
-            }
-            _ => {
-                (self.tick, StatMode::HBLANK)
-            }
         };
 
         // Checl LYC
         // interrupt ?
-        if self.interrupts.lcd && self.ly == self.lyc {
-            interrupt_request.lcd = true;
-        }
+        // if self.interrupts.lcd && self.ly == self.lyc {
+        //     interrupt_request.lcd = true;
+        // }
         // or ?
         if self.ly == self.lyc {
             let stat_reg = mmu.read_byte(STAT_REG_ADDRESS) | 0b0000_0100;
@@ -362,7 +369,6 @@ impl Ppu {
         self.mode = new_mode;
     }
 
-    // TODO interrupts
     fn hblank_mode_step(&mut self, interrupt_request: &mut Interrupts, mmu: &mut Mmu) -> (u16, StatMode) {
         let tick = 0;
         let mode: StatMode;
@@ -371,22 +377,23 @@ impl Ppu {
         self.ly += 1;
         mmu.load_byte(LY_REG_ADDRESS, self.ly);
 
-
         // On scanlines 0 through 143, the PPU cycles through modes 2, 3, and 0 once every 456 dots (line).
         if self.ly < 0x90 {     // 0d144
-            if self.interrupts.oam {
-                interrupt_request.lcd = true;
-            }
+            // TODO interrupts
+            // if self.interrupts.oam {
+            //     interrupt_request.lcd = true;
+            // }
             mode = StatMode::OAM;
         }
         // Scanlines 144 through 153 are mode 1.
         else {
-            if interrupt_request.enabled {
-                interrupt_request.vblank = true; // ?
-            }
-            if self.interrupts.vblank {
-                interrupt_request.lcd = true; // ?
-            }
+            // TODO interrupts
+            // if interrupt_request.enabled {
+            //     interrupt_request.vblank = true; // ?
+            // }
+            // if self.interrupts.vblank {
+            //     interrupt_request.lcd = true; // ?
+            // }
             mode = StatMode::VBLANK;
         }
 
@@ -398,9 +405,10 @@ impl Ppu {
 
         if self.ly > 153 {
             self.ly = 0;
-            if self.interrupts.oam {
-                interrupt_request.lcd = true;
-            }
+            // TODO interrupts
+            // if self.interrupts.oam {
+            //     interrupt_request.lcd = true;
+            // }
             (0, StatMode::OAM)
         } else {
             (0, StatMode::VBLANK)
@@ -420,10 +428,12 @@ impl Ppu {
 
         // (draw)
 
-        if self.interrupts.hblank {
-            interrupt_request.lcd = true;
-        }
-        mode = StatMode::VRAM; // HBLANK;
+        // TODO Interrupts
+        // if self.interrupts.hblank {
+        //     interrupt_request.lcd = true;
+        // }
+
+        mode = StatMode::HBLANK;
 
         (tick, mode)
     }

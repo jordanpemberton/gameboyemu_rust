@@ -30,6 +30,8 @@ fn disassemble_roms() {
 }
 
 fn main() {
+    disassemble_roms();
+
     let mut gamboy = Console::new(true);
 
     gamboy.run(CartridgeOption::NONE);
