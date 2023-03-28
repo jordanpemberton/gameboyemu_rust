@@ -2,6 +2,7 @@
 
 use crate::console::alu;
 use crate::console::cpu::{Cpu};
+use crate::console::input::CallbackAction::DEBUG;
 use crate::console::mmu::{Endianness, Mmu};
 use crate::console::registers::{Flags, RegIndex};
 
@@ -80,12 +81,15 @@ impl Instruction {
     }
 
     /// JR PC+dd
-    fn jump(&mut self, cpu: &mut Cpu, jump_by: i16) {
+    fn relative_jump(&mut self, cpu: &mut Cpu, d8: u8) {
+        let jump_by = alu::signed_byte(d8);
+
         if jump_by < 0 {
             cpu.registers.decrement(RegIndex::PC, -jump_by as u16);
         } else {
             cpu.registers.increment(RegIndex::PC, jump_by as u16);
         }
+
         self.cycles += 4;
     }
 
@@ -231,8 +235,7 @@ impl Instruction {
     /// - - - -
     fn op_0018(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
         let d8 = cpu.read_byte_at_pc(mmu);
-        let jump_by = alu::signed_byte(d8);
-        self.jump(cpu, jump_by);
+        self.relative_jump(cpu, d8);
         self.cycles as i16
     }
 
@@ -268,9 +271,8 @@ impl Instruction {
     /// - - - -
     fn op_0020(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
         let d8 = cpu.read_byte_at_pc(mmu);
-        let jump_by = alu::signed_byte(d8);
         if !(cpu.registers.get_flags().zero) {
-            self.jump(cpu, jump_by);
+            self.relative_jump(cpu, d8);
         }
         self.cycles as i16
     }
@@ -316,9 +318,8 @@ impl Instruction {
     /// - - - -
     fn op_0028(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
         let d8 = cpu.read_byte_at_pc(mmu);
-        let jump_by = alu::signed_byte(d8);
         if cpu.registers.get_flags().zero {
-            self.jump(cpu, jump_by)
+            self.relative_jump(cpu, d8);
         }
         self.cycles as i16
     }
@@ -523,8 +524,7 @@ impl Instruction {
     /// - - - -
     fn op_00c3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
         let a16 = cpu.read_word_at_pc(mmu);
-        let jump_by = alu::signed_word(a16);
-        self.jump(cpu, jump_by);
+        cpu.registers.set_word(RegIndex::PC, a16);
         self.cycles as i16
     }
 

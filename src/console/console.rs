@@ -20,7 +20,7 @@ use crate::console::registers::{RegIndex};
 
 const WINDOW_SCALE: u32 = 4;
 const WINDOW_TITLE: &str = "_GAMBOY_";
-const DISPLAY_ENABLED: bool = false;
+const DISPLAY_ENABLED: bool = true;
 
 pub(crate) struct Console {
     cpu: Cpu,
@@ -57,13 +57,15 @@ impl Console {
         }
     }
 
-    pub(crate) fn run(&mut self, cartridge: CartridgeOption) {
+    pub(crate) fn run(&mut self, cartridge: CartridgeOption, skip_boot: bool) {
         match cartridge {
             CartridgeOption::NONE => {
-                self.boot_empty();
+                if !skip_boot {
+                    self.boot_empty();
+                }
             }
             CartridgeOption::SOME(cartridge) => {
-                self.run_game(&cartridge);
+                self.run_game(&cartridge, skip_boot);
             }
         }
     }
@@ -75,9 +77,15 @@ impl Console {
         self.mmu.load_rom(bootrom.as_ref(), 0, bootrom.len());
     }
 
-    fn run_game(&mut self, game: &Cartridge) {
-        self.boot();
-        self.mmu.load_rom(&game.data[0x100..], 0x100, 0x8000 - 0x100);
+    fn run_game(&mut self, game: &Cartridge, skip_boot: bool) {
+        if !skip_boot {
+            self.boot();
+            self.mmu.load_rom(&game.data[0x0100..], 0x0100, 0x8000 - 0x100);
+        } else {
+            self.mmu.load_rom(&game.data[..], 0, 0x8000);
+            self.cpu.registers.set_word(RegIndex::PC, 0x0100);
+        }
+
         self.main_loop();
     }
 

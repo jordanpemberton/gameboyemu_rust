@@ -195,14 +195,28 @@ impl TileMap {
     pub(crate) fn to_lcd(&self, palettes: &[[u8; 4]; 4]) -> [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize] {
         let mut lcd = [[0; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize];
 
+        let mut x: usize = 0;
+        let mut y: usize = 0;
+
         // TODO sort by priority
         for tile in self.tiles.clone().into_iter() {
-            for i in 0..8 {
-                for j in 0..8 {
-                    let pixel = tile.data[i as usize][j as usize];
+            for i in 0..TILE_PIXEL_WIDTH as usize {
+                for j in 0..TILE_PIXEL_HEIGHT as usize {
+                    let pixel = tile.data[i][j];
                     let palette = palettes[tile.palette as usize];
-                    lcd[tile.y as usize][tile.x as usize] = palette[pixel as usize];
+
+                    if y + i >= LCD_PIXEL_HEIGHT as usize || x + j >= LCD_PIXEL_WIDTH as usize {
+                        break;
+                    }
+                    lcd[y + i][x + j] = palette[pixel as usize];
+
+                    // TODO use tile attr (x,y): lcd[tile.y as usize][tile.x as usize] = palette[pixel as usize];
                 }
+            }
+            x += TILE_PIXEL_WIDTH as usize;
+            if x >= LCD_PIXEL_WIDTH as usize {
+                x = 0;
+                y += TILE_PIXEL_HEIGHT as usize;
             }
         }
 
@@ -421,9 +435,9 @@ impl Ppu {
 
         if self.ly < LCD_PIXEL_HEIGHT as u8 {
             // TODO pick one
-            self.background.fetch_tiles(mmu);
+            // self.background.fetch_tiles(mmu);
             self.window.fetch_tiles(mmu);
-            self.sprites.fetch_tiles(mmu);
+            // self.sprites.fetch_tiles(mmu);
         }
 
         // (draw)

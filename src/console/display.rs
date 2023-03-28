@@ -99,13 +99,13 @@ impl Display {
         self.canvas.clear();
 
         // TODO Read data from memory for bg, tiles, window, etc.
-        let background_lcd = ppu.background.to_lcd(&ppu.palettes);
+        // let background_lcd = ppu.background.to_lcd(&ppu.palettes);
         // self.draw_screen(&background_lcd);
 
         let window_lcd = ppu.window.to_lcd(&ppu.palettes);
         self.draw_screen(&window_lcd);
 
-        let sprites_lcd = ppu.sprites.to_lcd(&ppu.palettes);
+        // let sprites_lcd = ppu.sprites.to_lcd(&ppu.palettes);
         // self.draw_screen(&sprites_lcd);
 
         self.canvas.present();

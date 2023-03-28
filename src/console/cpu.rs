@@ -11,7 +11,7 @@ use crate::console::registers::{RegIndex, Registers};
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
-const DISASSMBLE: bool = true;
+const DEBUG_PRINT: bool = true;
 
 pub(crate) struct Cpu {
     is_halted: bool,
@@ -32,10 +32,15 @@ impl Cpu {
 
     pub(crate) fn step(&mut self, mmu: &mut Mmu) -> i16 {
         let mut cycles = 0;
+        let start_pc = self.registers.get_word(RegIndex::PC);
 
         if !self.is_halted {
             let opcode = self.fetch_opcode(mmu);
             let instruction = Instruction::get_instruction(opcode);
+
+            if DEBUG_PRINT {
+                println!("{:#06X}\t{:#06X}\t{}", start_pc, opcode, instruction.mnemonic);
+            }
 
             cycles = self.execute_instruction(instruction, mmu);
         }
