@@ -20,7 +20,7 @@ use crate::console::registers::{RegIndex};
 
 const WINDOW_SCALE: u32 = 4;
 const WINDOW_TITLE: &str = "_GAMBOY_";
-const DISPLAY_ENABLED: bool = true;
+const DISPLAY_ENABLED: bool = false;
 
 pub(crate) struct Console {
     cpu: Cpu,
@@ -82,7 +82,7 @@ impl Console {
             self.boot();
             self.mmu.load_rom(&game.data[0x0100..], 0x0100, 0x8000 - 0x100);
         } else {
-            self.mmu.load_rom(&game.data[..], 0, 0x8000);
+            self.mmu.load_rom(&game.data[0..], 0, 0x8000);
             self.cpu.registers.set_word(RegIndex::PC, 0x0100);
         }
 
@@ -99,16 +99,10 @@ impl Console {
         cycles += self.cpu.check_interrupt();
 
         // TODO
-        let mut interrupt_request = Interrupts{
-            enabled: false,
-            hblank: false,
-            lcd: false,
-            oam: false,
-            vblank: false,
-        };
+        let interrupts = Interrupts::new();
 
         if cycles >= 0 {
-            self.ppu.step(cycles as u16, &mut interrupt_request, &mut self.mmu);
+            self.ppu.step(&interrupts, &mut self.mmu);
 
             if DISPLAY_ENABLED {
                 self.display.draw(&mut self.mmu, &mut self.ppu);
@@ -152,6 +146,7 @@ impl Console {
 
             if !is_paused {
                 let status = self.step();
+
                 if status < 0 {
                     self.debugger.peek(
                         Option::from(&mut self.cpu),

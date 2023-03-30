@@ -11,7 +11,7 @@ use crate::console::registers::{RegIndex, Registers};
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
-const DEBUG_PRINT: bool = true;
+const DEBUG_PRINT: bool = false;
 
 pub(crate) struct Cpu {
     is_halted: bool,
