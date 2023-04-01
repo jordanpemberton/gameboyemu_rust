@@ -37,8 +37,18 @@ const MODE_LINE_RANGE: [(u8, u8); 4] = [
     (0, 144),
 ];
 
+pub(crate) struct Lcd {
+    pub(crate) data: [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize],
+}
 
-type Lcd = [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize];
+impl Lcd {
+    pub(crate) fn new() -> Lcd {
+        Lcd {
+            data: [[0; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize]
+        }
+    }
+}
+
 
 #[derive(Clone,Copy)]
 pub(crate) struct Tile {
@@ -106,54 +116,65 @@ impl Tile {
 }
 
 pub(crate) struct TileMap {
-    start_address: usize,
-    end_address: usize,
-    tiles: Vec<Tile>,
+    tile_indexes: [u8; 32 * 32],
+    tiles: [[Tile; 32]; 32],
 }
 
 impl TileMap {
-    fn new(start_address: usize, end_address: usize) -> TileMap {
-        TileMap {
-            start_address: start_address,
-            end_address: end_address,
-            tiles: vec![],
-        }
+    fn new(tilemap_address: usize, mmu: &mut Mmu) -> TileMap {
+        let mut tile_map = TileMap {
+            tile_indexes: [0; 32 * 32],
+            tiles: [[Tile::new(); 32]; 32],
+        };
+        tile_map.fetch_tiles(tilemap_address, mmu);
+        tile_map
     }
 
-    pub(crate) fn fetch_tiles(&mut self, mmu: &mut Mmu) {
-        let ram = mmu.read_buffer(self.start_address, self.end_address, Endianness::BIG);
-        self.tiles = Tile::read_tiles(&ram);
-    }
-
-    pub(crate) fn to_lcd(&self, palettes: &[[u8; 4]; 4]) -> [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize] {
-        let mut lcd = [[0; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize];
-
-        let mut x: usize = 0;
-        let mut y: usize = 0;
+    fn to_lcd(&self, palettes: &[[u8; 4]; 4]) -> Lcd {
+        let mut lcd = Lcd::new();
 
         // TODO sort by priority
-        for tile in self.tiles.clone().into_iter() {
-            for i in 0..TILE_PIXEL_WIDTH as usize {
-                for j in 0..TILE_PIXEL_HEIGHT as usize {
-                    let pixel = tile.data[i][j];
-                    let palette = palettes[tile.palette as usize];
+        for row in 0..32 {
+            for col in 0..32 {
+                let tile = self.tiles[row][col];
+                for i in 0..TILE_PIXEL_WIDTH as usize {
+                    for j in 0..TILE_PIXEL_HEIGHT as usize {
+                        let pixel = tile.data[i][j];
+                        let palette = palettes[tile.palette as usize];
 
-                    if y + i >= LCD_PIXEL_HEIGHT as usize || x + j >= LCD_PIXEL_WIDTH as usize {
-                        break;
+                        if row + i >= LCD_PIXEL_HEIGHT as usize || col + j >= LCD_PIXEL_WIDTH as usize {
+                            break;
+                        }
+                        lcd.data[row + i][col + j] = palette[pixel as usize];
+                        // TODO use tile attr (x,y): lcd[tile.y as usize][tile.x as usize] = palette[pixel as usize];
                     }
-                    lcd[y + i][x + j] = palette[pixel as usize];
-
-                    // TODO use tile attr (x,y): lcd[tile.y as usize][tile.x as usize] = palette[pixel as usize];
                 }
-            }
-            x += TILE_PIXEL_WIDTH as usize;
-            if x >= LCD_PIXEL_WIDTH as usize {
-                x = 0;
-                y += TILE_PIXEL_HEIGHT as usize;
             }
         }
 
         lcd
+    }
+
+    fn fetch_tiles(&mut self, tilemap_address: usize, mmu: &mut Mmu) {
+        let tile_indexes = mmu.read_buffer(
+            tilemap_address,
+            tilemap_address + 32 * 32 + 1,
+            Endianness::BIG);
+        self.tile_indexes = tile_indexes
+            .try_into().expect("Casting vec<u8> to [u8; 1024] failed.");
+
+        // TODO
+        let tiledata_location: usize = 0x8000; // 0x8800;
+
+        for row in 0..32 {
+            for col in 0..32 {
+                let tile_index = self.tile_indexes[row * 32 + col] as usize;
+                let tile_address = tiledata_location + tile_index;
+                let tile_bytes = mmu.read_buffer(tile_index, tile_index + 16, Endianness::BIG)
+                    .try_into().expect("Casting vec<u8> to [u8; 16] failed.");
+                self.tiles[row][col] = Tile::read_tile(tile_bytes);
+            }
+        }
     }
 }
 
@@ -191,14 +212,18 @@ pub(crate) struct Ppu {
     pub(crate) palette: u8,
     pub(crate) palettes: [[u8; 4]; 4],
 
+    // Tilemaps
+    tilemap_9800: TileMap,
+    tilemap_9C00: TileMap,
+
     // Display output buffers
-    pub(crate) background: TileMap,
-    pub(crate) window: TileMap,
-    pub(crate) sprites: TileMap,
+    pub(crate) background: Lcd,
+    pub(crate) window: Lcd,
+    pub(crate) sprites: Lcd,
 }
 
 impl Ppu {
-    pub(crate) fn new(palettes: [[u8; 4]; 4]) -> Ppu {
+    pub(crate) fn new(mmu: &mut Mmu) -> Ppu {
         Ppu {
             clocks: 0,
             bgp: 0,
@@ -208,10 +233,19 @@ impl Ppu {
             scx: 0,
             mode: StatMode::HBlank,
             palette: 0,
-            palettes: palettes,
-            background: TileMap::new(0x9800, 0x10000),
-            window: TileMap::new(0x8000, 0x9FFF), // 0x323F, 0x8000), // TEMP Tetris tile location in rom
-            sprites: TileMap::new(0xFE00, 0xFE9F),
+            palettes: // TODO
+                [
+                    [0,1,2,3],
+                    [0,1,2,3],
+                    [0,1,2,3],
+                    [0,1,2,3],
+                ],
+            tilemap_9800: TileMap::new(0x9800, mmu),
+            tilemap_9C00: TileMap::new(0x9C00, mmu),
+
+            background: Lcd::new(),
+            window: Lcd::new(),
+            sprites: Lcd::new(),
         }
     }
 
@@ -317,12 +351,16 @@ impl Ppu {
 
     fn oam_search(&mut self, mmu: &mut Mmu) {
         // TODO
+
         self.clocks += 80;
     }
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
         // TODO Pixel FIFO / fetch /load
-        self.window.fetch_tiles(mmu);
+        self.tilemap_9800.fetch_tiles(0x9800, mmu);
+        self.background = self.tilemap_9800.to_lcd(&self.palettes);
+
+        // self.window = self.tilemap_9C00.to_lcd(&self.palettes);
 
         self.clocks += 172;
     }

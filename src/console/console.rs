@@ -18,10 +18,6 @@ use crate::console::mmu::{Mmu};
 use crate::console::ppu::{LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT, Ppu};
 use crate::console::registers::{RegIndex};
 
-const WINDOW_SCALE: u32 = 4;
-const WINDOW_TITLE: &str = "_GAMBOY_";
-const DISPLAY_ENABLED: bool = false;
-
 pub(crate) struct Console {
     cpu: Cpu,
     mmu: Mmu,
@@ -32,25 +28,25 @@ pub(crate) struct Console {
 }
 
 impl Console {
-    pub(crate) fn new(debug: bool) -> Console {
+    pub(crate) fn new(window_title: &str, window_scale: u32, display_enabled: bool, debug: bool) -> Console {
         let debugger = Debugger::new(debug);
         let sdl_context: Sdl = sdl2::init().unwrap();
 
+        let cpu = Cpu::new();
+        let mut mmu = Mmu::new();
+        let ppu = Ppu::new(&mut mmu);
+
         Console {
-            cpu: Cpu::new(),
-            mmu: Mmu::new(),
-            ppu: Ppu::new([
-                [0,1,2,3],
-                [0,1,2,3],
-                [0,1,2,3],
-                [0,1,2,3],
-            ]),
+            cpu: cpu,
+            mmu: mmu,
+            ppu: ppu,
             display: Display::new(
                 LCD_PIXEL_WIDTH,
                 LCD_PIXEL_HEIGHT,
-                WINDOW_SCALE,
-                WINDOW_TITLE,
-                &sdl_context
+                window_scale,
+                window_title,
+                &sdl_context,
+                display_enabled
             ),
             input: Input::new(&sdl_context),
             debugger: debugger,
@@ -101,13 +97,8 @@ impl Console {
         // TODO
         let interrupts = Interrupts::new();
 
-        if cycles >= 0 {
-            self.ppu.step(&interrupts, &mut self.mmu);
-
-            if DISPLAY_ENABLED {
-                self.display.draw(&mut self.mmu, &mut self.ppu);
-            }
-        }
+        self.ppu.step(&interrupts, &mut self.mmu);
+        self.display.draw(&mut self.mmu, &mut self.ppu);
 
         cycles
     }

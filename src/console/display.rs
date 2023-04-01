@@ -6,7 +6,7 @@ use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
 
 use crate::console::mmu::{Endianness, Mmu};
-use crate::console::ppu::{LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
+use crate::console::ppu::{Lcd, LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
 
 const GB_CONSOLE_SPRITE: [u8; 16] = [
     0x3C, 0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
@@ -58,6 +58,7 @@ const COLORS: [Color; 4] = [
 ];
 
 pub(crate) struct Display {
+    enabled: bool,
     gbpixel_width: u32,
     gbpixel_height: u32,
     gbpixel_size: u32,
@@ -70,8 +71,10 @@ impl Display {
             pixel_height: u32,
             window_scale: u32,
             window_title: &str,
-            sdl_context: &Sdl) -> Display {
+            sdl_context: &Sdl,
+            enabled: bool) -> Display {
         Display {
+            enabled: enabled,
             gbpixel_width: pixel_width,
             gbpixel_height: pixel_height,
             gbpixel_size: window_scale,
@@ -86,17 +89,15 @@ impl Display {
     }
 
     pub(crate) fn draw(&mut self, mmu: &mut Mmu, ppu: &mut Ppu) {
+        if !self.enabled {
+            return;
+        }
+
         self.canvas.clear();
 
-        // TODO Read data from memory for bg, tiles, window, etc.
-        // let background_lcd = ppu.background.to_lcd(&ppu.palettes);
-        // self.draw_screen(&background_lcd);
-
-        let window_lcd = ppu.window.to_lcd(&ppu.palettes);
-        self.draw_screen(&window_lcd);
-
-        // let sprites_lcd = ppu.sprites.to_lcd(&ppu.palettes);
-        // self.draw_screen(&sprites_lcd);
+        self.draw_screen(&ppu.background);
+        // self.draw_screen(&ppu.window);
+        // self.draw_screen(&ppu.sprites);
 
         self.canvas.present();
         self.canvas.set_draw_color(COLORS[0]);
@@ -134,9 +135,9 @@ impl Display {
         }
     }
 
-    fn draw_screen(&mut self, lcd: &[[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize]) {
+    fn draw_screen(&mut self, lcd: &Lcd) {
         for y in 0..LCD_PIXEL_HEIGHT {
-            let colors: [Color; LCD_PIXEL_WIDTH as usize] = lcd[y as usize].map(|pixel| COLORS[pixel as usize]);
+            let colors: [Color; LCD_PIXEL_WIDTH as usize] = lcd.data[y as usize].map(|pixel| COLORS[pixel as usize]);
             self.draw_scanline(y, colors);
         }
     }
