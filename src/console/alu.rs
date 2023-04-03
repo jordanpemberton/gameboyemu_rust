@@ -1,4 +1,4 @@
-use crate::console::registers::{Flags};
+use crate::console::cpu_registers::{Flags};
 
 // Two's compliment, converted to i16
 pub(crate) fn signed_byte(value: u8) -> i16 {

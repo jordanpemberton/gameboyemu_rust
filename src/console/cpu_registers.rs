@@ -13,13 +13,13 @@ pub(crate) struct Flags {
 }
 
 #[derive(Copy, Clone)]
-pub(crate) enum RegIndex {
+pub(crate) enum CpuRegIndex {
     A, B, C, D, E, F, H, L,
     AF, BC, DE, HL,
     PC, SP
 }
 
-pub(crate) struct Registers {
+pub(crate) struct CpuRegisters {
     a: u8,
     b: u8,
     c: u8,
@@ -32,9 +32,9 @@ pub(crate) struct Registers {
     sp: u16,
 }
 
-impl Registers {
-    pub(crate) fn new() -> Registers {
-        Registers {
+impl CpuRegisters {
+    pub(crate) fn new() -> CpuRegisters {
+        CpuRegisters {
             a: 0,
             b: 0,
             c: 0,
@@ -48,28 +48,28 @@ impl Registers {
         }
     }
 
-    pub(crate) fn get_byte(&self, register: RegIndex) -> u8 {
+    pub(crate) fn get_byte(&self, register: CpuRegIndex) -> u8 {
         match register {
-            RegIndex::A => self.a,
-            RegIndex::B => self.b,
-            RegIndex::C => self.c,
-            RegIndex::D => self.d,
-            RegIndex::E => self.e,
-            RegIndex::F => self.f,
-            RegIndex::H => self.h,
-            RegIndex::L => self.l,
+            CpuRegIndex::A => self.a,
+            CpuRegIndex::B => self.b,
+            CpuRegIndex::C => self.c,
+            CpuRegIndex::D => self.d,
+            CpuRegIndex::E => self.e,
+            CpuRegIndex::F => self.f,
+            CpuRegIndex::H => self.h,
+            CpuRegIndex::L => self.l,
             _ => panic!("Invalid RegIndex"),
         }
     }
 
-    pub(crate) fn get_word(&self, register: RegIndex) -> u16 {
+    pub(crate) fn get_word(&self, register: CpuRegIndex) -> u16 {
         match register {
-            RegIndex::AF => self.bytes_to_word(self.a, self.f),
-            RegIndex::BC => self.bytes_to_word(self.b, self.c),
-            RegIndex::DE => self.bytes_to_word(self.d, self.e),
-            RegIndex::HL => self.bytes_to_word(self.h, self.l),
-            RegIndex::PC => self.pc,
-            RegIndex::SP => self.sp,
+            CpuRegIndex::AF => self.bytes_to_word(self.a, self.f),
+            CpuRegIndex::BC => self.bytes_to_word(self.b, self.c),
+            CpuRegIndex::DE => self.bytes_to_word(self.d, self.e),
+            CpuRegIndex::HL => self.bytes_to_word(self.h, self.l),
+            CpuRegIndex::PC => self.pc,
+            CpuRegIndex::SP => self.sp,
             _ => panic!("Invalid RegIndex"),
         }
     }
@@ -83,16 +83,16 @@ impl Registers {
         }
     }
 
-    pub(crate) fn set_byte(&mut self, register: RegIndex, value: u8) {
+    pub(crate) fn set_byte(&mut self, register: CpuRegIndex, value: u8) {
         match register {
-            RegIndex::A => { self.a = value; }
-            RegIndex::B => { self.b = value; }
-            RegIndex::C => { self.c = value; }
-            RegIndex::D => { self.d = value; }
-            RegIndex::E => { self.e = value; }
-            RegIndex::F => { self.f = value; }
-            RegIndex::H => { self.h = value; }
-            RegIndex::L => { self.l = value; }
+            CpuRegIndex::A => { self.a = value; }
+            CpuRegIndex::B => { self.b = value; }
+            CpuRegIndex::C => { self.c = value; }
+            CpuRegIndex::D => { self.d = value; }
+            CpuRegIndex::E => { self.e = value; }
+            CpuRegIndex::F => { self.f = value; }
+            CpuRegIndex::H => { self.h = value; }
+            CpuRegIndex::L => { self.l = value; }
             _ => panic!("Invalid RegIndex"),
         }
     }
@@ -105,132 +105,132 @@ impl Registers {
                 (if flags.carry { 1 } else { 0 }) << FLAG_CARRY_BYTE;
     }
 
-    pub(crate) fn set_word(&mut self, register: RegIndex, value: u16) {
+    pub(crate) fn set_word(&mut self, register: CpuRegIndex, value: u16) {
         match register {
-            RegIndex::AF => {
+            CpuRegIndex::AF => {
                 self.a = ((value & 0xFF00) >> 8) as u8;
                 self.f = (value & 0xFF) as u8;
             }
-            RegIndex::BC => {
+            CpuRegIndex::BC => {
                 self.b = ((value & 0xFF00) >> 8) as u8;
                 self.c = (value & 0xFF) as u8;
             }
-            RegIndex::DE => {
+            CpuRegIndex::DE => {
                 self.d = ((value & 0xFF00) >> 8) as u8;
                 self.e = (value & 0xFF) as u8;
             }
-            RegIndex::HL => {
+            CpuRegIndex::HL => {
                 self.h = ((value & 0xFF00) >> 8) as u8;
                 self.l = (value & 0xFF) as u8;
             }
-            RegIndex::PC => {
+            CpuRegIndex::PC => {
                 self.pc =value;
             }
-            RegIndex::SP => {
+            CpuRegIndex::SP => {
                 self.sp = value;
             }
             _ => panic!("Invalid RegIndex"),
         }
     }
 
-    pub(crate) fn increment(&mut self, register: RegIndex, increment_by: u16) {
+    pub(crate) fn increment(&mut self, register: CpuRegIndex, increment_by: u16) {
         match register {
-            RegIndex::A => {
+            CpuRegIndex::A => {
                 self.a = self.a.wrapping_add(increment_by as u8);
             }
-            RegIndex::B => {
+            CpuRegIndex::B => {
                 self.b = self.b.wrapping_add(increment_by as u8);
             }
-            RegIndex::C => {
+            CpuRegIndex::C => {
                 self.c = self.c.wrapping_add(increment_by as u8);
             }
-            RegIndex::D => {
+            CpuRegIndex::D => {
                 self.d = self.d.wrapping_add(increment_by as u8);
             }
-            RegIndex::E => {
+            CpuRegIndex::E => {
                 self.e = self.e.wrapping_add(increment_by as u8);
             }
-            RegIndex::F => {
+            CpuRegIndex::F => {
                 self.f = self.f.wrapping_add(increment_by as u8);
             }
-            RegIndex::H => {
+            CpuRegIndex::H => {
                 self.h = self.h.wrapping_add(increment_by as u8);
             }
-            RegIndex::L => {
+            CpuRegIndex::L => {
                 self.l = self.l.wrapping_add(increment_by as u8);
             }
-            RegIndex::AF => {
-                let af = self.get_word(RegIndex::AF).wrapping_add(increment_by);
-                self.set_word(RegIndex::AF, af);
+            CpuRegIndex::AF => {
+                let af = self.get_word(CpuRegIndex::AF).wrapping_add(increment_by);
+                self.set_word(CpuRegIndex::AF, af);
             }
-            RegIndex::BC => {
-                let bc = self.get_word(RegIndex::BC).wrapping_add(increment_by);
-                self.set_word(RegIndex::BC, bc);
+            CpuRegIndex::BC => {
+                let bc = self.get_word(CpuRegIndex::BC).wrapping_add(increment_by);
+                self.set_word(CpuRegIndex::BC, bc);
             }
-            RegIndex::DE => {
-                let de = self.get_word(RegIndex::DE).wrapping_add(increment_by);
-                self.set_word(RegIndex::DE, de);
+            CpuRegIndex::DE => {
+                let de = self.get_word(CpuRegIndex::DE).wrapping_add(increment_by);
+                self.set_word(CpuRegIndex::DE, de);
             }
-            RegIndex::HL => {
-                let hl = self.get_word(RegIndex::HL).wrapping_add(increment_by);
-                self.set_word(RegIndex::HL, hl);
+            CpuRegIndex::HL => {
+                let hl = self.get_word(CpuRegIndex::HL).wrapping_add(increment_by);
+                self.set_word(CpuRegIndex::HL, hl);
             }
-            RegIndex::PC => {
+            CpuRegIndex::PC => {
                 self.pc = self.pc.wrapping_add(increment_by);
             }
-            RegIndex::SP => {
+            CpuRegIndex::SP => {
                 self.sp = self.sp.wrapping_add(increment_by);
             }
             _ => panic!("Invalid RegIndex"),
         }
     }
 
-    pub(crate) fn decrement(&mut self, register: RegIndex, decrement_by: u16) {
+    pub(crate) fn decrement(&mut self, register: CpuRegIndex, decrement_by: u16) {
         match register {
-            RegIndex::A => {
+            CpuRegIndex::A => {
                 self.a = self.a.wrapping_sub(decrement_by as u8);
             }
-            RegIndex::B => {
+            CpuRegIndex::B => {
                 self.b = self.b.wrapping_sub(decrement_by as u8);
             }
-            RegIndex::C => {
+            CpuRegIndex::C => {
                 self.c = self.c.wrapping_sub(decrement_by as u8);
             }
-            RegIndex::D => {
+            CpuRegIndex::D => {
                 self.d = self.d.wrapping_sub(decrement_by as u8);
             }
-            RegIndex::E => {
+            CpuRegIndex::E => {
                 self.e = self.e.wrapping_sub(decrement_by as u8);
             }
-            RegIndex::F => {
+            CpuRegIndex::F => {
                 self.f = self.f.wrapping_sub(decrement_by as u8);
             }
-            RegIndex::H => {
+            CpuRegIndex::H => {
                 self.h = self.h.wrapping_sub(decrement_by as u8);
             }
-            RegIndex::L => {
+            CpuRegIndex::L => {
                 self.l = self.l.wrapping_sub(decrement_by as u8);
             }
-            RegIndex::AF => {
-                let af = self.get_word(RegIndex::AF).wrapping_sub(decrement_by);
-                self.set_word(RegIndex::AF, af);
+            CpuRegIndex::AF => {
+                let af = self.get_word(CpuRegIndex::AF).wrapping_sub(decrement_by);
+                self.set_word(CpuRegIndex::AF, af);
             }
-            RegIndex::BC => {
-                let bc = self.get_word(RegIndex::BC).wrapping_sub(decrement_by);
-                self.set_word(RegIndex::BC, bc);
+            CpuRegIndex::BC => {
+                let bc = self.get_word(CpuRegIndex::BC).wrapping_sub(decrement_by);
+                self.set_word(CpuRegIndex::BC, bc);
             }
-            RegIndex::DE => {
-                let de = self.get_word(RegIndex::DE).wrapping_sub(decrement_by);
-                self.set_word(RegIndex::DE, de);
+            CpuRegIndex::DE => {
+                let de = self.get_word(CpuRegIndex::DE).wrapping_sub(decrement_by);
+                self.set_word(CpuRegIndex::DE, de);
             }
-            RegIndex::HL => {
-                let hl = self.get_word(RegIndex::HL).wrapping_sub(decrement_by);
-                self.set_word(RegIndex::HL, hl);
+            CpuRegIndex::HL => {
+                let hl = self.get_word(CpuRegIndex::HL).wrapping_sub(decrement_by);
+                self.set_word(CpuRegIndex::HL, hl);
             }
-            RegIndex::PC => {
+            CpuRegIndex::PC => {
                 self.pc = self.pc.wrapping_sub(decrement_by);
             }
-            RegIndex::SP => {
+            CpuRegIndex::SP => {
                 self.sp = self.sp.wrapping_sub(decrement_by);
             }
             _ => panic!("Invalid RegIndex"),
@@ -242,7 +242,7 @@ impl Registers {
     }
 }
 
-impl Display for Registers {
+impl Display for CpuRegisters {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f,
             "\ta: {:#04X}\n\

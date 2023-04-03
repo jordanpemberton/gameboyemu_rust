@@ -17,9 +17,9 @@ pub(crate) struct Debugger {
 }
 
 impl Debugger {
-    pub(crate) fn new(enabled: bool) -> Debugger {
+    pub(crate) fn new() -> Debugger {
         Debugger {
-            enabled: enabled,
+            enabled: true,
             active: false,
         }
     }

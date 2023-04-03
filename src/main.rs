@@ -12,7 +12,7 @@ use crate::console::console::Console;
 use crate::console::cpu::Cpu;
 use crate::console::disassembler;
 use crate::console::mmu::Mmu;
-use crate::console::registers::{RegIndex};
+use crate::console::cpu_registers::{CpuRegIndex};
 
 const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/DMG_ROM.bin";
 const TEST_ROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb";
@@ -31,7 +31,7 @@ fn disassemble_roms() {
 }
 
 fn main() {
-    disassemble_roms();
+    // disassemble_roms();
 
     let mut gamboy = Console::new("GAMBOY",4, true, true);
 

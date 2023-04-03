@@ -4,7 +4,7 @@ pub(crate) mod debugger;
 pub(crate) mod disassembler;
 pub(crate) mod input;
 pub(crate) mod mmu;
-pub(crate) mod registers;
+pub(crate) mod cpu_registers;
 
 mod alu;
 mod boot_rom;

@@ -137,7 +137,8 @@ impl Display {
 
     fn draw_screen(&mut self, lcd: &Lcd) {
         for y in 0..LCD_PIXEL_HEIGHT {
-            let colors: [Color; LCD_PIXEL_WIDTH as usize] = lcd.data[y as usize].map(|pixel| COLORS[pixel as usize]);
+            let row = lcd.data[y as usize];
+            let colors: [Color; LCD_PIXEL_WIDTH as usize] = row.map(|pixel| COLORS[pixel as usize]);
             self.draw_scanline(y, colors);
         }
     }
