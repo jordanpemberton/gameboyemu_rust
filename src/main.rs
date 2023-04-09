@@ -17,7 +17,7 @@ use crate::console::cpu_registers::{CpuRegIndex};
 const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/DMG_ROM.bin";
 const TEST_ROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb";
 // "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/cpu_instrs.gb";
-const GAME_FILEPATH: &str = "/home/jordan/Games/GameBoy/GB/Tetris.gb";
+const GAME_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/games/Tetris.gb";
 
 fn disassemble_roms() {
     let bootrom_cartridge = Cartridge::new(BOOTROM_FILEPATH.as_ref());
@@ -31,7 +31,7 @@ fn disassemble_roms() {
 }
 
 fn main() {
-    // disassemble_roms();
+    disassemble_roms();
 
     let mut gamboy = Console::new("GAMBOY",4, false, true);
 

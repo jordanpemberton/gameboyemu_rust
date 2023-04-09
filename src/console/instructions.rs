@@ -1,7 +1,7 @@
 #![allow(unused_variables)]
 
 use crate::console::alu;
-use crate::console::cpu::{Cpu};
+use crate::console::cpu::{Cpu, PREFIX_BYTE};
 use crate::console::input::CallbackAction::DEBUG;
 use crate::console::mmu::{Endianness, Mmu};
 use crate::console::cpu_registers::{Flags, CpuRegIndex};
@@ -11,14 +11,16 @@ pub(crate) struct Instruction {
     pub(crate) mnemonic: &'static str,
     pub(crate) size: u16,
     pub(crate) cycles: u16,
-    _fn: fn(&mut Instruction, cpu: &mut Cpu, mmu: &mut Mmu) -> i16,
+    _fn: fn(&mut Instruction, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16,
 }
 
 impl Instruction {
     pub(crate) fn get_instruction(opcode: u16) -> Instruction {
         match opcode {
             0x0000 => Instruction { opcode, mnemonic: "NOP", size: 1, cycles: 4, _fn: Instruction::op_0000 },
+            0x0001 => Instruction { opcode, mnemonic: "LD BC,d16", size: 3, cycles: 12, _fn: Instruction::op_0001 },
             0x0002 => Instruction { opcode, mnemonic: "LD (BC),A", size: 1, cycles: 8, _fn: Instruction::op_0002 },
+            0x0003 => Instruction { opcode, mnemonic: "INC BC", size: 1, cycles: 8, _fn: Instruction::op_0003 },
             0x0004 => Instruction { opcode, mnemonic: "INC B", size: 1, cycles: 4, _fn: Instruction::op_0004 },
             0x0005 => Instruction { opcode, mnemonic: "DEC B", size: 1, cycles: 4, _fn: Instruction::op_0005 },
             0x0006 => Instruction { opcode, mnemonic: "LD B,d8", size: 2, cycles: 8, _fn: Instruction::op_0006 },
@@ -36,14 +38,16 @@ impl Instruction {
             0x001E => Instruction { opcode, mnemonic: "LD E,d8", size: 2, cycles: 8, _fn: Instruction::op_001e },
             0x0020 => Instruction { opcode, mnemonic: "JR NZ,r8", size: 2, cycles: 8, _fn: Instruction::op_0020 },
             0x0021 => Instruction { opcode, mnemonic: "LD HL,d16", size: 3, cycles: 12, _fn: Instruction::op_0021 },
-            0x0022 => Instruction { opcode, mnemonic: "LD (HL+),A", size: 1, cycles: 8, _fn: Instruction::op_0022 },
+            0x0022 => Instruction { opcode, mnemonic: "LDI (HL),A", size: 1, cycles: 8, _fn: Instruction::op_0022 },
             0x0023 => Instruction { opcode, mnemonic: "INC HL", size: 1, cycles: 8, _fn: Instruction::op_0023 },
             0x0024 => Instruction { opcode, mnemonic: "INC H", size: 1, cycles: 4, _fn: Instruction::op_0024 },
             0x0028 => Instruction { opcode, mnemonic: "JR Z,r8", size: 2, cycles: 8, _fn: Instruction::op_0028 },
+            0x002A => Instruction { opcode, mnemonic: "LDI A,[HL]", size: 1, cycles: 8, _fn: Instruction::op_002a },
             0x002E => Instruction { opcode, mnemonic: "LD L,d8", size: 2, cycles: 8, _fn: Instruction::op_002e },
             0x0031 => Instruction { opcode, mnemonic: "LD SP,d16", size: 3, cycles: 12, _fn: Instruction::op_0031 },
-            0x0032 => Instruction { opcode, mnemonic: "LD (HL-),A", size: 1, cycles: 8, _fn: Instruction::op_0032 },
+            0x0032 => Instruction { opcode, mnemonic: "LDD (HL),A", size: 1, cycles: 8, _fn: Instruction::op_0032 },
             // TODO 0x0034 => Instruction{ opcode, mnemonic: "INC (HL)", size: 1, cycles: 12, _fn: Instruction::op_0034 },
+            0x0036 => Instruction { opcode, mnemonic: "LD (HL),d8", size: 2, cycles: 12, _fn: Instruction::op_0036 },
             0x003D => Instruction { opcode, mnemonic: "DEC A", size: 1, cycles: 4, _fn: Instruction::op_003d },
             0x003E => Instruction { opcode, mnemonic: "LD A,d8", size: 2, cycles: 8, _fn: Instruction::op_003e },
             // TODO 0x0042 => Instruction { opcode, mnemonic: "", size: 1, cycles: 4, _fn: Instruction::op_0042 },
@@ -64,7 +68,7 @@ impl Instruction {
             0x00C5 => Instruction { opcode, mnemonic: "PUSH BC", size: 1, cycles: 16, _fn: Instruction::op_00c5 },
             0x00C9 => Instruction { opcode, mnemonic: "RET", size: 1, cycles: 16, _fn: Instruction::op_00c9 },
             0x00CD => Instruction { opcode, mnemonic: "CALL a16", size: 3, cycles: 24, _fn: Instruction::op_00cd },
-            0x00E0 => Instruction { opcode, mnemonic: "LD ($FF00+a8),A", size: 2, cycles: 12, _fn: Instruction::op_00e0 },
+            0x00E0 => Instruction { opcode, mnemonic: "LDH (a8),A", size: 2, cycles: 12, _fn: Instruction::op_00e0 },
             0x00E2 => Instruction { opcode, mnemonic: "LD ($FF00+C),A", size: 1, cycles: 8, _fn: Instruction::op_00e2 },
             0x00EA => Instruction { opcode, mnemonic: "LD (a16),A", size: 3, cycles: 16, _fn: Instruction::op_00ea },
             0x00F0 => Instruction { opcode, mnemonic: "LDH A,($FF00+a8)", size: 2, cycles: 12, _fn: Instruction::op_00f0 },
@@ -77,11 +81,23 @@ impl Instruction {
         }
     }
 
-    pub(crate) fn execute(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        (self._fn)(self, cpu, mmu)
+    pub(crate) fn is_cbprefixed(&self) -> bool {
+        ((self.opcode & 0xFF00) >> 8) as u8 == PREFIX_BYTE
     }
 
-    /// JR PC+dd
+    pub(crate) fn execute(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        (self._fn)(self, cpu, mmu, args)
+    }
+
+    fn unimplemented(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        println!("Opcode {:#06X} (\"{}\") is unimplemented.", self.opcode, self.mnemonic);
+        -1
+    }
+
+    fn read_args_as_word(arg1: u8, arg2: u8) -> u16 {
+        ((arg2 as u16) << 8) | (arg1 as u16)
+    }
+    
     fn relative_jump(&mut self, cpu: &mut Cpu, d8: u8) {
         let jump_by = alu::signed_byte(d8);
 
@@ -94,16 +110,31 @@ impl Instruction {
         self.cycles += 4;
     }
 
-    /// INC r8
+    /// Affects all flags except carry flag
     fn increment_r8(&mut self, cpu: &mut Cpu, register: CpuRegIndex) {
-        let r = cpu.registers.get_byte(register);
+        let r8 = cpu.registers.get_byte(register);
         let original_carry = cpu.registers.get_flags().carry;
-        let (result, flags) = alu::increment_byte(r, original_carry);
+        let (result, flags) = alu::increment_byte(r8, original_carry);
         cpu.registers.set_byte(register, result);
         cpu.registers.set_f(flags);
     }
 
-    /// DEC r8
+    /// Affects all flags except carry flag
+    fn increment_a16(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, address: u16) {
+        let value = mmu.read_byte(address);
+        let original_carry = cpu.registers.get_flags().carry;
+        let (result, flags) = alu::increment_byte(value, original_carry);
+        mmu.load_byte(address, result);
+        cpu.registers.set_f(flags);
+    }
+
+    /// Does not affect flags
+    fn increment_r16(&mut self, cpu: &mut Cpu, register: CpuRegIndex) {
+        let r16 = cpu.registers.get_word(register);
+        let result = alu::increment_word(r16);
+        cpu.registers.set_word(register, result);
+    }
+
     fn decrement_r8(&mut self, cpu: &mut Cpu, register: CpuRegIndex) {
         let r = cpu.registers.get_byte(register);
         let original_carry = cpu.registers.get_flags().carry;
@@ -111,35 +142,46 @@ impl Instruction {
         cpu.registers.set_byte(register, result);
         cpu.registers.set_f(flags);
     }
-
-    fn unimplemented(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        println!("Opcode {:#06X} (\"{}\") is unimplemented.", self.opcode, self.mnemonic);
-        -1
-    }
-
-    /// UN-PREFIXED
-
+    
     /// NOP
     /// 1 4
     /// - - - -
-    fn op_0000(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0000(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.cycles as i16
     }
 
+    /// LD BC,d16
+    /// 3 12
+    /// - - - -
+    fn op_0001(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let target_address = cpu.registers.get_word(CpuRegIndex::BC);
+        let value = Instruction::read_args_as_word(args[0], args[1]);
+        mmu.load_word(target_address, value, Endianness::BIG);
+        self.cycles as i16
+    }
+    
     /// LD (BC),A
     /// 1 8
     /// - - - -
-    fn op_0002(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0002(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let target_address = cpu.registers.get_word(CpuRegIndex::BC);
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         mmu.load_byte(target_address, value);
         self.cycles as i16
     }
 
+    /// INC BC
+    /// 1 8
+    /// - - - -
+    fn op_0003(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        // TODO
+        self.cycles as i16
+    }
+
     /// INC B
     /// 1 4
     /// Z 0 H -
-    fn op_0004(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0004(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.increment_r8(cpu, CpuRegIndex::B);
         self.cycles as i16
     }
@@ -147,7 +189,7 @@ impl Instruction {
     /// DEC B
     /// 1 4
     /// Z 1 H -
-    fn op_0005(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0005(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.decrement_r8(cpu, CpuRegIndex::B);
         self.cycles as i16
     }
@@ -155,8 +197,8 @@ impl Instruction {
     /// LD B,d8
     /// 2 8
     /// - - - -
-    fn op_0006(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d8 = cpu.read_byte_at_pc(mmu);
+    fn op_0006(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d8 = args[0];
         cpu.registers.set_byte(CpuRegIndex::B, d8);
         self.cycles as i16
     }
@@ -164,7 +206,7 @@ impl Instruction {
     /// INC C
     /// 1 4
     /// Z 0 H -
-    fn op_000c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_000c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.increment_r8(cpu, CpuRegIndex::C);
         self.cycles as i16
     }
@@ -172,7 +214,7 @@ impl Instruction {
     /// DEC C
     /// 1 4
     /// Z 1 H -
-    fn op_000d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_000d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.decrement_r8(cpu, CpuRegIndex::C);
         self.cycles as i16
     }
@@ -180,8 +222,8 @@ impl Instruction {
     /// LD C,d8
     /// 2 8
     /// - - - -
-    fn op_000e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d8 = cpu.read_byte_at_pc(mmu);
+    fn op_000e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d8 = args[0];
         cpu.registers.set_byte(CpuRegIndex::C, d8);
         self.cycles as i16
     }
@@ -189,8 +231,8 @@ impl Instruction {
     /// LD DE,d16
     /// 3 12
     /// - - - -
-    fn op_0011(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d16 = cpu.read_word_at_pc(mmu);
+    fn op_0011(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d16 = Instruction::read_args_as_word(args[0], args[1]);
         cpu.registers.set_word(CpuRegIndex::DE, d16);
         self.cycles as i16
     }
@@ -198,15 +240,15 @@ impl Instruction {
     /// INC DE
     /// 1 8
     /// - - - -
-    fn op_0013(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        cpu.registers.increment(CpuRegIndex::DE, 1);
+    fn op_0013(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.increment_r16(cpu, CpuRegIndex::DE);
         self.cycles as i16
     }
 
     /// DEC D
     /// 1 4
     /// Z 1 H -
-    fn op_0015(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0015(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.decrement_r8(cpu, CpuRegIndex::D);
         self.cycles as i16
     }
@@ -214,8 +256,8 @@ impl Instruction {
     /// LD D,d8
     /// 2 8
     /// - - - -
-    fn op_0016(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d8 = cpu.read_byte_at_pc(mmu);
+    fn op_0016(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d8 = args[0];
         cpu.registers.set_byte(CpuRegIndex::D, d8);
         self.cycles as i16
     }
@@ -223,10 +265,10 @@ impl Instruction {
     /// RLA
     /// 1 4
     /// Z 0 0 C
-    fn op_0017(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0017(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         let mut flags = cpu.registers.get_flags();
-        flags = alu::rl(value, flags.carry);
+        flags = alu::rotate_left(value, flags.carry);
         cpu.registers.set_f(flags);
         self.cycles as i16
     }
@@ -234,8 +276,8 @@ impl Instruction {
     /// JR r8
     /// 2 12
     /// - - - -
-    fn op_0018(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d8 = cpu.read_byte_at_pc(mmu);
+    fn op_0018(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d8 = args[0];
         self.relative_jump(cpu, d8);
         self.cycles as i16
     }
@@ -243,7 +285,7 @@ impl Instruction {
     /// LD A,(DE)
     /// 1 8
     /// - - - -
-    fn op_001a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_001a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let source_address = cpu.registers.get_word(CpuRegIndex::DE);
         let value = mmu.read_byte(source_address);
         cpu.registers.set_byte(CpuRegIndex::A, value);
@@ -253,7 +295,7 @@ impl Instruction {
     /// DEC E
     /// 1 4
     /// Z 1 H -
-    fn op_001d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_001d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.decrement_r8(cpu, CpuRegIndex::E);
         self.cycles as i16
     }
@@ -261,8 +303,8 @@ impl Instruction {
     /// LD E,d8
     /// 2 8
     /// - - - -
-    fn op_001e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d8 = cpu.read_byte_at_pc(mmu);
+    fn op_001e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d8 = args[0];
         cpu.registers.set_byte(CpuRegIndex::E, d8);
         self.cycles as i16
     }
@@ -270,8 +312,8 @@ impl Instruction {
     /// JR NZ,r8
     /// 2 12/8
     /// - - - -
-    fn op_0020(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d8 = cpu.read_byte_at_pc(mmu);
+    fn op_0020(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d8 = args[0];
         if !(cpu.registers.get_flags().zero) {
             self.relative_jump(cpu, d8);
         }
@@ -281,16 +323,17 @@ impl Instruction {
     /// LD HL,d16
     /// 3 12
     /// - - - -
-    fn op_0021(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d16 = cpu.read_word_at_pc(mmu);
+    fn op_0021(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d16 = Instruction::read_args_as_word(args[0], args[1]);
         cpu.registers.set_word(CpuRegIndex::HL, d16);
         self.cycles as i16
     }
 
-    /// LD (HL+),A
+    /// LDI (HL),A
+    /// aka LD (HL+),A
     /// 1 8
     /// - - - -
-    fn op_0022(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0022(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let target_address = cpu.registers.get_word(CpuRegIndex::HL);
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         mmu.load_byte(target_address, value);
@@ -301,35 +344,47 @@ impl Instruction {
     /// INC HL
     /// 1 8
     /// - - - -
-    fn op_0023(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        cpu.registers.increment(CpuRegIndex::HL, 1);
+    fn op_0023(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.increment_r16(cpu, CpuRegIndex::HL);
         self.cycles as i16
     }
 
     /// INC H
     /// 1 4
     /// Z 0 H -
-    fn op_0024(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        cpu.registers.increment(CpuRegIndex::H, 1);
+    fn op_0024(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.increment_r8(cpu, CpuRegIndex::H);
         self.cycles as i16
     }
 
     /// JR Z,r8
     /// 2 12/8
     /// - - - -
-    fn op_0028(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d8 = cpu.read_byte_at_pc(mmu);
+    fn op_0028(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d8 = args[0];
         if cpu.registers.get_flags().zero {
             self.relative_jump(cpu, d8);
         }
         self.cycles as i16
     }
 
+    /// LDI A,(HL)
+    /// aka LD A, (HL+)
+    /// 1 8
+    /// - - - -
+    fn op_002a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let source_address = cpu.registers.get_word(CpuRegIndex::HL);
+        let value = mmu.read_byte(source_address);
+        cpu.registers.set_byte(CpuRegIndex::A, value);
+        cpu.registers.increment(CpuRegIndex::HL, 1);
+        self.cycles as i16
+    }
+
     /// LD L,d8
     /// 2 8
     /// - - - -
-    fn op_002e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d8 = cpu.read_byte_at_pc(mmu);
+    fn op_002e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d8 = args[0];
         cpu.registers.set_byte(CpuRegIndex::L, d8);
         self.cycles as i16
     }
@@ -337,16 +392,17 @@ impl Instruction {
     /// LD SP,d16
     /// 3 12
     /// - - - -
-    fn op_0031(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d16 = cpu.read_word_at_pc(mmu);
+    fn op_0031(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d16 = Instruction::read_args_as_word(args[0], args[1]);
         cpu.registers.set_word(CpuRegIndex::SP, d16);
         self.cycles as i16
     }
 
-    /// LD (HL-),A
+    /// LDD (HL),A
+    /// aka LD (HL-),A
     /// 1 8
     /// - - - -
-    fn op_0032(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0032(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let target_address = cpu.registers.get_word(CpuRegIndex::HL);
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         mmu.load_byte(target_address, value);
@@ -354,10 +410,20 @@ impl Instruction {
         self.cycles as i16
     }
 
+    /// LD (HL),d8
+    /// 2 12
+    /// - - - -
+    fn op_0036(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let target_address = cpu.registers.get_word(CpuRegIndex::HL);
+        let value = args[0];
+        mmu.load_byte(target_address, value);
+        self.cycles as i16
+    }
+
     /// DEC A
     /// 1 4
     /// Z 1 H -
-    fn op_003d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_003d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.decrement_r8(cpu, CpuRegIndex::A);
         self.cycles as i16
     }
@@ -365,16 +431,17 @@ impl Instruction {
     /// INC (HL)
     /// 1 12
     /// Z 0 H -
-    fn op_0034(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        cpu.registers.increment(CpuRegIndex::HL, 1);
+    fn op_0034(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let hl = cpu.registers.get_word(CpuRegIndex::HL);
+        self.increment_a16(cpu, mmu, hl);
         self.cycles as i16
     }
 
     /// LD A,d8
     /// 2 8
     /// - - - -
-    fn op_003e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let d8 = cpu.read_byte_at_pc(mmu);
+    fn op_003e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let d8 = args[0];
         cpu.registers.set_byte(CpuRegIndex::A, d8);
         self.cycles as i16
     }
@@ -382,7 +449,7 @@ impl Instruction {
     /// LD C,A
     /// 1 4
     /// - - - -
-    fn op_004f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_004f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         cpu.registers.set_byte(CpuRegIndex::C, value);
         self.cycles as i16
@@ -391,7 +458,7 @@ impl Instruction {
     /// LD D,A
     /// 1 4
     /// - - - -
-    fn op_0057(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0057(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         cpu.registers.set_byte(CpuRegIndex::D, value);
         self.cycles as i16
@@ -400,7 +467,7 @@ impl Instruction {
     /// LD H,A
     /// 1 4
     /// - - - -
-    fn op_0067(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0067(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         cpu.registers.set_byte(CpuRegIndex::H, value);
         self.cycles as i16
@@ -409,7 +476,7 @@ impl Instruction {
     /// LD (HL),A
     /// 1 8
     /// - - - -
-    fn op_0077(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0077(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let target_address = cpu.registers.get_word(CpuRegIndex::HL);
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         mmu.load_byte(target_address, value);
@@ -419,7 +486,7 @@ impl Instruction {
     /// LD A,B
     /// 1 4
     /// - - - -
-    fn op_0078(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0078(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::B);
         cpu.registers.set_byte(CpuRegIndex::A, value);
         self.cycles as i16
@@ -428,7 +495,7 @@ impl Instruction {
     /// LD A,E
     /// 1 4
     /// - - - -
-    fn op_007b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_007b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::E);
         cpu.registers.set_byte(CpuRegIndex::A, value);
         self.cycles as i16
@@ -437,7 +504,7 @@ impl Instruction {
     /// LD A,H
     /// 1 4
     /// - - - -
-    fn op_007c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_007c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::H);
         cpu.registers.set_byte(CpuRegIndex::A, value);
         self.cycles as i16
@@ -446,7 +513,7 @@ impl Instruction {
     /// LD A,L
     /// 1 4
     /// - - - -
-    fn op_007d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_007d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::L);
         cpu.registers.set_byte(CpuRegIndex::A, value);
         self.cycles as i16
@@ -455,7 +522,7 @@ impl Instruction {
     /// ADD (HL)
     /// 1 8
     /// Z 0 H C
-    fn op_0086(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0086(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let a = cpu.registers.get_byte(CpuRegIndex::A);
         let hl = cpu.registers.get_word(CpuRegIndex::HL);
         let b = mmu.read_byte(hl);
@@ -468,7 +535,7 @@ impl Instruction {
     /// SUB B
     /// 1 4
     /// Z 1 H C
-    fn op_0090(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_0090(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let a = cpu.registers.get_byte(CpuRegIndex::A);
         let b = cpu.registers.get_byte(CpuRegIndex::B);
         let (result, flags) = alu::subtract_byte(a, b);
@@ -480,7 +547,7 @@ impl Instruction {
     /// XOR A
     /// 1 4
     /// Z 0 0 0
-    fn op_00af(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_00af(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let mut value = cpu.registers.get_byte(CpuRegIndex::A);
         value ^= value;
         cpu.registers.set_byte(CpuRegIndex::A, value);
@@ -498,7 +565,7 @@ impl Instruction {
     /// CP (HL)
     /// 1 8
     /// Z 1 H C
-    fn op_00be(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_00be(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let a = cpu.registers.get_byte(CpuRegIndex::A);
         let source_address = cpu.registers.get_word(CpuRegIndex::HL);
         let d8 = mmu.read_byte(source_address);
@@ -510,7 +577,7 @@ impl Instruction {
     /// POP BC
     /// 1 12
     /// - - - -
-    fn op_00c1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_00c1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         // rr=(SP)
         let sp = cpu.registers.get_word(CpuRegIndex::SP);
         let value = mmu.read_word(sp, Endianness::BIG);
@@ -523,8 +590,8 @@ impl Instruction {
     /// JP a16
     /// 3 16
     /// - - - -
-    fn op_00c3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let a16 = cpu.read_word_at_pc(mmu);
+    fn op_00c3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let a16 = Instruction::read_args_as_word(args[0], args[1]);
         cpu.registers.set_word(CpuRegIndex::PC, a16);
         self.cycles as i16
     }
@@ -532,7 +599,7 @@ impl Instruction {
     /// PUSH BC
     /// 1 16
     /// - - - -
-    fn op_00c5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_00c5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         // SP=SP-2
         cpu.registers.decrement(CpuRegIndex::SP, 2);
         // (SP)=BC
@@ -545,7 +612,7 @@ impl Instruction {
     /// RET
     /// 1 16
     /// - - - -
-    fn op_00c9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_00c9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         // PC=(SP)
         let sp = cpu.registers.get_word(CpuRegIndex::SP);
         let jump_to_address = mmu.read_word(sp, Endianness::BIG);
@@ -558,8 +625,8 @@ impl Instruction {
     /// CALL a16
     /// 3 24
     /// - - - -
-    fn op_00cd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let a16 = cpu.read_word_at_pc(mmu);
+    fn op_00cd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let a16 = Instruction::read_args_as_word(args[0], args[1]);
 
         // SP=SP-2
         cpu.registers.decrement(CpuRegIndex::SP, 2);
@@ -573,11 +640,12 @@ impl Instruction {
         self.cycles as i16
     }
 
-    /// LD ($FF00+a8),A
+    /// LDH (a8),A
+    /// aka LD ($FF00+a8),A
     /// 2 12
     /// - - - -
-    fn op_00e0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let a8 = cpu.read_byte_at_pc(mmu);
+    fn op_00e0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let a8 = args[0];
         let target_address = 0xFF00 + (a8 as u16);
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         mmu.load_byte(target_address, value);
@@ -587,7 +655,7 @@ impl Instruction {
     /// LD ($FF00+C),A
     /// 1 8
     /// - - - -
-    fn op_00e2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_00e2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let target_address = 0xFF00 + (cpu.registers.get_byte(CpuRegIndex::C) as u16);
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         mmu.load_byte(target_address, value);
@@ -597,8 +665,8 @@ impl Instruction {
     /// LD (a16),A 
     /// 3 16 
     /// - - - -
-    fn op_00ea(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let a16 = cpu.read_word_at_pc(mmu);
+    fn op_00ea(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let a16 = Instruction::read_args_as_word(args[0], args[1]);
         let value = cpu.registers.get_byte(CpuRegIndex::A);
         mmu.load_byte(a16, value);
         self.cycles as i16
@@ -607,8 +675,8 @@ impl Instruction {
     /// LD A,($FF00+a8)
     /// 2 12
     /// - - - -
-    fn op_00f0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
-        let a8 = cpu.read_byte_at_pc(mmu);
+    fn op_00f0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let a8 = args[0];
         let source_address = 0xFF00 + a8 as u16;
         let value = mmu.read_byte(source_address);
         cpu.registers.set_byte(CpuRegIndex::A, value);
@@ -618,7 +686,7 @@ impl Instruction {
     /// LD A,($FF00+C)
     /// 1 8
     /// - - - -
-    fn op_00f2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_00f2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let source_address = 0xFF00 + (cpu.registers.get_byte(CpuRegIndex::C) as u16);
         let value = mmu.read_byte(source_address);
         cpu.registers.set_byte(CpuRegIndex::A, value);
@@ -628,7 +696,7 @@ impl Instruction {
     /// DI
     /// 1 4
     /// - - - -
-    fn op_00f3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_00f3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         cpu.interrupts.set_ime(false, mmu);
         self.cycles as i16
     }
@@ -636,9 +704,9 @@ impl Instruction {
     /// CP d8
     /// 2 8
     /// Z 1 H C
-    fn op_00fe(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_00fe(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let d8 = cpu.read_byte_at_pc(mmu);
+        let d8 = args[0];
         let (result, flags) = alu::subtract_byte(a, d8);
         cpu.registers.set_f(flags);
         self.cycles as i16
@@ -649,10 +717,10 @@ impl Instruction {
     /// RL C
     /// 2 8
     /// Z 0 0 C
-    fn op_cb11(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_cb11(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::C);
         let mut flags = cpu.registers.get_flags();
-        flags = alu::rl(value, flags.carry);
+        flags = alu::rotate_left(value, flags.carry);
         cpu.registers.set_f(flags);
         self.cycles as i16
     }
@@ -660,7 +728,7 @@ impl Instruction {
     /// BIT 7,H
     /// 2 8
     /// Z 0 1 -
-    fn op_cb7c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+    fn op_cb7c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let value = cpu.registers.get_byte(CpuRegIndex::H);
         let mut flags = cpu.registers.get_flags();
         // The opposite of the nth bit of the second operand is written into the Z flag.

@@ -48,14 +48,16 @@ impl Cpu {
             0
         } else {
             let start_pc = self.registers.get_word(CpuRegIndex::PC);
+
             let opcode = self.fetch_opcode(mmu);
-            let instruction = Instruction::get_instruction(opcode);
+            let mut instruction = Instruction::get_instruction(opcode);
+            let (arg1, arg2) = self.fetch_args(&instruction, mmu);
 
             if DEBUG_PRINT {
-                println!("{:#06X}\t{:#06X}\t{}", start_pc, opcode, instruction.mnemonic);
+                println!("{:#06X}\t{:#06X}\t{}\t{}\t{}", start_pc, opcode, instruction.mnemonic, arg1, arg2);
             }
 
-            self.execute_instruction(instruction, mmu)
+            instruction.execute(self, mmu, &[arg1, arg2])
         }
     }
 
@@ -89,7 +91,23 @@ impl Cpu {
         opcode
     }
 
-    fn execute_instruction(&mut self, mut instruction: Instruction, mmu: &mut Mmu) -> i16 {
-        instruction.execute(self, mmu)
+    fn fetch_args(&mut self, instruction: &Instruction, mmu: &mut Mmu) -> (u8, u8) {
+        let mut arg1: u8 = 0;
+        let mut arg2: u8 = 0;
+
+        let num_args = if instruction.is_cbprefixed() {
+            instruction.size - 2
+        } else {
+            instruction.size - 1
+        };
+
+        if num_args > 0 {
+            arg1 = self.read_byte_at_pc(mmu);
+        }
+        if num_args > 1 {
+            arg2 = self.read_byte_at_pc(mmu);
+        }
+
+        (arg1, arg2)
     }
 }
