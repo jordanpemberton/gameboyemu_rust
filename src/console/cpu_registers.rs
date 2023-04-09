@@ -97,7 +97,7 @@ impl CpuRegisters {
         }
     }
 
-    pub(crate) fn set_f(&mut self, flags: Flags) {
+    pub(crate) fn set_flags(&mut self, flags: Flags) {
         self.f =
             (if flags.zero { 1 } else { 0 }) << FLAG_ZERO_BYTE |
                 (if flags.subtract { 1 } else { 0 }) << FLAG_SUBTRACT_BYTE |

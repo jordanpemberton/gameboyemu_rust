@@ -21,32 +21,30 @@ pub(crate) fn signed_word(value: u16) -> i16 {
 /// Rotates register one bit to the left.
 /// Previous carry flag becomes the least significant bit,
 /// and previous most significant bit becomes the new carry flag.
-pub(crate) fn rotate_left(mut value: u8, carry: bool) -> Flags {
-    let bit_7 = value >> 7;
-    value = (value << 1) | if carry { 1 } else { 0 };
-    // OR value = value.wrapping_shl(1);
-    Flags {
+pub(crate) fn rotate_left(value: u8, carry: bool) -> (u8, Flags) {
+    let most_signif_bit = value >> 7;
+    let result = (value << 1) | if carry { 1 } else { 0 };
+    (result, Flags {
         zero: value == 0,
         subtract: false,
         half_carry: false,
-        carry: bit_7 == 1,
-    }
+        carry: most_signif_bit == 1,
+    })
 }
 
 /// RLC (rotate left circular)
 /// Rotates register one bit to the left.
 /// Previous most significant bit becomes the new least significant bit,
 /// as well as the new carry flag.
-pub(crate) fn rotate_left_circular(mut value: u8) -> Flags {
-    let bit_7 = value >> 7;
-    value = (value << 1) | bit_7;
-    // OR value = value.rotate_left(1);
-    Flags {
+pub(crate) fn rotate_left_circular(value: u8) -> (u8, Flags) {
+    let most_signif_bit = value >> 7;
+    let result = (value << 1) | most_signif_bit;
+    (result, Flags {
         zero: value == 0,
         subtract: false,
         half_carry: false,
-        carry: bit_7 == 1,
-    }
+        carry: most_signif_bit == 1,
+    })
 }
 
 pub(crate) fn add_byte(a: u8, b: u8) -> (u8, Flags) {

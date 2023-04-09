@@ -61,18 +61,11 @@ impl Cpu {
         }
     }
 
-    pub(crate) fn read_byte_at_pc(&mut self, mmu: &mut Mmu) -> u8 {
+    fn read_byte_at_pc(&mut self, mmu: &mut Mmu) -> u8 {
         let pc = self.registers.get_word(CpuRegIndex::PC);
         let d8 = mmu.read_byte(pc);
         self.registers.increment(CpuRegIndex::PC, 1);
         d8
-    }
-
-    pub(crate) fn read_word_at_pc(&mut self, mmu: &mut Mmu) -> u16 {
-        let pc = self.registers.get_word(CpuRegIndex::PC);
-        let d16 = mmu.read_word(pc, Endianness::BIG);
-        self.registers.increment(CpuRegIndex::PC, 2);
-        d16
     }
 
     fn fetch_opcode(&mut self, mmu: &mut Mmu) -> u16 {
