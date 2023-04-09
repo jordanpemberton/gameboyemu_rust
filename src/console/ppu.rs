@@ -8,7 +8,7 @@ use sdl2::render::BlendMode::Add;
 use sdl2::render::TextureAccess::Static;
 
 use crate::console::display::Display;
-use crate::console::interrupts::Interrupts;
+use crate::console::interrupts::{InterruptRegBit, Interrupts};
 use crate::console::mmu::{Endianness, Mmu};
 
 pub(crate) const LCD_PIXEL_WIDTH: u32 = 160;
@@ -32,10 +32,10 @@ const MODE_CLOCKS: [u16; 4] = [
 ];
 
 const MODE_LINE_RANGE: [(u8, u8); 4] = [
-    (0, 144),
-    (144, 154),
-    (0, 144),
-    (0, 144),
+    (0, 144),   // HBlank
+    (144, 154), // VBlank
+    (0, 144),   // OamSearch
+    (0, 144),   // PixelTransfer
 ];
 
 pub(crate) struct Lcd {
@@ -166,11 +166,12 @@ impl TileMap {
     }
 
     fn fetch_tiles(&mut self, tiledata_address: usize, mmu: &mut Mmu) {
+        let tiledata_size_bytes = 16;
         for row in 0..32 {
             for col in 0..32 {
-                let tile_index = self.tile_indexes[row * 32 + col] as usize;
-                let tile_address = tiledata_address + tile_index * 16;
-                let tile_bytes = mmu.read_buffer(tile_address, tile_address + 16, Endianness::BIG)
+                let tile_index = row * 32 + col; // TEMP self.tile_indexes[row * 32 + col] as usize;
+                let tile_address = tiledata_address + tile_index * tiledata_size_bytes;
+                let tile_bytes = mmu.read_buffer(tile_address, tile_address + tiledata_size_bytes, Endianness::BIG)
                     .try_into().expect("Casting vec<u8> to [u8; 16] failed.");
                 self.tiles[row][col] = Tile::read_tile(tile_bytes);
             }
@@ -392,7 +393,7 @@ impl Ppu {
         }
     }
 
-    pub(crate) fn step(&mut self, cycles: u16, incoming_interrupts: &Interrupts, mmu: &mut Mmu) -> Interrupts {
+    pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
         self.clocks += cycles as usize;
 
         // Update
@@ -401,12 +402,10 @@ impl Ppu {
 
         // TODO check incoming interrupt requests /enables
 
-        let mut outgoing_interrupts = Interrupts::new();
-
         let (y0, y1) = MODE_LINE_RANGE[self.lcd_status.mode as usize];
 
         if self.ly < y0 || y1 <= self.ly {
-            panic!("Line {} is out of range for Mode {:?}.", self.ly, self.lcd_status.mode);
+            panic!("Line {} is out of range {}..{} for Mode {:?}.", self.ly, y0, y1, self.lcd_status.mode);
         } else {
             let t = MODE_CLOCKS[self.lcd_status.mode as usize] as usize;
 
@@ -415,16 +414,20 @@ impl Ppu {
                     if self.clocks < t {
                         self.oam_search(mmu);
                     } else {
+                        self.clocks = 0;
                         self.lcd_status.set_mode(StatMode::PixelTransfer, mmu);
-                        outgoing_interrupts.lcd_stat_request = true;
-                        outgoing_interrupts.vblank_request = true;
+                        interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                        interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                     }
                 }
                 StatMode::PixelTransfer => {
                     if self.clocks < t {
                         self.pixel_transfer(mmu);
                     } else {
+                        self.clocks = 0;
                         self.lcd_status.set_mode(StatMode::HBlank, mmu);
+                        interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
+                        interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                     }
                 }
                 StatMode::HBlank => {
@@ -432,11 +435,14 @@ impl Ppu {
                         // wait
                     } else {
                         self.increment_ly(mmu);
-                        if self.ly == y1 {
-                            self.lcd_status.set_mode(StatMode::VBlank, mmu);
-                            outgoing_interrupts.vblank_request = true;
-                        } else {
+                        if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
                             self.lcd_status.set_mode(StatMode::OamSearch, mmu);
+                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                            interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
+                        } else {
+                            self.lcd_status.set_mode(StatMode::VBlank, mmu);
+                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
+                            interrupts.requested.set_bit(InterruptRegBit::VBlank, true, mmu);
                         }
                     }
                 }
@@ -445,8 +451,11 @@ impl Ppu {
                         // wait
                     } else {
                         self.increment_ly(mmu);
-                        if self.ly == 0 {
+                        if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
+                            self.clocks = 0;
                             self.lcd_status.set_mode(StatMode::OamSearch, mmu);
+                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                            interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                         }
                     }
                 }
@@ -459,8 +468,6 @@ impl Ppu {
         if self.ly == self.lyc {
             self.lcd_status.set_lyc(true, mmu);
         }
-
-        outgoing_interrupts
     }
 
     fn increment_ly(&mut self, mmu: &mut Mmu) {
@@ -478,8 +485,69 @@ impl Ppu {
     }
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
-        self.tilemap_9800.fetch_indexes(0x9800, mmu);
-        self.tilemap_9800.fetch_tiles(0x8000, mmu);
-        self.background = self.tilemap_9800.to_lcd(&self.palettes);
+        if self.clocks == MODE_CLOCKS[self.lcd_status.mode as usize] as usize - 1 { // only draw on last tick
+            self.tilemap_9800.fetch_indexes(0x9800, mmu);
+            self.tilemap_9800.fetch_tiles(0x8000, mmu); // in rom: 0x323F
+            self.background = self.tilemap_9800.to_lcd(&self.palettes);
+        }
     }
 }
+
+const GB_CONSOLE_SPRITE: [u8; 16] = [
+    0x3C, 0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
+    0x7E, 0x5E, 0x7E, 0x0A, 0x7C, 0x56, 0x38, 0x7C,
+];
+
+const NINTENDO_LOGO_DATA: [u8; 16 * 3] = [
+    0xCE, 0xED, 0x66, 0x66,     0xCC, 0x0D, 0x00, 0x0B,
+    0x03, 0x73, 0x00, 0x83,     0x00, 0x0C, 0x00, 0x0D,
+    0x00, 0x08, 0x11, 0x1F,     0x88, 0x89, 0x00, 0x0E,
+
+    0xDC, 0xCC, 0x6E, 0xE6,     0xDD, 0xDD, 0xD9, 0x99,
+    0xBB, 0xBB, 0x67, 0x63,     0x6E, 0x0E, 0xEC, 0xCC,
+    0xDD, 0xDC, 0x99, 0x9F,     0xBB, 0xB9, 0x33, 0x3E,
+];
+
+const NINTENDO_LOGO: [u8; 16 * 3 * 4] = [
+    0xC0, 0, 0xE0, 0, 0xE0, 0, 0xD0, 0, 0x60, 0, 0x60, 0, 0x60, 0, 0x60, 0,
+    0xC0, 0, 0xC0, 0, 0x00, 0, 0xD0, 0, 0x00, 0, 0x00, 0, 0x00, 0, 0xB0, 0,
+    0x00, 0, 0x30, 0, 0x70, 0, 0x30, 0, 0x00, 0, 0x00, 0, 0x80, 0, 0x30, 0,
+    0x00, 0, 0x00, 0, 0x00, 0, 0xC0, 0, 0x00, 0, 0x00, 0, 0x00, 0, 0xD0, 0,
+    0x00, 0, 0x00, 0, 0x00, 0, 0x80, 0, 0x10, 0, 0x10, 0, 0x10, 0, 0xF0, 0,
+    0x80, 0, 0x80, 0, 0x80, 0, 0x90, 0, 0x00, 0, 0x00, 0, 0x00, 0, 0xE0, 0,
+
+    0xD0, 0, 0xC0, 0, 0xC0, 0, 0xC0, 0, 0x60, 0, 0xE0, 0, 0xE0, 0, 0x60, 0,
+    0xD0, 0, 0xD0, 0, 0xD0, 0, 0xD0, 0, 0xD0, 0, 0x90, 0, 0x90, 0, 0x90, 0,
+    0xB0, 0, 0xB0, 0, 0xB0, 0, 0xB0, 0, 0x60, 0, 0x70, 0, 0x60, 0, 0x30, 0,
+    0x60, 0, 0xE0, 0, 0x00, 0, 0xE0, 0, 0xE0, 0, 0xC0, 0, 0xC0, 0, 0xC0, 0,
+    0xD0, 0, 0xD0, 0, 0xD0, 0, 0xC0, 0, 0x90, 0, 0x90, 0, 0x90, 0, 0xF0, 0,
+    0xB0, 0, 0xB0, 0, 0xB0, 0, 0x90, 0, 0x30, 0, 0x30, 0, 0x30, 0, 0xE0, 0,
+];
+
+
+const R_DATA: [u8; 16] = [
+    0x3C, 0x42, 0xB9, 0xA5, 0xB9, 0xA5, 0x42, 0x3C,
+    0,0,0,0, 0,0,0,0,
+];
+
+// How do these get drawn correctly?
+const NINTENDO_TILES: [u8; 16 * 6] = [
+    // N
+    0xC6, 0, 0xE6, 0, 0xE6, 0, 0xD6, 0,
+    0xD6, 0, 0xCE, 0, 0xCE, 0, 0xC6, 0,
+    // in
+    0xC0, 0, 0xC0, 0, 0x00, 0, 0xDB, 0,
+    0xDD, 0, 0xD9, 0, 0xD9, 0, 0xD9, 0,
+    // te
+    0x00, 0, 0x30, 0, 0x78, 0, 0x33, 0,
+    0xB6, 0, 0xB7, 0, 0xB6, 0, 0xB3, 0,
+    // n
+    0x00, 0, 0x00, 0, 0x00, 0, 0xCD, 0,
+    0x6E, 0, 0xEC, 0, 0x0C, 0, 0xEC, 0,
+    // d
+    0x01, 0, 0x01, 0, 0x01, 0, 0x8F, 0,
+    0xD9, 0, 0xD9, 0, 0xD9, 0, 0xCF, 0,
+    // o
+    0x80, 0, 0x80, 0, 0x80, 0, 0x9E, 0,
+    0xB3, 0, 0xB3, 0, 0xB3, 0, 0x9E, 0,
+];

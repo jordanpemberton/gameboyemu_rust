@@ -38,8 +38,8 @@ impl Console {
 
         let sdl_context: Sdl = sdl2::init().unwrap();
 
-        let cpu = Cpu::new();
         let mut mmu = Mmu::new();
+        let cpu = Cpu::new(&mut mmu);
         let ppu = Ppu::new(&mut mmu);
 
         Console {
@@ -98,12 +98,9 @@ impl Console {
 
     fn step(&mut self) -> i16 {
         let mut cycles: i16 = self.cpu.step(&mut self.mmu);
-        cycles += self.cpu.check_interrupt();
+        cycles += self.cpu.check_interrupts();
 
-        // TODO
-        let interrupts = Interrupts::new();
-
-        self.ppu.step(cycles as u16, &interrupts, &mut self.mmu);
+        self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 
         self.display.draw(&mut self.mmu, &mut self.ppu);
 

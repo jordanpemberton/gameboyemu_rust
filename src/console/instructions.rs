@@ -69,6 +69,7 @@ impl Instruction {
             0x00EA => Instruction { opcode, mnemonic: "LD (a16),A", size: 3, cycles: 16, _fn: Instruction::op_00ea },
             0x00F0 => Instruction { opcode, mnemonic: "LDH A,($FF00+a8)", size: 2, cycles: 12, _fn: Instruction::op_00f0 },
             0x00F2 => Instruction { opcode, mnemonic: "LD A,($FF00+C)", size: 1, cycles: 8, _fn: Instruction::op_00f2 },
+            0x00F3 => Instruction { opcode, mnemonic: "DI", size: 1, cycles: 4, _fn: Instruction::op_00f3 },
             0x00FE => Instruction { opcode, mnemonic: "CP d8", size: 2, cycles: 8, _fn: Instruction::op_00fe },
             0xCB11 => Instruction { opcode, mnemonic: "RL C", size: 2, cycles: 8, _fn: Instruction::op_cb11 },
             0xCB7C => Instruction { opcode, mnemonic: "BIT 7,H", size: 2, cycles: 8, _fn: Instruction::op_cb7c },
@@ -621,6 +622,14 @@ impl Instruction {
         let source_address = 0xFF00 + (cpu.registers.get_byte(CpuRegIndex::C) as u16);
         let value = mmu.read_byte(source_address);
         cpu.registers.set_byte(CpuRegIndex::A, value);
+        self.cycles as i16
+    }
+
+    /// DI
+    /// 1 4
+    /// - - - -
+    fn op_00f3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu) -> i16 {
+        cpu.interrupts.set_ime(false, mmu);
         self.cycles as i16
     }
 

@@ -8,6 +8,7 @@ use sdl2::keyboard::Keycode::Hash;
 use crate::console::instructions::{Instruction};
 use crate::console::mmu::{Endianness, Mmu};
 use crate::console::cpu_registers::{CpuRegIndex, CpuRegisters};
+use crate::console::interrupts::Interrupts;
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
@@ -16,13 +17,15 @@ const DEBUG_PRINT: bool = false;
 pub(crate) struct Cpu {
     is_halted: bool,
     pub(crate) registers: CpuRegisters,
+    pub(crate) interrupts: Interrupts,
 }
 
 impl Cpu {
-    pub(crate) fn new() -> Cpu {
+    pub(crate) fn new(mmu: &mut Mmu) -> Cpu {
         Cpu {
             is_halted: false,
             registers: CpuRegisters::new(),
+            interrupts: Interrupts::new(mmu),
         }
     }
 
@@ -30,11 +33,21 @@ impl Cpu {
         self.is_halted = true;
     }
 
-    pub(crate) fn step(&mut self, mmu: &mut Mmu) -> i16 {
-        let mut cycles = 0;
-        let start_pc = self.registers.get_word(CpuRegIndex::PC);
+    pub(crate) fn check_interrupts(&mut self) -> i16 {
+        if self.interrupts.ime {
+            // TODO
+            16
+        } else {
+            // TODO
+            0
+        }
+    }
 
-        if !self.is_halted {
+    pub(crate) fn step(&mut self, mmu: &mut Mmu) -> i16 {
+        if self.is_halted {
+            0
+        } else {
+            let start_pc = self.registers.get_word(CpuRegIndex::PC);
             let opcode = self.fetch_opcode(mmu);
             let instruction = Instruction::get_instruction(opcode);
 
@@ -42,10 +55,8 @@ impl Cpu {
                 println!("{:#06X}\t{:#06X}\t{}", start_pc, opcode, instruction.mnemonic);
             }
 
-            cycles = self.execute_instruction(instruction, mmu);
+            self.execute_instruction(instruction, mmu)
         }
-
-        cycles
     }
 
     pub(crate) fn read_byte_at_pc(&mut self, mmu: &mut Mmu) -> u8 {
@@ -60,11 +71,6 @@ impl Cpu {
         let d16 = mmu.read_word(pc, Endianness::BIG);
         self.registers.increment(CpuRegIndex::PC, 2);
         d16
-    }
-
-    pub(crate) fn check_interrupt(&self) -> i16 {
-        // TODO
-        0
     }
 
     fn fetch_opcode(&mut self, mmu: &mut Mmu) -> u16 {
