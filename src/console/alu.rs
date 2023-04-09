@@ -17,6 +17,8 @@ pub(crate) fn signed_word(value: u16) -> i16 {
     }
 }
 
+/// ROTATE
+
 /// RL (rotate left)
 /// Rotates register one bit to the left.
 /// Previous carry flag becomes the least significant bit,
@@ -47,6 +49,8 @@ pub(crate) fn rotate_left_circular(value: u8) -> (u8, Flags) {
     })
 }
 
+/// ADD
+
 pub(crate) fn add_byte(a: u8, b: u8) -> (u8, Flags) {
     let half_carry = (a & 0x0F) + (b & 0x0F) > 0x0F;
     let (result, carry) = a.overflowing_add(b);
@@ -71,6 +75,8 @@ pub(crate) fn add_word(a: u16, b: u16) -> (u16, Flags) {
     })
 }
 
+/// SUB
+
 pub(crate) fn subtract_byte(a: u8, b: u8) -> (u8, Flags) {
     let half_carry = (a & 0x0F) < (b & 0x0F);
     let (result, carry) = a.overflowing_sub(b);
@@ -94,6 +100,8 @@ pub(crate) fn subtract_word(a: u16, b: u16) -> (u16, Flags) {
     })
 }
 
+/// INC
+
 /// Original carry flag is preserved
 pub(crate) fn increment_byte(a: u8, original_carry: bool) -> (u8, Flags) {
     let (result, add_flags) = add_byte(a, 1);
@@ -111,6 +119,8 @@ pub(crate) fn increment_word(a: u16) -> u16 {
     result
 }
 
+/// DEC
+
 /// Original carry flag is preserved
 pub(crate) fn decrement_byte(a: u8, original_carry: bool) -> (u8, Flags) {
     let (result, sub_flags) = subtract_byte(a, 1);
@@ -127,4 +137,26 @@ pub(crate) fn decrement_byte(a: u8, original_carry: bool) -> (u8, Flags) {
 pub(crate) fn decrement_word(a: u16) -> u16 {
     let (result, _) = subtract_word(a, 1);
     result
+}
+
+/// OR
+pub(crate) fn or_byte(a: u8, b: u8) -> (u8, Flags) {
+    let result = a | b;
+    (result, Flags {
+        zero: result == 0,
+        subtract: false,
+        half_carry: false,
+        carry: false,
+    })
+}
+
+/// XOR
+pub(crate) fn xor_byte(a: u8, b: u8) -> (u8, Flags) {
+    let result = a ^ b;
+    (result, Flags {
+        zero: result == 0,
+        subtract: false,
+        half_carry: false,
+        carry: false,
+    })
 }
