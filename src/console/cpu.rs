@@ -12,7 +12,7 @@ use crate::console::interrupts::Interrupts;
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
-const DEBUG_PRINT: bool = false;
+const DEBUG_PRINT: bool = true;
 
 pub(crate) struct Cpu {
     is_halted: bool,
@@ -54,7 +54,8 @@ impl Cpu {
             let (arg1, arg2) = self.fetch_args(&instruction, mmu);
 
             if DEBUG_PRINT {
-                println!("{:#06X}\t{:#06X}\t{}\t{}\t{}", start_pc, opcode, instruction.mnemonic, arg1, arg2);
+                println!("{:#06X}\t{:#06X}\t{}\t{:#04X}\t{:#04X}",
+                    start_pc, opcode, instruction.mnemonic, arg1, arg2);
             }
 
             instruction.execute(self, mmu, &[arg1, arg2])

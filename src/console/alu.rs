@@ -160,3 +160,14 @@ pub(crate) fn xor_byte(a: u8, b: u8) -> (u8, Flags) {
         carry: false,
     })
 }
+
+/// AND
+pub(crate) fn and_byte(a: u8, b: u8) -> (u8, Flags) {
+    let result = a & b;
+    (result, Flags {
+        zero: result == 0,
+        subtract: false,
+        half_carry: true,
+        carry: false,
+    })
+}

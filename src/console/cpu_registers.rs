@@ -109,19 +109,19 @@ impl CpuRegisters {
         match register {
             CpuRegIndex::AF => {
                 self.a = ((value & 0xFF00) >> 8) as u8;
-                self.f = (value & 0xFF) as u8;
+                self.f = (value & 0x00FF) as u8;
             }
             CpuRegIndex::BC => {
                 self.b = ((value & 0xFF00) >> 8) as u8;
-                self.c = (value & 0xFF) as u8;
+                self.c = (value & 0x00FF) as u8;
             }
             CpuRegIndex::DE => {
                 self.d = ((value & 0xFF00) >> 8) as u8;
-                self.e = (value & 0xFF) as u8;
+                self.e = (value & 0x00FF) as u8;
             }
             CpuRegIndex::HL => {
                 self.h = ((value & 0xFF00) >> 8) as u8;
-                self.l = (value & 0xFF) as u8;
+                self.l = (value & 0x00FF) as u8;
             }
             CpuRegIndex::PC => {
                 self.pc =value;
