@@ -68,6 +68,7 @@ impl Instruction {
             // 0x0034 => Instruction{ opcode, mnemonic: "INC (HL)", size: 1, cycles: 12, _fn: Instruction::op_0034 },
             0x0036 => Instruction { opcode, mnemonic: "LD (HL),d8", size: 2, cycles: 12, _fn: Instruction::op_0036 },
             // 0039 -- ADD HL, SP 1  8 - 0 H C
+            0x003C => Instruction { opcode, mnemonic: "INC A", size: 1, cycles: 4, _fn: Instruction::op_003c },
             0x003D => Instruction { opcode, mnemonic: "DEC A", size: 1, cycles: 4, _fn: Instruction::op_003d },
             0x003E => Instruction { opcode, mnemonic: "LD A,d8", size: 2, cycles: 8, _fn: Instruction::op_003e },
 
@@ -570,6 +571,14 @@ impl Instruction {
     fn op_0036(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let target_address = cpu.registers.get_word(CpuRegIndex::HL);
         mmu.load_byte(target_address, args[0]);
+        self.cycles
+    }
+
+    /// INC A
+    /// 1 4
+    /// Z 0 H -
+    fn op_003c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.increment_r8(cpu, CpuRegIndex::A);
         self.cycles
     }
 

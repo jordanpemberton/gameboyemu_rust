@@ -85,7 +85,7 @@ impl Console {
             self.mmu.load_rom(&game.data[0x0100..], 0x0100, 0x8000 - 0x100);
         } else {
             self.mmu.load_rom(&game.data[0..], 0, 0x8000);
-            self.cpu.registers.set_word(CpuRegIndex::PC, 0x0100);
+            // self.cpu.registers.set_word(CpuRegIndex::PC, 0x0100);
         }
 
         self.main_loop();
@@ -116,7 +116,7 @@ impl Console {
                     debugger.break_or_cont(
                         Option::from(&mut self.cpu),
                         Option::from(&self.mmu),
-                        Option::from(HashMap::from([("Locals", "test value")]))
+                        Option::from(HashMap::from([]))
                     );
                     self.is_paused = debugger.is_active();
                 }
@@ -124,7 +124,7 @@ impl Console {
                     debugger.peek(
                         Option::from(&mut self.cpu),
                         Option::from(&self.mmu),
-                        Option::from(HashMap::from([("Locals", "test value")]))
+                        Option::from(HashMap::from([]))
                     );
                 }
                 DebugAction::STEP => {
@@ -142,7 +142,7 @@ impl Console {
             debugger.peek(
                 Option::from(&mut self.cpu),
                 Option::from(&self.mmu),
-                Option::from(HashMap::from([("Locals", "test value")]))
+                Option::from(HashMap::from([]))
             );
         }
     }

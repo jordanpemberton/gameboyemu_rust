@@ -100,24 +100,6 @@ impl Display {
             self.draw_scanline(y, colors);
         }
     }
-
-    fn draw_to_stdout(&mut self, pixel_buffer: &[u8]) {
-        let mut s: String = String::new();
-
-        let mut i: usize = 0;
-        for row in 0..self.gbpixel_height {
-            for column in 0..self.gbpixel_width {
-                if i >= pixel_buffer.len() {
-                    break
-                };
-                let color = pixel_buffer[i];
-                i += 1;
-                s.push(if color > 0 { 'X' } else { '.' });
-            }
-            s.push('\n');
-        }
-        println!("{}", s);
-    }
 }
 
 fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, window_title: &str) -> WindowCanvas {

@@ -8,7 +8,7 @@ const PREFIX_BYTE: u8 = 0xCB;
 pub(crate) fn disassemble_to_output_file(rom: &Vec<u8>, output_path: &str) {
     let s = format!("{}", disassemble(rom));
     let mut file = File::create(output_path)
-        .expect("Failed to create file.");
+        .expect(format!("Failed to create file '{}'.", output_path).as_str());
     file.write_all(s.as_ref()).expect("\n\nSomething went wrong...");
 }
 

@@ -157,9 +157,16 @@ impl TileMap {
     }
 
     fn fetch_indexes(&mut self, tilemap_address: usize, mmu: &mut Mmu) {
+        // TEMP
+        // self.tile_indexes = [0; 1024];
+        // for i in 0..1024 {
+        //     self.tile_indexes[i] = i as u8;
+        // }
+        // return;
+
         self.tile_indexes = mmu.read_buffer(
             tilemap_address,
-            tilemap_address + 32 * 32 + 1,
+            tilemap_address + 1024,
             Endianness::BIG)
             .try_into().expect("Casting vec<u8> to [u8; 1024] failed.");
         // TODO signed indexed in addressing mode base 8800
@@ -422,8 +429,9 @@ impl Ppu {
                 }
                 StatMode::PixelTransfer => {
                     if self.clocks < t {
-                        self.pixel_transfer(mmu);
+                        // wait // TODO correct fifo, drawing timing
                     } else {
+                        self.pixel_transfer(mmu);
                         self.clocks = 0;
                         self.lcd_status.set_mode(StatMode::HBlank, mmu);
                         interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
@@ -485,11 +493,9 @@ impl Ppu {
     }
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
-        if self.clocks == MODE_CLOCKS[self.lcd_status.mode as usize] as usize - 1 { // only draw on last tick
-            self.tilemap_9800.fetch_indexes(0x9800, mmu);
-            self.tilemap_9800.fetch_tiles(0x8000, mmu); // in rom: 0x323F
-            self.background = self.tilemap_9800.to_lcd(&self.palettes);
-        }
+        self.tilemap_9800.fetch_indexes(0x9800, mmu);
+        self.tilemap_9800.fetch_tiles(0x8000, mmu); // TEMP in rom: 0x323F
+        self.background = self.tilemap_9800.to_lcd(&self.palettes);
     }
 }
 
