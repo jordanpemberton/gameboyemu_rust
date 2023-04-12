@@ -49,30 +49,26 @@ fn disassemble_line(pc: usize, rom: &Vec<u8>) -> (String, usize) {
 
     let instruction = Instruction::get_instruction(opcode);
 
-    let mut arg1 = String::new();
-    if instruction.size > 1
-            && ((opcode & 0xFF00) >> 8) as u8 != PREFIX_BYTE
-            && new_pc < rom.len() {
-        arg1 = format!("{:#04X}", rom[new_pc]);
-        new_pc += 1;
+    let num_args = if instruction.is_cbprefixed() {
+        if instruction.size > 1 { instruction.size - 2 } else { 0 }
+    } else {
+        if instruction.size > 0 { instruction.size - 1 } else { 0 }
     };
 
-    let mut arg2 = String::new();
-    if instruction.size > 2
-            && ((opcode & 0xFF00) >> 8) as u8 != PREFIX_BYTE
-            && new_pc < rom.len() {
-        arg2 = format!("{:#04X}", rom[new_pc]);
-        new_pc += 1;
-    };
+    let mut s = format!("{:#06X}\t{:#06X}\t{:<14}",
+        pc,
+        opcode,
+        instruction.mnemonic);
 
-    (
-        format!("{:#06X}\t{:#06X}: '{}'\t{}\t{}\n",
-            pc,
-            opcode,
-            instruction.mnemonic,
-            arg1,
-            arg2
-        ),
-        new_pc
-    )
+    if num_args > 0 {
+        s.push_str(format!("\t{:#04X}", rom[new_pc]).as_str());
+        new_pc += 1;
+    }
+    if num_args > 1 {
+        s.push_str(format!("\t{:#04X}", rom[new_pc]).as_str());
+        new_pc += 1;
+    }
+    s.push('\n');
+
+    (s, new_pc)
 }

@@ -18,6 +18,7 @@ pub(crate) struct Cpu {
     is_halted: bool,
     pub(crate) registers: CpuRegisters,
     pub(crate) interrupts: Interrupts,
+    visited: Vec<u16>,
 }
 
 impl Cpu {
@@ -26,6 +27,7 @@ impl Cpu {
             is_halted: false,
             registers: CpuRegisters::new(),
             interrupts: Interrupts::new(mmu),
+            visited: vec![],
         }
     }
 
@@ -51,14 +53,24 @@ impl Cpu {
 
             let opcode = self.fetch_opcode(mmu);
             let mut instruction = Instruction::get_instruction(opcode);
-            let (arg1, arg2) = self.fetch_args(&instruction, mmu);
+            let args = self.fetch_args(&instruction, mmu);
 
             if DEBUG_PRINT {
-                println!("{:#06X}\t{:#06X}\t{}\t{:#04X}\t{:#04X}",
-                    start_pc, opcode, instruction.mnemonic, arg1, arg2);
+                if !self.visited.contains(&start_pc)
+                {
+                    print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, instruction.mnemonic);
+                    if args.len() > 0 {
+                        print!("\t{:#04X}", args[0]);
+                    };
+                    if args.len() > 1 {
+                        print!("\t{:#04X}", args[1]);
+                    };
+                    println!();
+                }
+                self.visited.push(start_pc);
             }
 
-            instruction.execute(self, mmu, &[arg1, arg2])
+            instruction.execute(self, mmu, args.as_ref())
         }
     }
 
@@ -85,9 +97,8 @@ impl Cpu {
         opcode
     }
 
-    fn fetch_args(&mut self, instruction: &Instruction, mmu: &mut Mmu) -> (u8, u8) {
-        let mut arg1: u8 = 0;
-        let mut arg2: u8 = 0;
+    fn fetch_args(&mut self, instruction: &Instruction, mmu: &mut Mmu) -> Vec<u8> {
+        let mut args: Vec<u8> = vec![];
 
         let num_args = if instruction.is_cbprefixed() {
             instruction.size - 2
@@ -96,12 +107,12 @@ impl Cpu {
         };
 
         if num_args > 0 {
-            arg1 = self.read_byte_at_pc(mmu);
+            args.push(self.read_byte_at_pc(mmu));
         }
         if num_args > 1 {
-            arg2 = self.read_byte_at_pc(mmu);
+            args.push(self.read_byte_at_pc(mmu));
         }
 
-        (arg1, arg2)
+        args
     }
 }
