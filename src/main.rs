@@ -17,18 +17,18 @@ use crate::console::cpu_registers::{CpuRegIndex};
 const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/DMG_ROM.bin";
 
 const TEST_ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/individual/";
-const TEST_ROMS: [&str; 11] = [
-    "01-special.gb",
-    "02-interrupts.gb",
-    "03-op sp,hl.gb",
-    "04-op r,imm.gb",
-    "05-op rp.gb",
-    "06-ld r,r.gb",
+const TEST_ROMS: [&str; 1] = [
+    // "01-special.gb",
+    // "02-interrupts.gb",
+    // "03-op sp,hl.gb",
+    // "04-op r,imm.gb",
+    // "05-op rp.gb",
+    // "06-ld r,r.gb",
     "07-jr,jp,call,ret,rst.gb",
-    "08-misc instrs.gb",
-    "09-op r,r.gb",
-    "10-bit ops.gb",
-    "11-op a,(hl).gb",
+    // "08-misc instrs.gb",
+    // "09-op r,r.gb",
+    // "10-bit ops.gb",
+    // "11-op a,(hl).gb",
 ];
 const GAME_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/games/Tetris.gb";
 
@@ -51,7 +51,7 @@ fn disassemble_roms() {
 fn main() {
     disassemble_roms();
 
-    let mut gamboy = Console::new("GAMBOY",4, true, true);
+    let mut gamboy = Console::new("GAMBOY",4, false, true);
 
     // gamboy.run(CartridgeOption::NONE, false);
 
