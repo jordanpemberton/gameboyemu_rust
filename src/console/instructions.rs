@@ -43,9 +43,9 @@ impl Instruction {
             0x000C => Instruction { opcode, mnemonic: "INC C", size: 1, cycles: 4, _fn: Instruction::op_000c },
             0x000D => Instruction { opcode, mnemonic: "DEC C", size: 1, cycles: 4, _fn: Instruction::op_000d },
             0x000E => Instruction { opcode, mnemonic: "LD C,d8", size: 2, cycles: 8, _fn: Instruction::op_000e },
-            0x000F => Instruction { opcode, mnemonic: "Unimplemented", size: 1, cycles: -1, _fn: Instruction::unimplemented },
+            // 0x000F
 
-            0x0010 => Instruction { opcode, mnemonic: "Unimplemented", size: 1, cycles: -1, _fn: Instruction::unimplemented },
+            // 0x0010
             0x0011 => Instruction { opcode, mnemonic: "LD DE,d16", size: 3, cycles: 12, _fn: Instruction::op_0011 },
             0x0012 => Instruction { opcode, mnemonic: "LD (DE),A", size: 1, cycles: 8, _fn: Instruction::op_0012 },
             0x0013 => Instruction { opcode, mnemonic: "INC DE", size: 1, cycles: 8, _fn: Instruction::op_0013 },
@@ -60,7 +60,7 @@ impl Instruction {
             0x001C => Instruction { opcode, mnemonic: "INC E", size: 1, cycles: 4, _fn: Instruction::op_001c },
             0x001D => Instruction { opcode, mnemonic: "DEC E", size: 1, cycles: 4, _fn: Instruction::op_001d },
             0x001E => Instruction { opcode, mnemonic: "LD E,d8", size: 2, cycles: 8, _fn: Instruction::op_001e },
-            0x001F => Instruction { opcode, mnemonic: "Unimplemented", size: 1, cycles: -1, _fn: Instruction::unimplemented },
+            // 0x001F
 
             0x0020 => Instruction { opcode, mnemonic: "JR NZ,r8", size: 2, cycles: 8, _fn: Instruction::op_0020 },
             0x0021 => Instruction { opcode, mnemonic: "LD HL,d16", size: 3, cycles: 12, _fn: Instruction::op_0021 },
@@ -69,39 +69,140 @@ impl Instruction {
             0x0024 => Instruction { opcode, mnemonic: "INC H", size: 1, cycles: 4, _fn: Instruction::op_0024 },
             0x0025 => Instruction { opcode, mnemonic: "DEC H", size: 1, cycles: 4, _fn: Instruction::op_0025 },
             0x0026 => Instruction { opcode, mnemonic: "LD H,d8", size: 2, cycles: 8, _fn: Instruction::op_0026 },
+            // 0x0027
             0x0028 => Instruction { opcode, mnemonic: "JR Z,r8", size: 2, cycles: 8, _fn: Instruction::op_0028 },
             0x002A => Instruction { opcode, mnemonic: "LDI A,(HL)", size: 1, cycles: 8, _fn: Instruction::op_002a },
+            0x002B => Instruction { opcode, mnemonic: "DEC HL", size: 1, cycles: 8, _fn: Instruction::op_002b },
+            0x002C => Instruction { opcode, mnemonic: "INC L", size: 1, cycles: 4, _fn: Instruction::op_002c },
+            0x002D => Instruction { opcode, mnemonic: "DEC L", size: 1, cycles: 4, _fn: Instruction::op_002d },
             0x002E => Instruction { opcode, mnemonic: "LD L,d8", size: 2, cycles: 8, _fn: Instruction::op_002e },
             0x002F => Instruction { opcode, mnemonic: "CPL", size: 1, cycles: 4, _fn: Instruction::op_002f },
 
             0x0030 => Instruction { opcode, mnemonic: "JR NC,r8", size: 2, cycles: 8, _fn: Instruction::op_0030 },
             0x0031 => Instruction { opcode, mnemonic: "LD SP,d16", size: 3, cycles: 12, _fn: Instruction::op_0031 },
             0x0032 => Instruction { opcode, mnemonic: "LDD (HL),A", size: 1, cycles: 8, _fn: Instruction::op_0032 },
-            // 0x0034 => Instruction{ opcode, mnemonic: "INC (HL)", size: 1, cycles: 12, _fn: Instruction::op_0034 },
+            0x0033 => Instruction{ opcode, mnemonic: "INC SP", size: 1, cycles: 8, _fn: Instruction::op_0033 },
+            0x0034 => Instruction{ opcode, mnemonic: "INC (HL)", size: 1, cycles: 12, _fn: Instruction::op_0034 },
+            0x0035 => Instruction { opcode, mnemonic: "DEC (HL)", size: 1, cycles: 12, _fn: Instruction::op_0035 },
             0x0036 => Instruction { opcode, mnemonic: "LD (HL),d8", size: 2, cycles: 12, _fn: Instruction::op_0036 },
-            // 0039 -- ADD HL, SP 1  8 - 0 H C
+            // 0x0037
+            // 0x0038
+            // 0x0039
+            0x003A => Instruction { opcode, mnemonic: "LDD A,(HL)", size: 1, cycles: 8, _fn: Instruction::op_003a },
+            0x003B => Instruction { opcode, mnemonic: "DEC SP", size: 1, cycles: 8, _fn: Instruction::op_003b },
             0x003C => Instruction { opcode, mnemonic: "INC A", size: 1, cycles: 4, _fn: Instruction::op_003c },
             0x003D => Instruction { opcode, mnemonic: "DEC A", size: 1, cycles: 4, _fn: Instruction::op_003d },
             0x003E => Instruction { opcode, mnemonic: "LD A,d8", size: 2, cycles: 8, _fn: Instruction::op_003e },
+            // 0x003F
 
+            // 0x0040
+            // 0x0041
+            // 0x0042
+            // 0x0043
+            // 0x0044
+            // 0x0045
+            // 0x0046
             0x0047 => Instruction { opcode, mnemonic: "LD B,A", size: 1, cycles: 4, _fn: Instruction::op_0047 },
+            // 0x0048
+            // 0x0049
+            // 0x004A
+            // 0x004B
+            // 0x004C
+            // 0x004D
+            // 0x004E
             0x004F => Instruction { opcode, mnemonic: "LD C,A", size: 1, cycles: 4, _fn: Instruction::op_004f },
 
+            // 0x0050
+            // 0x0051
+            // 0x0052
+            // 0x0053
+            // 0x0054
+            // 0x0055
+            // 0x0056
             0x0057 => Instruction { opcode, mnemonic: "LD D,A", size: 1, cycles: 4, _fn: Instruction::op_0057 },
+            // 0x0058
+            // 0x0059
+            // 0x005A
             0x005B => Instruction { opcode, mnemonic: "LD E,E", size: 1, cycles: 4, _fn: Instruction::op_005b },
+            // 0x005C
+            // 0x005D
+            // 0x005E
+            // 0x005F
 
+            // 0x0060
+            // 0x0061
+            // 0x0062
+            // 0x0063
+            // 0x0064
+            // 0x0065
+            // 0x0066
             0x0067 => Instruction { opcode, mnemonic: "LD H,A", size: 1, cycles: 4, _fn: Instruction::op_0067 },
+            // 0x0068
+            // 0x0069
+            // 0x006A
+            // 0x006B
+            // 0x006C
+            // 0x006D
+            // 0x006E
+            // 0x006F
 
+            // 0x0070
+            // 0x0071
+            // 0x0072
+            // 0x0073
+            // 0x0074
+            // 0x0075
+            // 0x0076
             0x0077 => Instruction { opcode, mnemonic: "LD (HL),A", size: 1, cycles: 8, _fn: Instruction::op_0077 },
             0x0078 => Instruction { opcode, mnemonic: "LD A,B", size: 1, cycles: 4, _fn: Instruction::op_0078 },
             0x0079 => Instruction { opcode, mnemonic: "LD A,C", size: 1, cycles: 4, _fn: Instruction::op_0079 },
+            // 0x007A
             0x007B => Instruction { opcode, mnemonic: "LD A,E", size: 1, cycles: 4, _fn: Instruction::op_007b },
             0x007C => Instruction { opcode, mnemonic: "LD A,H", size: 1, cycles: 4, _fn: Instruction::op_007c },
             0x007D => Instruction { opcode, mnemonic: "LD A,L", size: 1, cycles: 4, _fn: Instruction::op_007d },
+            // 0x007E
+            // 0x007F
 
+            // 0x0080
+            // 0x0081
+            // 0x0082
+            // 0x0083
+            // 0x0084
+            // 0x0085
             0x0086 => Instruction { opcode, mnemonic: "ADD (HL)", size: 1, cycles: 8, _fn: Instruction::op_0086 },
+            // 0x0087
+            // 0x0088
+            // 0x0089
+            // 0x008A
+            // 0x008B
+            // 0x008C
+            // 0x008D
+            // 0x008E
+            // 0x008F
 
             0x0090 => Instruction { opcode, mnemonic: "SUB B", size: 1, cycles: 4, _fn: Instruction::op_0090 },
+            0x0091 => Instruction { opcode, mnemonic: "SUB C", size: 1, cycles: 4, _fn: Instruction::op_0091 },
+            0x0092 => Instruction { opcode, mnemonic: "SUB D", size: 1, cycles: 4, _fn: Instruction::op_0092 },
+            0x0093 => Instruction { opcode, mnemonic: "SUB E", size: 1, cycles: 4, _fn: Instruction::op_0093 },
+            0x0094 => Instruction { opcode, mnemonic: "SUB H", size: 1, cycles: 4, _fn: Instruction::op_0094 },
+            0x0095 => Instruction { opcode, mnemonic: "SUB L", size: 1, cycles: 4, _fn: Instruction::op_0095 },
+            0x0096 => Instruction { opcode, mnemonic: "SUB (HL)", size: 1, cycles: 8, _fn: Instruction::op_0096 },
+            0x0097 => Instruction { opcode, mnemonic: "SUB A", size: 1, cycles: 4, _fn: Instruction::op_0097 },
+            // 0x0091
+            // 0x0092
+            // 0x0093
+            // 0x0094
+            // 0x0095
+            // 0x0096
+            // 0x0097
+            // 0x0098
+            // 0x0099
+            // 0x009A
+            // 0x009B
+            // 0x009C
+            // 0x009D
+            // 0x009E
+            // 0x009F
 
             0x00A0 => Instruction { opcode, mnemonic: "AND B", size: 1, cycles: 4, _fn: Instruction::op_00a0 },
             0x00A1 => Instruction { opcode, mnemonic: "AND C", size: 1, cycles: 4, _fn: Instruction::op_00a1 },
@@ -111,35 +212,101 @@ impl Instruction {
             0x00A5 => Instruction { opcode, mnemonic: "AND L", size: 1, cycles: 4, _fn: Instruction::op_00a5 },
             0x00A6 => Instruction { opcode, mnemonic: "AND (HL)", size: 1, cycles: 4, _fn: Instruction::op_00a6 },
             0x00A7 => Instruction { opcode, mnemonic: "AND A", size: 1, cycles: 8, _fn: Instruction::op_00a7 },
+            // 0x00A8
+            // 0x00A9
+            // 0x00AA
+            // 0x00AB
+            // 0x00AC
+            // 0x00AD
+            // 0x00AE
             0x00AF => Instruction { opcode, mnemonic: "XOR A", size: 1, cycles: 4, _fn: Instruction::op_00af },
 
+            // 0x00B0
             0x00B1 => Instruction { opcode, mnemonic: "OR C", size: 1, cycles: 4, _fn: Instruction::op_00b1 },
+            // 0x00B2
+            // 0x00B3
+            // 0x00B4
+            // 0x00B5
+            // 0x00B6
+            // 0x00B7
+            // 0x00B8
+            // 0x00B9
+            // 0x00BA
+            // 0x00BB
+            // 0x00BC
+            // 0x00BD
             0x00BE => Instruction { opcode, mnemonic: "CP (HL)", size: 1, cycles: 8, _fn: Instruction::op_00be },
+            // 0x00BF
 
+            // 0x00C0 => RET NZ
             0x00C1 => Instruction { opcode, mnemonic: "POP BC", size: 1, cycles: 12, _fn: Instruction::op_00c1 },
+            // 0x00C2
             0x00C3 => Instruction { opcode, mnemonic: "JP a16", size: 3, cycles: 16, _fn: Instruction::op_00c3 },
+            0x00C4 => Instruction { opcode, mnemonic: "CALL NZ,a16", size: 3, cycles: 12, _fn: Instruction::op_00c4 },
             0x00C5 => Instruction { opcode, mnemonic: "PUSH BC", size: 1, cycles: 16, _fn: Instruction::op_00c5 },
+            // 0x00C6
+            // 0x00C7
+            // 0x00C8
             0x00C9 => Instruction { opcode, mnemonic: "RET", size: 1, cycles: 16, _fn: Instruction::op_00c9 },
+            // 0x00CA
+            // 0x00CB
+            // 0x00CC
             0x00CD => Instruction { opcode, mnemonic: "CALL a16", size: 3, cycles: 24, _fn: Instruction::op_00cd },
             0x00CE => Instruction { opcode, mnemonic: "ADC A,d8", size: 2, cycles: 8, _fn: Instruction::op_00ce },
+            // 0x00CF
 
+            // 0x00D0 => RET NC
+            // 0x00D1 => Instruction { opcode, mnemonic: "POP DE", size: 1, cycles: 12, _fn: Instruction::op_00d1 },
+            // 0x00D2 => JP NC,a16
+            0x00D3 => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
+            // 0x00D4 => CALL NC,a16
             0x00D5 => Instruction { opcode, mnemonic: "PUSH DE", size: 1, cycles: 16, _fn: Instruction::op_00d5 },
+            0x00D6 => Instruction { opcode, mnemonic: "SUB d8", size: 2, cycles: 8, _fn: Instruction::op_00d6 },
+            // 0x00D7 => RST 10H
+            // 0x00D8 => RET C
+            // 0x00D9 => RETI
+            // 0x00DA => JP C,a16
+            0x00DB => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
+            // 0x00DC => CALL C,a16
+            0x00DD => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
+            // 0x00DE => SBC A,d8
+            // 0x00DF => RST 18H
 
             0x00E0 => Instruction { opcode, mnemonic: "LDH (a8),A", size: 2, cycles: 12, _fn: Instruction::op_00e0 },
             0x00E1 => Instruction { opcode, mnemonic: "POP HL", size: 1, cycles: 12, _fn: Instruction::op_00e1 },
             0x00E2 => Instruction { opcode, mnemonic: "LDH (C),A", size: 1, cycles: 8, _fn: Instruction::op_00e2 },
+            0x00E3 => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
+            0x00E4 => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
             0x00E5 => Instruction { opcode, mnemonic: "PUSH HL", size: 1, cycles: 16, _fn: Instruction::op_00e5 },
             0x00E6 => Instruction { opcode, mnemonic: "AND d8", size: 2, cycles: 8, _fn: Instruction::op_00e6 },
+            // 0x00E7 => RST 20H
+            // 0x00E8 => Instruction { opcode, mnemonic: "ADD SP,r8", size: 2, cycles: 16, _fn: Instruction::op_00e8 },
+            // 0x00E9 => JP HL
             0x00EA => Instruction { opcode, mnemonic: "LD (a16),A", size: 3, cycles: 16, _fn: Instruction::op_00ea },
+            0x00EB => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
+            0x00EC => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
+            0x00ED => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
+            // 0x00EE => XOR d8
+            // 0x00EF => RST 28H
 
             0x00F0 => Instruction { opcode, mnemonic: "LDH A,(a8)", size: 2, cycles: 12, _fn: Instruction::op_00f0 },
             0x00F1 => Instruction { opcode, mnemonic: "POP AF", size: 1, cycles: 12, _fn: Instruction::op_00f1 },
             0x00F2 => Instruction { opcode, mnemonic: "LD A,($FF00+C)", size: 1, cycles: 8, _fn: Instruction::op_00f2 },
             0x00F3 => Instruction { opcode, mnemonic: "DI", size: 1, cycles: 4, _fn: Instruction::op_00f3 },
+            // 0x00F4 => Invalid
             0x00F5 => Instruction { opcode, mnemonic: "PUSH AF", size: 1, cycles: 16, _fn: Instruction::op_00f5 },
+            // 0x00F6 => OR d8
+            // 0x00F7 => RST 30H
+            // 0x00F8 => Instruction { opcode, mnemonic: "LD HL,SP+r8", size: 2, cycles: 12, _fn: Instruction::op_00f8 },
+            // 0x00F9 => Instruction { opcode, mnemonic: "LD SP,HL", size: 1, cycles: 8, _fn: Instruction::op_00f9 },
             0x00FA => Instruction { opcode, mnemonic: "LD A,(a16)", size: 3, cycles: 16, _fn: Instruction::op_00fa },
+            // 0x00FB => EI
+            0x00FC => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
+            0x00FD => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
             0x00FE => Instruction { opcode, mnemonic: "CP d8", size: 2, cycles: 8, _fn: Instruction::op_00fe },
             0x00FF => Instruction { opcode, mnemonic: "RST 38H", size: 1, cycles: 16, _fn: Instruction::op_00ff },
+
+            // ================================= CB PREFIXED =======================================
 
             0xCB11 => Instruction { opcode, mnemonic: "RL C", size: 2, cycles: 8, _fn: Instruction::op_cb11 },
             0xCB7C => Instruction { opcode, mnemonic: "BIT 7,H", size: 2, cycles: 8, _fn: Instruction::op_cb7c },
@@ -158,6 +325,11 @@ impl Instruction {
 
     fn unimplemented(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         println!("Opcode {:#06X} (\"{}\") is unimplemented.", self.opcode, self.mnemonic);
+        self.cycles
+    }
+
+    fn invalid(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        println!("Opcode {:#06X} (\"{}\") is invalid.", self.opcode, self.mnemonic);
         self.cycles
     }
 
@@ -290,6 +462,25 @@ impl Instruction {
         let a = Instruction::get_source_value(cpu, mmu, args, target);
         let b = Instruction::get_source_value(cpu, mmu, args, source);
         let (result, flags) = alu::add_word(a, b);
+        Instruction::set_target_value(cpu, mmu, args, target, result);
+        cpu.registers.set_flags(flags);
+        self.cycles
+    }
+
+    /// SUB
+    fn sub_8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, source: Src) -> i16 {
+        let a = Instruction::get_source_value(cpu, mmu, args, target) as u8;
+        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let (result, flags) = alu::subtract_byte(a, b);
+        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        cpu.registers.set_flags(flags);
+        self.cycles
+    }
+
+    fn sub_16(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, source: Src) -> i16 {
+        let a = Instruction::get_source_value(cpu, mmu, args, target);
+        let b = Instruction::get_source_value(cpu, mmu, args, source);
+        let (result, flags) = alu::subtract_word(a, b);
         Instruction::set_target_value(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
@@ -1279,25 +1470,63 @@ impl Instruction {
     /// 1 8
     /// Z 0 H C
     fn op_0086(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let hl = cpu.registers.get_word(CpuRegIndex::HL);
-        let b = mmu.read_byte(hl);
-        let (result, flags) = alu::add_byte(a, b);
-        cpu.registers.set_flags(flags);
-        cpu.registers.set_byte(CpuRegIndex::A, result);
-        self.cycles
+        self.add_8(cpu, mmu, args, Src::A, Src::HLa)
     }
 
     /// SUB B
     /// 1 4
     /// Z 1 H C
     fn op_0090(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let b = cpu.registers.get_byte(CpuRegIndex::B);
-        let (result, flags) = alu::subtract_byte(a, b);
-        cpu.registers.set_flags(flags);
-        cpu.registers.set_byte(CpuRegIndex::A, result);
-        self.cycles
+        self.sub_8(cpu, mmu, args, Src::A, Src::B)
+    }
+
+    /// SUB C
+    /// 1 4
+    /// Z 1 H C
+    fn op_0091(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.sub_8(cpu, mmu, args, Src::A, Src::C)
+    }
+
+    /// SUB D
+    /// 1 4
+    /// Z 1 H C
+    fn op_0092(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.sub_8(cpu, mmu, args, Src::A, Src::D)
+    }
+
+    /// SUB E
+    /// 1 4
+    /// Z 1 H C
+    fn op_0093(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.sub_8(cpu, mmu, args, Src::A, Src::E)
+    }
+
+    /// SUB H
+    /// 1 4
+    /// Z 1 H C
+    fn op_0094(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.sub_8(cpu, mmu, args, Src::A, Src::H)
+    }
+
+    /// SUB L
+    /// 1 4
+    /// Z 1 H C
+    fn op_0095(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.sub_8(cpu, mmu, args, Src::A, Src::L)
+    }
+
+    /// SUB (HL)
+    /// 1 8
+    /// Z 1 H C
+    fn op_0096(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.sub_8(cpu, mmu, args, Src::A, Src::HLa)
+    }
+
+    /// SUB A
+    /// 1 4
+    /// Z 1 H C
+    fn op_0097(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.sub_8(cpu, mmu, args, Src::A, Src::A)
     }
 
     /// AND B
@@ -1408,6 +1637,18 @@ impl Instruction {
         self.cycles
     }
 
+    /// CALL NZ,a16
+    /// 3 12/24
+    /// - - - -
+    fn op_00c4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if !(cpu.registers.get_flags().zero) {
+            let address = ((args[1] as u16) << 8) | (args[0] as u16);
+            self.call(cpu, mmu, address);
+            self.cycles += 12;
+        }
+        self.cycles
+    }
+
     /// PUSH BC
     /// 1 16
     /// - - - -
@@ -1446,6 +1687,13 @@ impl Instruction {
     fn op_00d5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.push(cpu, mmu, CpuRegIndex::DE);
         self.cycles
+    }
+
+    /// SUB d8
+    /// 2 8
+    /// Z 1 H C
+    fn op_00d6(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.sub_8(cpu, mmu, args, Src::A, Src::D8)
     }
 
     /// LDH (a8),A
