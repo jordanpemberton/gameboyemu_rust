@@ -70,7 +70,7 @@ impl Instruction {
             0x0025 => Instruction { opcode, mnemonic: "DEC H", size: 1, cycles: 4, _fn: Instruction::op_0025 },
             0x0026 => Instruction { opcode, mnemonic: "LD H,d8", size: 2, cycles: 8, _fn: Instruction::op_0026 },
             0x0028 => Instruction { opcode, mnemonic: "JR Z,r8", size: 2, cycles: 8, _fn: Instruction::op_0028 },
-            0x002A => Instruction { opcode, mnemonic: "LDI A,[HL]", size: 1, cycles: 8, _fn: Instruction::op_002a },
+            0x002A => Instruction { opcode, mnemonic: "LDI A,(HL)", size: 1, cycles: 8, _fn: Instruction::op_002a },
             0x002E => Instruction { opcode, mnemonic: "LD L,d8", size: 2, cycles: 8, _fn: Instruction::op_002e },
             0x002F => Instruction { opcode, mnemonic: "CPL", size: 1, cycles: 4, _fn: Instruction::op_002f },
 
@@ -103,7 +103,14 @@ impl Instruction {
 
             0x0090 => Instruction { opcode, mnemonic: "SUB B", size: 1, cycles: 4, _fn: Instruction::op_0090 },
 
+            0x00A0 => Instruction { opcode, mnemonic: "AND B", size: 1, cycles: 4, _fn: Instruction::op_00a0 },
+            0x00A1 => Instruction { opcode, mnemonic: "AND C", size: 1, cycles: 4, _fn: Instruction::op_00a1 },
+            0x00A2 => Instruction { opcode, mnemonic: "AND D", size: 1, cycles: 4, _fn: Instruction::op_00a2 },
             0x00A3 => Instruction { opcode, mnemonic: "AND E", size: 1, cycles: 4, _fn: Instruction::op_00a3 },
+            0x00A4 => Instruction { opcode, mnemonic: "AND H", size: 1, cycles: 4, _fn: Instruction::op_00a4 },
+            0x00A5 => Instruction { opcode, mnemonic: "AND L", size: 1, cycles: 4, _fn: Instruction::op_00a5 },
+            0x00A6 => Instruction { opcode, mnemonic: "AND (HL)", size: 1, cycles: 4, _fn: Instruction::op_00a6 },
+            0x00A7 => Instruction { opcode, mnemonic: "AND A", size: 1, cycles: 8, _fn: Instruction::op_00a7 },
             0x00AF => Instruction { opcode, mnemonic: "XOR A", size: 1, cycles: 4, _fn: Instruction::op_00af },
 
             0x00B1 => Instruction { opcode, mnemonic: "OR C", size: 1, cycles: 4, _fn: Instruction::op_00b1 },
@@ -122,6 +129,7 @@ impl Instruction {
             0x00E1 => Instruction { opcode, mnemonic: "POP HL", size: 1, cycles: 12, _fn: Instruction::op_00e1 },
             0x00E2 => Instruction { opcode, mnemonic: "LDH (C),A", size: 1, cycles: 8, _fn: Instruction::op_00e2 },
             0x00E5 => Instruction { opcode, mnemonic: "PUSH HL", size: 1, cycles: 16, _fn: Instruction::op_00e5 },
+            0x00E6 => Instruction { opcode, mnemonic: "AND d8", size: 2, cycles: 8, _fn: Instruction::op_00e6 },
             0x00EA => Instruction { opcode, mnemonic: "LD (a16),A", size: 3, cycles: 16, _fn: Instruction::op_00ea },
 
             0x00F0 => Instruction { opcode, mnemonic: "LDH A,(a8)", size: 2, cycles: 12, _fn: Instruction::op_00f0 },
@@ -135,6 +143,7 @@ impl Instruction {
 
             0xCB11 => Instruction { opcode, mnemonic: "RL C", size: 2, cycles: 8, _fn: Instruction::op_cb11 },
             0xCB7C => Instruction { opcode, mnemonic: "BIT 7,H", size: 2, cycles: 8, _fn: Instruction::op_cb7c },
+
             _ => Instruction { opcode, mnemonic: "Unimplemented", size: 1, cycles: -1, _fn: Instruction::unimplemented },
         }
     }
@@ -330,6 +339,16 @@ impl Instruction {
         let r = cpu.registers.get_word(register);
         let result = alu::decrement_word(r);
         cpu.registers.set_word(register, r);
+    }
+
+    /// AND
+    fn and(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], src: Src) -> i16 {
+        let a = cpu.registers.get_byte(CpuRegIndex::A);
+        let b = Instruction::get_source_value(cpu, mmu, args, src) as u8;
+        let (result, flags) = alu::and_byte(a, b);
+        cpu.registers.set_byte(CpuRegIndex::A, result);
+        cpu.registers.set_flags(flags);
+        self .cycles
     }
 
     /// NOP
@@ -1281,16 +1300,60 @@ impl Instruction {
         self.cycles
     }
 
+    /// AND B
+    /// 1 4
+    /// Z 0 1 0
+    fn op_00a0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.and(cpu, mmu, args, Src::B)
+    }
+
+    /// AND C
+    /// 1 4
+    /// Z 0 1 0
+    fn op_00a1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.and(cpu, mmu, args, Src::C)
+    }
+
+    /// AND D
+    /// 1 4
+    /// Z 0 1 0
+    fn op_00a2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.and(cpu, mmu, args, Src::D)
+    }
+
     /// AND E
     /// 1 4
     /// Z 0 1 0
     fn op_00a3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let e = cpu.registers.get_byte(CpuRegIndex::E);
-        let (result, flags) = alu::and_byte(a, e);
-        cpu.registers.set_byte(CpuRegIndex::A, result);
-        cpu.registers.set_flags(flags);
-        self.cycles
+        self.and(cpu, mmu, args, Src::E)
+    }
+
+    /// AND H
+    /// 1 4
+    /// Z 0 1 0
+    fn op_00a4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.and(cpu, mmu, args, Src::H)
+    }
+
+    /// AND L
+    /// 1 4
+    /// Z 0 1 0
+    fn op_00a5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.and(cpu, mmu, args, Src::L)
+    }
+
+    /// AND (HL)
+    /// 1 8
+    /// Z 0 1 0
+    fn op_00a6(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.and(cpu, mmu, args, Src::HLa)
+    }
+
+    /// AND A
+    /// 1 4
+    /// Z 0 1 0
+    fn op_00a7(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.and(cpu, mmu, args, Src::A)
     }
 
     /// XOR A
@@ -1415,6 +1478,13 @@ impl Instruction {
     fn op_00e5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.push(cpu, mmu, CpuRegIndex::HL);
         self.cycles
+    }
+
+    /// AND d8
+    /// 2 8
+    /// Z 0 1 0
+    fn op_00e6(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.and(cpu, mmu, args, Src::D8)
     }
 
     /// LD (a16),A 

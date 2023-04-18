@@ -100,6 +100,10 @@ impl Cpu {
     fn fetch_args(&mut self, instruction: &Instruction, mmu: &mut Mmu) -> Vec<u8> {
         let mut args: Vec<u8> = vec![];
 
+        if instruction.cycles < 0 {
+            return args;
+        }
+
         let num_args = if instruction.is_cbprefixed() {
             instruction.size - 2
         } else {

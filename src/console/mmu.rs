@@ -50,7 +50,6 @@ impl Mmu {
         } else {
             self.ram[(address - 0x8000) as usize]
         }
-
     }
 
     pub(crate) fn read_word(&self, address: u16, endian: Endianness) -> u16 {
@@ -71,42 +70,22 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn read_buffer(&self, mut begin: usize, mut end: usize, endian: Endianness) -> Vec<u8> {
-        let mut buffer: Vec<u8> = vec![];
-
-        if begin >= 0x8000 {
-            begin -= 0x8000;
-            end -= 0x8000;
-        }
-        if end > self.rom.len() {
-            end = self.rom.len();
-        }
+    pub(crate) fn read_buffer(&self, begin: usize, end: usize, endian: Endianness) -> Vec<u8> {
         if begin >= end {
             panic!("invalid range of {}..{}", begin, end);
         }
 
-        let slice: &[u8] = &self.rom[begin..end];
-
-        match endian {
-            Endianness::BIG => {
-                let mut i = 0;
-                while i < slice.len() - 1 {
-                    buffer.push(slice[i + 1]);
-                    buffer.push(slice[i]);
-                    i += 2;
-                }
-            },
-            Endianness::LITTLE | _ => {
-                let mut i = 0;
-                while i < slice.len() - 1 {
-                    buffer.push(slice[i]);
-                    buffer.push(slice[i + 1]);
-                    i += 2;
-                }
-            },
+        if begin < 0x8000 {
+            if end >= 0x8000 {
+                panic!("invalid range of {}..{}", begin, end);
+            }
+            Mmu::_read_buffer(&self.rom, begin, end, endian)
+        } else {
+            if end - 0x8000 >= 0x8000 {
+                panic!("invalid range of {}..{}", begin, end);
+            }
+            Mmu::_read_buffer(&self.ram, begin - 0x8000, end - 0x8000, endian)
         }
-
-        buffer
     }
 
     pub(crate) fn load_byte(&mut self, address: u16, value: u8) {
@@ -129,5 +108,31 @@ impl Mmu {
 
         self.load_byte(address, lsb);
         self.load_byte(address + 1, msb);
+    }
+
+    fn _read_buffer(mem: &[u8; 0x8000], begin: usize, end: usize, endian: Endianness) -> Vec<u8> {
+        let mut buffer: Vec<u8> = vec![];
+        let slice: &[u8] = &mem[begin..end];
+
+        match endian {
+            Endianness::BIG => {
+                let mut i = 0;
+                while i < slice.len() - 1 {
+                    buffer.push(slice[i + 1]);
+                    buffer.push(slice[i]);
+                    i += 2;
+                }
+            },
+            Endianness::LITTLE | _ => {
+                let mut i = 0;
+                while i < slice.len() - 1 {
+                    buffer.push(slice[i]);
+                    buffer.push(slice[i + 1]);
+                    i += 2;
+                }
+            },
+        }
+
+        buffer
     }
 }

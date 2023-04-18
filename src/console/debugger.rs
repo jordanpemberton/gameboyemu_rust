@@ -76,7 +76,7 @@ impl Debugger {
 
         let mut vram_values_str = String::new();
         let vram: &[u8] = &mmu.read_buffer(0x8000, 0xA000, Endianness::BIG);
-        let rows: usize = 1;
+        let rows: usize = 2; // for all: (vram.len() as u16 / cols as u16) as usize;
 
         let mut i = 0;
         for row in 0..rows {

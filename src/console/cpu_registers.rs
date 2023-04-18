@@ -1,4 +1,6 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use sdl2::keyboard::Keycode::Hash;
 
 const FLAG_ZERO_BYTE: u8 = 7;
 const FLAG_SUBTRACT_BYTE: u8 = 6;
@@ -12,7 +14,7 @@ pub(crate) struct Flags {
     pub(crate) carry: bool,         // C
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub(crate) enum CpuRegIndex {
     A, B, C, D, E, F, H, L,
     AF, BC, DE, HL,
@@ -237,8 +239,51 @@ impl CpuRegisters {
         }
     }
 
+    pub(crate) fn test() {
+        let mut regs = CpuRegisters::new();
+        regs.tests();
+    }
+
     fn bytes_to_word(&self, reg1: u8, reg2: u8) -> u16 {
         (reg1 as u16) << 8 | (reg2 as u16)
+    }
+
+    fn tests(&mut self) {
+        let m8 = HashMap::from([
+            (CpuRegIndex::A, 0x01),
+            (CpuRegIndex::F, 0x23),
+            (CpuRegIndex::B, 0x45),
+            (CpuRegIndex::C, 0x67),
+            (CpuRegIndex::D, 0x89),
+            (CpuRegIndex::E, 0xAB),
+            (CpuRegIndex::H, 0xCD),
+            (CpuRegIndex::L, 0xEF),
+        ]);
+
+        let m16 = HashMap::from([
+            (CpuRegIndex::AF, 0xFEDC),
+            (CpuRegIndex::BC, 0xCBA9),
+            (CpuRegIndex::DE, 0xA987),
+            (CpuRegIndex::HL, 0x8765),
+            (CpuRegIndex::PC, 0x6543),
+            (CpuRegIndex::SP, 0x4321),
+            (CpuRegIndex::AF, 0x0123),
+        ]);
+
+        for (r, v) in &m8 {
+            self.set_byte(*r, *v);
+            assert_eq!(self.get_byte(*r), *v);
+        }
+
+        for (r, v) in &m16 {
+            self.set_word(*r, *v);
+            assert_eq!(self.get_word(*r), *v);
+        }
+
+        for (r, v) in &m8 {
+            self.set_byte(*r, 0);
+            assert_eq!(self.get_byte(*r), 0);
+        }
     }
 }
 

@@ -79,32 +79,21 @@ impl Console {
         self.mmu.load_rom(bootrom.as_ref(), 0, bootrom.len());
     }
 
+    fn boot_empty(&mut self) {
+        self.load_bootrom();
+        self.main_loop();
+    }
+
     fn run_game(&mut self, game: &Cartridge, skip_boot: bool) {
         if !skip_boot {
             self.load_bootrom();
             self.mmu.load_rom(&game.data[0x0100..], 0x0100, 0x8000 - 0x100);
         } else {
             self.mmu.load_rom(&game.data[0..], 0, 0x8000);
-            // self.cpu.registers.set_word(CpuRegIndex::PC, 0x0100);
+            self.cpu.registers.set_word(CpuRegIndex::PC, 0x0100);
         }
 
         self.main_loop();
-    }
-
-    fn boot_empty(&mut self) {
-        self.load_bootrom();
-        self.main_loop();
-    }
-
-    fn step(&mut self) -> i16 {
-        let mut cycles: i16 = self.cpu.step(&mut self.mmu);
-        cycles += self.cpu.check_interrupts();
-
-        self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
-
-        self.display.draw(&mut self.mmu, &mut self.ppu);
-
-        cycles
     }
 
     fn debug_callback_handler(&mut self, debug_action: DebugAction) {
@@ -171,5 +160,16 @@ impl Console {
                 }
             }
         }
+    }
+
+    fn step(&mut self) -> i16 {
+        let mut cycles: i16 = self.cpu.step(&mut self.mmu);
+        cycles += self.cpu.check_interrupts();
+
+        if self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu) {
+            self.display.draw(&mut self.mmu, &mut self.ppu);
+        }
+
+        cycles
     }
 }

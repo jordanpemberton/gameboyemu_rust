@@ -157,17 +157,10 @@ impl TileMap {
     }
 
     fn fetch_indexes(&mut self, tilemap_address: usize, mmu: &mut Mmu) {
-        // TEMP
-        // self.tile_indexes = [0; 1024];
-        // for i in 0..1024 {
-        //     self.tile_indexes[i] = i as u8;
-        // }
-        // return;
-
         self.tile_indexes = mmu.read_buffer(
             tilemap_address,
             tilemap_address + 1024,
-            Endianness::BIG)
+            Endianness::LITTLE)
             .try_into().expect("Casting vec<u8> to [u8; 1024] failed.");
         // TODO signed indexed in addressing mode base 8800
     }
@@ -176,10 +169,13 @@ impl TileMap {
         let tiledata_size_bytes = 16;
         for row in 0..32 {
             for col in 0..32 {
-                let tile_index = row * 32 + col; // TEMP self.tile_indexes[row * 32 + col] as usize;
+                let tile_index = self.tile_indexes[row * 32 + col] as usize;
                 let tile_address = tiledata_address + tile_index * tiledata_size_bytes;
-                let tile_bytes = mmu.read_buffer(tile_address, tile_address + tiledata_size_bytes, Endianness::BIG)
-                    .try_into().expect("Casting vec<u8> to [u8; 16] failed.");
+                let tile_bytes = mmu.read_buffer(
+                    tile_address,
+                    tile_address + tiledata_size_bytes,
+                    Endianness::LITTLE
+                ).try_into().expect("Casting vec<u8> to [u8; 16] failed.");
                 self.tiles[row][col] = Tile::read_tile(tile_bytes);
             }
         }
@@ -400,7 +396,8 @@ impl Ppu {
         }
     }
 
-    pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
+    pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) -> bool {
+        let mut update_lcd = false;
         self.clocks += cycles as usize;
 
         // Update
@@ -432,6 +429,7 @@ impl Ppu {
                         // wait // TODO correct fifo, drawing timing
                     } else {
                         self.pixel_transfer(mmu);
+                        update_lcd = true;
                         self.clocks = 0;
                         self.lcd_status.set_mode(StatMode::HBlank, mmu);
                         interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
@@ -476,6 +474,8 @@ impl Ppu {
         if self.ly == self.lyc {
             self.lcd_status.set_lyc(true, mmu);
         }
+
+        update_lcd
     }
 
     fn increment_ly(&mut self, mmu: &mut Mmu) {
@@ -494,8 +494,14 @@ impl Ppu {
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
         self.tilemap_9800.fetch_indexes(0x9800, mmu);
-        self.tilemap_9800.fetch_tiles(0x8000, mmu); // TEMP in rom: 0x323F
+        self.tilemap_9800.fetch_tiles(0x8000, mmu);
+        // self.tilemap_9800.fetch_tiles(0x8800, mmu);
         self.background = self.tilemap_9800.to_lcd(&self.palettes);
+
+        // self.tilemap_9C00.fetch_indexes(0x9C00, mmu);
+        // self.tilemap_9C00.fetch_tiles(0x8000, mmu);
+        // self.tilemap_9C00.fetch_tiles(0x8800, mmu);
+        // self.background = self.tilemap_9C00.to_lcd(&self.palettes);
     }
 }
 
