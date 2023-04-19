@@ -18,7 +18,7 @@ const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/D
 
 const TEST_ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/";
 const TEST_ROMS: [&str; 1] = [
-    // "cpu_instrs.gb",
+    "cpu_instrs.gb",
 
     // "individual/01-special.gb",
     // "individual/02-interrupts.gb",
@@ -30,7 +30,7 @@ const TEST_ROMS: [&str; 1] = [
     // "individual/08-misc instrs.gb",
     // "individual/09-op r,r.gb",
     // "individual/10-bit ops.gb",
-    "individual/11-op a,(hl).gb",
+    // "individual/11-op a,(hl).gb",
 ];
 
 const GAME_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/games/Tetris.gb";
@@ -62,11 +62,9 @@ fn main() {
 
     CpuRegisters::test();
 
-    let mut gamboy = Console::new("GAMBOY",4, false, true);
+    let mut gamboy = Console::new("GAMBOY",4, true, true);
 
     // gamboy.run(CartridgeOption::NONE, false);
-
-    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), false);
 
     for test_rom in TEST_ROMS {
         let filepath = format!("{}{}", TEST_ROM_DIR, test_rom);
@@ -74,4 +72,6 @@ fn main() {
         gamboy.run(CartridgeOption::SOME(Cartridge::new(filepath.as_str().as_ref())), true);
         println!("============ END TEST {} ============\n\n\n", test_rom);
     }
+
+    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), false);
 }
