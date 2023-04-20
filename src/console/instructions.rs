@@ -376,14 +376,73 @@ impl Instruction {
             0xCB3E => Instruction { opcode, mnemonic: "SRL (HL)", size: 2, cycles: 16, _fn: Instruction::op_cb3e },
             0xCB3F => Instruction { opcode, mnemonic: "SRL A", size: 2, cycles: 8, _fn: Instruction::op_cb3f },
 
-            // 0xCB40
+            0xCB40 => Instruction { opcode, mnemonic: "BIT 0,B", size: 2, cycles: 8, _fn: Instruction::op_cb40 },
+            0xCB41 => Instruction { opcode, mnemonic: "BIT 0,C", size: 2, cycles: 8, _fn: Instruction::op_cb41 },
+            0xCB42 => Instruction { opcode, mnemonic: "BIT 0,D", size: 2, cycles: 8, _fn: Instruction::op_cb42 },
+            0xCB43 => Instruction { opcode, mnemonic: "BIT 0,E", size: 2, cycles: 8, _fn: Instruction::op_cb43 },
+            0xCB44 => Instruction { opcode, mnemonic: "BIT 0,H", size: 2, cycles: 8, _fn: Instruction::op_cb44 },
+            0xCB45 => Instruction { opcode, mnemonic: "BIT 0,L", size: 2, cycles: 8, _fn: Instruction::op_cb45 },
+            0xCB46 => Instruction { opcode, mnemonic: "BIT 0,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb46 },
+            0xCB47 => Instruction { opcode, mnemonic: "BIT 0,A", size: 2, cycles: 8, _fn: Instruction::op_cb47 },
+            0xCB48 => Instruction { opcode, mnemonic: "BIT 1,B", size: 2, cycles: 8, _fn: Instruction::op_cb48 },
+            0xCB49 => Instruction { opcode, mnemonic: "BIT 1,C", size: 2, cycles: 8, _fn: Instruction::op_cb49 },
+            0xCB4A => Instruction { opcode, mnemonic: "BIT 1,D", size: 2, cycles: 8, _fn: Instruction::op_cb4a },
+            0xCB4B => Instruction { opcode, mnemonic: "BIT 1,E", size: 2, cycles: 8, _fn: Instruction::op_cb4b },
+            0xCB4C => Instruction { opcode, mnemonic: "BIT 1,H", size: 2, cycles: 8, _fn: Instruction::op_cb4c },
+            0xCB4D => Instruction { opcode, mnemonic: "BIT 1,L", size: 2, cycles: 8, _fn: Instruction::op_cb4d },
+            0xCB4E => Instruction { opcode, mnemonic: "BIT 1,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb4e },
+            0xCB4f => Instruction { opcode, mnemonic: "BIT 1,A", size: 2, cycles: 8, _fn: Instruction::op_cb4f },
 
-            // 0xCB50
+            0xCB50 => Instruction { opcode, mnemonic: "BIT 2,B", size: 2, cycles: 8, _fn: Instruction::op_cb50 },
+            0xCB51 => Instruction { opcode, mnemonic: "BIT 2,C", size: 2, cycles: 8, _fn: Instruction::op_cb51 },
+            0xCB52 => Instruction { opcode, mnemonic: "BIT 2,D", size: 2, cycles: 8, _fn: Instruction::op_cb52 },
+            0xCB53 => Instruction { opcode, mnemonic: "BIT 2,E", size: 2, cycles: 8, _fn: Instruction::op_cb53 },
+            0xCB54 => Instruction { opcode, mnemonic: "BIT 2,H", size: 2, cycles: 8, _fn: Instruction::op_cb54 },
+            0xCB55 => Instruction { opcode, mnemonic: "BIT 2,L", size: 2, cycles: 8, _fn: Instruction::op_cb55 },
+            0xCB56 => Instruction { opcode, mnemonic: "BIT 2,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb56 },
+            0xCB57 => Instruction { opcode, mnemonic: "BIT 2,A", size: 2, cycles: 8, _fn: Instruction::op_cb57 },
+            0xCB58 => Instruction { opcode, mnemonic: "BIT 3,B", size: 2, cycles: 8, _fn: Instruction::op_cb58 },
+            0xCB59 => Instruction { opcode, mnemonic: "BIT 3,C", size: 2, cycles: 8, _fn: Instruction::op_cb59 },
+            0xCB5A => Instruction { opcode, mnemonic: "BIT 3,D", size: 2, cycles: 8, _fn: Instruction::op_cb5a },
+            0xCB5B => Instruction { opcode, mnemonic: "BIT 3,E", size: 2, cycles: 8, _fn: Instruction::op_cb5b },
+            0xCB5C => Instruction { opcode, mnemonic: "BIT 3,H", size: 2, cycles: 8, _fn: Instruction::op_cb5c },
+            0xCB5D => Instruction { opcode, mnemonic: "BIT 3,L", size: 2, cycles: 8, _fn: Instruction::op_cb5d },
+            0xCB5E => Instruction { opcode, mnemonic: "BIT 3,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb5e },
+            0xCB5F => Instruction { opcode, mnemonic: "BIT 3,A", size: 2, cycles: 8, _fn: Instruction::op_cb5f },
 
-            // 0xCB60
+            0xCB60 => Instruction { opcode, mnemonic: "BIT 4,B", size: 2, cycles: 8, _fn: Instruction::op_cb60 },
+            0xCB61 => Instruction { opcode, mnemonic: "BIT 4,C", size: 2, cycles: 8, _fn: Instruction::op_cb61 },
+            0xCB62 => Instruction { opcode, mnemonic: "BIT 4,D", size: 2, cycles: 8, _fn: Instruction::op_cb62 },
+            0xCB63 => Instruction { opcode, mnemonic: "BIT 4,E", size: 2, cycles: 8, _fn: Instruction::op_cb63 },
+            0xCB64 => Instruction { opcode, mnemonic: "BIT 4,H", size: 2, cycles: 8, _fn: Instruction::op_cb64 },
+            0xCB65 => Instruction { opcode, mnemonic: "BIT 4,L", size: 2, cycles: 8, _fn: Instruction::op_cb65 },
+            0xCB66 => Instruction { opcode, mnemonic: "BIT 4,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb66 },
+            0xCB67 => Instruction { opcode, mnemonic: "BIT 4,A", size: 2, cycles: 8, _fn: Instruction::op_cb67 },
+            0xCB68 => Instruction { opcode, mnemonic: "BIT 5,B", size: 2, cycles: 8, _fn: Instruction::op_cb68 },
+            0xCB69 => Instruction { opcode, mnemonic: "BIT 5,C", size: 2, cycles: 8, _fn: Instruction::op_cb69 },
+            0xCB6A => Instruction { opcode, mnemonic: "BIT 5,D", size: 2, cycles: 8, _fn: Instruction::op_cb6a },
+            0xCB6B => Instruction { opcode, mnemonic: "BIT 5,E", size: 2, cycles: 8, _fn: Instruction::op_cb6b },
+            0xCB6C => Instruction { opcode, mnemonic: "BIT 5,H", size: 2, cycles: 8, _fn: Instruction::op_cb6c },
+            0xCB6D => Instruction { opcode, mnemonic: "BIT 5,L", size: 2, cycles: 8, _fn: Instruction::op_cb6d },
+            0xCB6E => Instruction { opcode, mnemonic: "BIT 5,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb6e },
+            0xCB6F => Instruction { opcode, mnemonic: "BIT 5,A", size: 2, cycles: 8, _fn: Instruction::op_cb6f },
 
-            // 0xCB70
+            0xCB70 => Instruction { opcode, mnemonic: "BIT 6,B", size: 2, cycles: 8, _fn: Instruction::op_cb70 },
+            0xCB71 => Instruction { opcode, mnemonic: "BIT 6,C", size: 2, cycles: 8, _fn: Instruction::op_cb71 },
+            0xCB72 => Instruction { opcode, mnemonic: "BIT 6,D", size: 2, cycles: 8, _fn: Instruction::op_cb72 },
+            0xCB73 => Instruction { opcode, mnemonic: "BIT 6,E", size: 2, cycles: 8, _fn: Instruction::op_cb73 },
+            0xCB74 => Instruction { opcode, mnemonic: "BIT 6,H", size: 2, cycles: 8, _fn: Instruction::op_cb74 },
+            0xCB75 => Instruction { opcode, mnemonic: "BIT 6,L", size: 2, cycles: 8, _fn: Instruction::op_cb75 },
+            0xCB76 => Instruction { opcode, mnemonic: "BIT 6,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb76 },
+            0xCB77 => Instruction { opcode, mnemonic: "BIT 6,A", size: 2, cycles: 8, _fn: Instruction::op_cb77 },
+            0xCB78 => Instruction { opcode, mnemonic: "BIT 7,B", size: 2, cycles: 8, _fn: Instruction::op_cb78 },
+            0xCB79 => Instruction { opcode, mnemonic: "BIT 7,C", size: 2, cycles: 8, _fn: Instruction::op_cb79 },
+            0xCB7A => Instruction { opcode, mnemonic: "BIT 7,D", size: 2, cycles: 8, _fn: Instruction::op_cb7a },
+            0xCB7B => Instruction { opcode, mnemonic: "BIT 7,E", size: 2, cycles: 8, _fn: Instruction::op_cb7b },
             0xCB7C => Instruction { opcode, mnemonic: "BIT 7,H", size: 2, cycles: 8, _fn: Instruction::op_cb7c },
+            0xCB7D => Instruction { opcode, mnemonic: "BIT 7,L", size: 2, cycles: 8, _fn: Instruction::op_cb7d },
+            0xCB7E => Instruction { opcode, mnemonic: "BIT 7,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb7e },
+            0xCB7F => Instruction { opcode, mnemonic: "BIT 7,A", size: 2, cycles: 8, _fn: Instruction::op_cb7f },
 
             // 0xCB80
 
@@ -2667,10 +2726,171 @@ impl Instruction {
         self.bit_n(cpu, mmu, args, Src::A, 4)
     }
 
+    /// BIT 5,B
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb68(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::B, 5)
+    }
+
+    /// BIT 5,C
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb69(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::C, 5)
+    }
+
+    /// BIT 5,D
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb6a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::D, 5)
+    }
+
+    /// BIT 5,E
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb6b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::E, 5)
+    }
+
+    /// BIT 5,H
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb6c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::H, 5)
+    }
+
+    /// BIT 5,L
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb6d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::L, 5)
+    }
+
+    /// BIT 5,(HL)
+    /// 2 16
+    /// Z 0 1 -
+    fn op_cb6e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::HLa, 5)
+    }
+
+    /// BIT 5,A
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb6f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::A, 5)
+    }
+
+    /// BIT 6,B
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb70(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::B, 6)
+    }
+
+    /// BIT 6,C
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb71(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::C, 6)
+    }
+
+    /// BIT 6,D
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb72(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::D, 6)
+    }
+
+    /// BIT 6,E
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb73(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::E, 6)
+    }
+
+    /// BIT 6,H
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb74(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::H, 6)
+    }
+
+    /// BIT 6,L
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb75(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::L, 6)
+    }
+
+    /// BIT 6,(HL)
+    /// 2 16
+    /// Z 0 1 -
+    fn op_cb76(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::HLa, 6)
+    }
+
+    /// BIT 6,A
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb77(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::A, 6)
+    }
+
+    /// BIT 7,B
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb78(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::B, 7)
+    }
+
+    /// BIT 7,C
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb79(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::C, 7)
+    }
+
+    /// BIT 7,D
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb7a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::D, 7)
+    }
+
+    /// BIT 7,E
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb7b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::E, 7)
+    }
+
     /// BIT 7,H
     /// 2 8
     /// Z 0 1 -
     fn op_cb7c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.bit_n(cpu, mmu, args, Src::H, 7)
+    }
+
+    /// BIT 7,L
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb7d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::L, 7)
+    }
+
+    /// BIT 7,(HL)
+    /// 2 16
+    /// Z 0 1 -
+    fn op_cb7e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::HLa, 7)
+    }
+
+    /// BIT 7,A
+    /// 2 8
+    /// Z 0 1 -
+    fn op_cb7f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.bit_n(cpu, mmu, args, Src::A, 7)
     }
 }

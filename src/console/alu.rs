@@ -193,7 +193,7 @@ pub(crate) fn shift_left(a: u8, is_arithmetic: bool) -> (u8, Flags) {
     let carry = a >> 7 == 1;
     let mut result = a << 1;
     if is_arithmetic {
-        result |= (a & 0x01);
+        result |= a & 0x01;
     }
     (result, Flags {
         zero: result == 0,
@@ -208,7 +208,7 @@ pub(crate) fn shift_right(a: u8, is_arithmetic: bool) -> (u8, Flags) {
     let carry = (a & 0x01) == 0x01;
     let mut result = a >> 1;
     if is_arithmetic {
-        result |= (a & 0x80);
+        result |= a & 0x80;
     }
     (result, Flags {
         zero: result == 0,
