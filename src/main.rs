@@ -62,9 +62,11 @@ fn main() {
 
     CpuRegisters::test();
 
-    let mut gamboy = Console::new("GAMBOY",4, true, true);
+    let mut gamboy = Console::new("GAMBOY",4, false, true);
 
     // gamboy.run(CartridgeOption::NONE, false);
+
+    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), true);
 
     for test_rom in TEST_ROMS {
         let filepath = format!("{}{}", TEST_ROM_DIR, test_rom);
@@ -72,6 +74,4 @@ fn main() {
         gamboy.run(CartridgeOption::SOME(Cartridge::new(filepath.as_str().as_ref())), true);
         println!("============ END TEST {} ============\n\n\n", test_rom);
     }
-
-    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), false);
 }

@@ -43,7 +43,7 @@ impl Instruction {
             0x000C => Instruction { opcode, mnemonic: "INC C", size: 1, cycles: 4, _fn: Instruction::op_000c },
             0x000D => Instruction { opcode, mnemonic: "DEC C", size: 1, cycles: 4, _fn: Instruction::op_000d },
             0x000E => Instruction { opcode, mnemonic: "LD C,d8", size: 2, cycles: 8, _fn: Instruction::op_000e },
-            // 0x000F => RRCA
+            0x000F => Instruction { opcode, mnemonic: "RRCA", size: 1, cycles: 4, _fn: Instruction::op_000f },
 
             // 0x0010 => STOP d8
             0x0011 => Instruction { opcode, mnemonic: "LD DE,d16", size: 3, cycles: 12, _fn: Instruction::op_0011 },
@@ -60,7 +60,7 @@ impl Instruction {
             0x001C => Instruction { opcode, mnemonic: "INC E", size: 1, cycles: 4, _fn: Instruction::op_001c },
             0x001D => Instruction { opcode, mnemonic: "DEC E", size: 1, cycles: 4, _fn: Instruction::op_001d },
             0x001E => Instruction { opcode, mnemonic: "LD E,d8", size: 2, cycles: 8, _fn: Instruction::op_001e },
-            // 0x001F => RRA
+            0x001F => Instruction { opcode, mnemonic: "RRA", size: 1, cycles: 4, _fn: Instruction::op_001f },
 
             0x0020 => Instruction { opcode, mnemonic: "JR NZ,r8", size: 2, cycles: 8, _fn: Instruction::op_0020 },
             0x0021 => Instruction { opcode, mnemonic: "LD HL,d16", size: 3, cycles: 12, _fn: Instruction::op_0021 },
@@ -308,22 +308,22 @@ impl Instruction {
 
             // ==================================== CB PREFIXED ====================================
 
-            // 0xCB00 => Instruction { opcode, mnemonic: "RLC B", size: 2, cycles: 8, _fn: Instruction::op_cb00 },
-            // 0xCB01 => Instruction { opcode, mnemonic: "RLC C", size: 2, cycles: 8, _fn: Instruction::op_cb01 },
-            // 0xCB02 => Instruction { opcode, mnemonic: "RLC D", size: 2, cycles: 8, _fn: Instruction::op_cb02 },
-            // 0xCB03 => Instruction { opcode, mnemonic: "RLC E", size: 2, cycles: 8, _fn: Instruction::op_cb03 },
-            // 0xCB04 => Instruction { opcode, mnemonic: "RLC H", size: 2, cycles: 8, _fn: Instruction::op_cb04 },
-            // 0xCB05 => Instruction { opcode, mnemonic: "RLC L", size: 2, cycles: 8, _fn: Instruction::op_cb05 },
-            // 0xCB06 => Instruction { opcode, mnemonic: "RLC (HL)", size: 2, cycles: 16, _fn: Instruction::op_cb06 },
-            // 0xCB07 => Instruction { opcode, mnemonic: "RLC A", size: 2, cycles: 8, _fn: Instruction::op_cb07 },
-            // 0xCB08 => Instruction { opcode, mnemonic: "RRC B", size: 2, cycles: 8, _fn: Instruction::op_cb08 },
-            // 0xCB09 => Instruction { opcode, mnemonic: "RRC C", size: 2, cycles: 8, _fn: Instruction::op_cb09 },
-            // 0xCB0A => Instruction { opcode, mnemonic: "RRC D", size: 2, cycles: 8, _fn: Instruction::op_cb0a },
-            // 0xCB0B => Instruction { opcode, mnemonic: "RRC E", size: 2, cycles: 8, _fn: Instruction::op_cb0b },
-            // 0xCB0C => Instruction { opcode, mnemonic: "RRC H", size: 2, cycles: 8, _fn: Instruction::op_cb0c },
-            // 0xCB0D => Instruction { opcode, mnemonic: "RRC L", size: 2, cycles: 8, _fn: Instruction::op_cb0d },
-            // 0xCB0E => Instruction { opcode, mnemonic: "RRC (HL)", size: 2, cycles: 16, _fn: Instruction::op_cb0e },
-            // 0xCB0F => Instruction { opcode, mnemonic: "RRC A", size: 2, cycles: 8, _fn: Instruction::op_cb0f },
+            0xCB00 => Instruction { opcode, mnemonic: "RLC B", size: 2, cycles: 8, _fn: Instruction::op_cb00 },
+            0xCB01 => Instruction { opcode, mnemonic: "RLC C", size: 2, cycles: 8, _fn: Instruction::op_cb01 },
+            0xCB02 => Instruction { opcode, mnemonic: "RLC D", size: 2, cycles: 8, _fn: Instruction::op_cb02 },
+            0xCB03 => Instruction { opcode, mnemonic: "RLC E", size: 2, cycles: 8, _fn: Instruction::op_cb03 },
+            0xCB04 => Instruction { opcode, mnemonic: "RLC H", size: 2, cycles: 8, _fn: Instruction::op_cb04 },
+            0xCB05 => Instruction { opcode, mnemonic: "RLC L", size: 2, cycles: 8, _fn: Instruction::op_cb05 },
+            0xCB06 => Instruction { opcode, mnemonic: "RLC (HL)", size: 2, cycles: 16, _fn: Instruction::op_cb06 },
+            0xCB07 => Instruction { opcode, mnemonic: "RLC A", size: 2, cycles: 8, _fn: Instruction::op_cb07 },
+            0xCB08 => Instruction { opcode, mnemonic: "RRC B", size: 2, cycles: 8, _fn: Instruction::op_cb08 },
+            0xCB09 => Instruction { opcode, mnemonic: "RRC C", size: 2, cycles: 8, _fn: Instruction::op_cb09 },
+            0xCB0A => Instruction { opcode, mnemonic: "RRC D", size: 2, cycles: 8, _fn: Instruction::op_cb0a },
+            0xCB0B => Instruction { opcode, mnemonic: "RRC E", size: 2, cycles: 8, _fn: Instruction::op_cb0b },
+            0xCB0C => Instruction { opcode, mnemonic: "RRC H", size: 2, cycles: 8, _fn: Instruction::op_cb0c },
+            0xCB0D => Instruction { opcode, mnemonic: "RRC L", size: 2, cycles: 8, _fn: Instruction::op_cb0d },
+            0xCB0E => Instruction { opcode, mnemonic: "RRC (HL)", size: 2, cycles: 16, _fn: Instruction::op_cb0e },
+            0xCB0F => Instruction { opcode, mnemonic: "RRC A", size: 2, cycles: 8, _fn: Instruction::op_cb0f },
 
             0xCB10 => Instruction { opcode, mnemonic: "RL B", size: 2, cycles: 8, _fn: Instruction::op_cb10 },
             0xCB11 => Instruction { opcode, mnemonic: "RL C", size: 2, cycles: 8, _fn: Instruction::op_cb11 },
@@ -444,21 +444,141 @@ impl Instruction {
             0xCB7E => Instruction { opcode, mnemonic: "BIT 7,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb7e },
             0xCB7F => Instruction { opcode, mnemonic: "BIT 7,A", size: 2, cycles: 8, _fn: Instruction::op_cb7f },
 
-            // 0xCB80
+            0xCB80 => Instruction { opcode, mnemonic: "RES 0,B", size: 2, cycles: 8, _fn: Instruction::op_cb80 },
+            0xCB81 => Instruction { opcode, mnemonic: "RES 0,C", size: 2, cycles: 8, _fn: Instruction::op_cb81 },
+            0xCB82 => Instruction { opcode, mnemonic: "RES 0,D", size: 2, cycles: 8, _fn: Instruction::op_cb82 },
+            0xCB83 => Instruction { opcode, mnemonic: "RES 0,E", size: 2, cycles: 8, _fn: Instruction::op_cb83 },
+            0xCB84 => Instruction { opcode, mnemonic: "RES 0,H", size: 2, cycles: 8, _fn: Instruction::op_cb84 },
+            0xCB85 => Instruction { opcode, mnemonic: "RES 0,L", size: 2, cycles: 8, _fn: Instruction::op_cb85 },
+            0xCB86 => Instruction { opcode, mnemonic: "RES 0,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb86 },
+            0xCB87 => Instruction { opcode, mnemonic: "RES 0,A", size: 2, cycles: 8, _fn: Instruction::op_cb87 },
+            0xCB88 => Instruction { opcode, mnemonic: "RES 1,B", size: 2, cycles: 8, _fn: Instruction::op_cb88 },
+            0xCB89 => Instruction { opcode, mnemonic: "RES 1,C", size: 2, cycles: 8, _fn: Instruction::op_cb89 },
+            0xCB8A => Instruction { opcode, mnemonic: "RES 1,D", size: 2, cycles: 8, _fn: Instruction::op_cb8a },
+            0xCB8B => Instruction { opcode, mnemonic: "RES 1,E", size: 2, cycles: 8, _fn: Instruction::op_cb8b },
+            0xCB8C => Instruction { opcode, mnemonic: "RES 1,F", size: 2, cycles: 8, _fn: Instruction::op_cb8c },
+            0xCB8D => Instruction { opcode, mnemonic: "RES 1,H", size: 2, cycles: 8, _fn: Instruction::op_cb8d },
+            0xCB8E => Instruction { opcode, mnemonic: "RES 1,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb8e },
+            0xCB8F => Instruction { opcode, mnemonic: "RES 1,A", size: 2, cycles: 8, _fn: Instruction::op_cb8f },
 
-            // 0xCB90
+            0xCB90 => Instruction { opcode, mnemonic: "RES 2,B", size: 2, cycles: 8, _fn: Instruction::op_cb90 },
+            0xCB91 => Instruction { opcode, mnemonic: "RES 2,C", size: 2, cycles: 8, _fn: Instruction::op_cb91 },
+            0xCB92 => Instruction { opcode, mnemonic: "RES 2,D", size: 2, cycles: 8, _fn: Instruction::op_cb92 },
+            0xCB93 => Instruction { opcode, mnemonic: "RES 2,E", size: 2, cycles: 8, _fn: Instruction::op_cb93 },
+            0xCB94 => Instruction { opcode, mnemonic: "RES 2,H", size: 2, cycles: 8, _fn: Instruction::op_cb94 },
+            0xCB95 => Instruction { opcode, mnemonic: "RES 2,L", size: 2, cycles: 8, _fn: Instruction::op_cb95 },
+            0xCB96 => Instruction { opcode, mnemonic: "RES 2,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb96 },
+            0xCB97 => Instruction { opcode, mnemonic: "RES 2,A", size: 2, cycles: 8, _fn: Instruction::op_cb97 },
+            0xCB98 => Instruction { opcode, mnemonic: "RES 3,B", size: 2, cycles: 8, _fn: Instruction::op_cb98 },
+            0xCB99 => Instruction { opcode, mnemonic: "RES 3,C", size: 2, cycles: 8, _fn: Instruction::op_cb99 },
+            0xCB9A => Instruction { opcode, mnemonic: "RES 3,D", size: 2, cycles: 8, _fn: Instruction::op_cb9a },
+            0xCB9B => Instruction { opcode, mnemonic: "RES 3,E", size: 2, cycles: 8, _fn: Instruction::op_cb9b },
+            0xCB9C => Instruction { opcode, mnemonic: "RES 3,F", size: 2, cycles: 8, _fn: Instruction::op_cb9c },
+            0xCB9D => Instruction { opcode, mnemonic: "RES 3,H", size: 2, cycles: 8, _fn: Instruction::op_cb9d },
+            0xCB9E => Instruction { opcode, mnemonic: "RES 3,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cb9e },
+            0xCB9F => Instruction { opcode, mnemonic: "RES 3,A", size: 2, cycles: 8, _fn: Instruction::op_cb9f },
 
-            // 0xCBA0
+            0xCBA0 => Instruction { opcode, mnemonic: "RES 4,B", size: 2, cycles: 8, _fn: Instruction::op_cba0 },
+            0xCBA1 => Instruction { opcode, mnemonic: "RES 4,C", size: 2, cycles: 8, _fn: Instruction::op_cba1 },
+            0xCBA2 => Instruction { opcode, mnemonic: "RES 4,D", size: 2, cycles: 8, _fn: Instruction::op_cba2 },
+            0xCBA3 => Instruction { opcode, mnemonic: "RES 4,E", size: 2, cycles: 8, _fn: Instruction::op_cba3 },
+            0xCBA4 => Instruction { opcode, mnemonic: "RES 4,H", size: 2, cycles: 8, _fn: Instruction::op_cba4 },
+            0xCBA5 => Instruction { opcode, mnemonic: "RES 4,L", size: 2, cycles: 8, _fn: Instruction::op_cba5 },
+            0xCBA6 => Instruction { opcode, mnemonic: "RES 4,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cba6 },
+            0xCBA7 => Instruction { opcode, mnemonic: "RES 4,A", size: 2, cycles: 8, _fn: Instruction::op_cba7 },
+            0xCBA8 => Instruction { opcode, mnemonic: "RES 5,B", size: 2, cycles: 8, _fn: Instruction::op_cba8 },
+            0xCBA9 => Instruction { opcode, mnemonic: "RES 5,C", size: 2, cycles: 8, _fn: Instruction::op_cba9 },
+            0xCBAA => Instruction { opcode, mnemonic: "RES 5,D", size: 2, cycles: 8, _fn: Instruction::op_cbaa },
+            0xCB9B => Instruction { opcode, mnemonic: "RES 5,E", size: 2, cycles: 8, _fn: Instruction::op_cbab },
+            0xCB9C => Instruction { opcode, mnemonic: "RES 5,F", size: 2, cycles: 8, _fn: Instruction::op_cbac },
+            0xCB9D => Instruction { opcode, mnemonic: "RES 5,H", size: 2, cycles: 8, _fn: Instruction::op_cbad },
+            0xCB9E => Instruction { opcode, mnemonic: "RES 5,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbae },
+            0xCB9F => Instruction { opcode, mnemonic: "RES 5,A", size: 2, cycles: 8, _fn: Instruction::op_cbaf },
 
-            // 0xCBB0
+            0xCBB0 => Instruction { opcode, mnemonic: "RES 6,B", size: 2, cycles: 8, _fn: Instruction::op_cbb0 },
+            0xCBB1 => Instruction { opcode, mnemonic: "RES 6,C", size: 2, cycles: 8, _fn: Instruction::op_cbb1 },
+            0xCBB2 => Instruction { opcode, mnemonic: "RES 6,D", size: 2, cycles: 8, _fn: Instruction::op_cbb2 },
+            0xCBB3 => Instruction { opcode, mnemonic: "RES 6,E", size: 2, cycles: 8, _fn: Instruction::op_cbb3 },
+            0xCBB4 => Instruction { opcode, mnemonic: "RES 6,H", size: 2, cycles: 8, _fn: Instruction::op_cbb4 },
+            0xCBB5 => Instruction { opcode, mnemonic: "RES 6,L", size: 2, cycles: 8, _fn: Instruction::op_cbb5 },
+            0xCBB6 => Instruction { opcode, mnemonic: "RES 6,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbb6 },
+            0xCBB7 => Instruction { opcode, mnemonic: "RES 6,A", size: 2, cycles: 8, _fn: Instruction::op_cbb7 },
+            0xCBB8 => Instruction { opcode, mnemonic: "RES 7,B", size: 2, cycles: 8, _fn: Instruction::op_cbb8 },
+            0xCBB9 => Instruction { opcode, mnemonic: "RES 7,C", size: 2, cycles: 8, _fn: Instruction::op_cbb9 },
+            0xCBBA => Instruction { opcode, mnemonic: "RES 7,D", size: 2, cycles: 8, _fn: Instruction::op_cbba },
+            0xCBBB => Instruction { opcode, mnemonic: "RES 7,E", size: 2, cycles: 8, _fn: Instruction::op_cbbb },
+            0xCBBC => Instruction { opcode, mnemonic: "RES 7,F", size: 2, cycles: 8, _fn: Instruction::op_cbbc },
+            0xCBBD => Instruction { opcode, mnemonic: "RES 7,H", size: 2, cycles: 8, _fn: Instruction::op_cbbd },
+            0xCBBE => Instruction { opcode, mnemonic: "RES 7,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbbe },
+            0xCBBF => Instruction { opcode, mnemonic: "RES 7,A", size: 2, cycles: 8, _fn: Instruction::op_cbbf },
 
-            // 0xCBC0
+            0xCBC0 => Instruction { opcode, mnemonic: "SET 0,B", size: 2, cycles: 8, _fn: Instruction::op_cbc0 },
+            0xCBC1 => Instruction { opcode, mnemonic: "SET 0,C", size: 2, cycles: 8, _fn: Instruction::op_cbc1 },
+            0xCBC2 => Instruction { opcode, mnemonic: "SET 0,D", size: 2, cycles: 8, _fn: Instruction::op_cbc2 },
+            0xCBC3 => Instruction { opcode, mnemonic: "SET 0,E", size: 2, cycles: 8, _fn: Instruction::op_cbc3 },
+            0xCBC4 => Instruction { opcode, mnemonic: "SET 0,H", size: 2, cycles: 8, _fn: Instruction::op_cbc4 },
+            0xCBC5 => Instruction { opcode, mnemonic: "SET 0,L", size: 2, cycles: 8, _fn: Instruction::op_cbc5 },
+            0xCBC6 => Instruction { opcode, mnemonic: "SET 0,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbc6 },
+            0xCBC7 => Instruction { opcode, mnemonic: "SET 0,A", size: 2, cycles: 8, _fn: Instruction::op_cbc7 },
+            0xCBC8 => Instruction { opcode, mnemonic: "SET 1,B", size: 2, cycles: 8, _fn: Instruction::op_cbc8 },
+            0xCBC9 => Instruction { opcode, mnemonic: "SET 1,C", size: 2, cycles: 8, _fn: Instruction::op_cbc9 },
+            0xCBCA => Instruction { opcode, mnemonic: "SET 1,D", size: 2, cycles: 8, _fn: Instruction::op_cbca },
+            0xCBCB => Instruction { opcode, mnemonic: "SET 1,E", size: 2, cycles: 8, _fn: Instruction::op_cbcb },
+            0xCBCC => Instruction { opcode, mnemonic: "SET 1,F", size: 2, cycles: 8, _fn: Instruction::op_cbcc },
+            0xCBCD => Instruction { opcode, mnemonic: "SET 1,H", size: 2, cycles: 8, _fn: Instruction::op_cbcd },
+            0xCBCE => Instruction { opcode, mnemonic: "SET 1,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbce },
+            0xCBCF => Instruction { opcode, mnemonic: "SET 1,A", size: 2, cycles: 8, _fn: Instruction::op_cbcf },
 
-            // 0xCBD0
+            0xCBD0 => Instruction { opcode, mnemonic: "SET 2,B", size: 2, cycles: 8, _fn: Instruction::op_cbd0 },
+            0xCBD1 => Instruction { opcode, mnemonic: "SET 2,C", size: 2, cycles: 8, _fn: Instruction::op_cbd1 },
+            0xCBD2 => Instruction { opcode, mnemonic: "SET 2,D", size: 2, cycles: 8, _fn: Instruction::op_cbd2 },
+            0xCBD3 => Instruction { opcode, mnemonic: "SET 2,E", size: 2, cycles: 8, _fn: Instruction::op_cbd3 },
+            0xCBD4 => Instruction { opcode, mnemonic: "SET 2,H", size: 2, cycles: 8, _fn: Instruction::op_cbd4 },
+            0xCBD5 => Instruction { opcode, mnemonic: "SET 2,L", size: 2, cycles: 8, _fn: Instruction::op_cbd5 },
+            0xCBD6 => Instruction { opcode, mnemonic: "SET 2,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbd6 },
+            0xCBD7 => Instruction { opcode, mnemonic: "SET 2,A", size: 2, cycles: 8, _fn: Instruction::op_cbd7 },
+            0xCBD8 => Instruction { opcode, mnemonic: "SET 3,B", size: 2, cycles: 8, _fn: Instruction::op_cbd8 },
+            0xCBD9 => Instruction { opcode, mnemonic: "SET 3,C", size: 2, cycles: 8, _fn: Instruction::op_cbd9 },
+            0xCBDA => Instruction { opcode, mnemonic: "SET 3,D", size: 2, cycles: 8, _fn: Instruction::op_cbda },
+            0xCBDB => Instruction { opcode, mnemonic: "SET 3,E", size: 2, cycles: 8, _fn: Instruction::op_cbdb },
+            0xCBDC => Instruction { opcode, mnemonic: "SET 3,F", size: 2, cycles: 8, _fn: Instruction::op_cbdc },
+            0xCBDD => Instruction { opcode, mnemonic: "SET 3,H", size: 2, cycles: 8, _fn: Instruction::op_cbdd },
+            0xCBDE => Instruction { opcode, mnemonic: "SET 3,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbde },
+            0xCBDF => Instruction { opcode, mnemonic: "SET 3,A", size: 2, cycles: 8, _fn: Instruction::op_cbdf },
 
-            // 0xCBE0
+            0xCBE0 => Instruction { opcode, mnemonic: "SET 4,B", size: 2, cycles: 8, _fn: Instruction::op_cbe0 },
+            0xCBE1 => Instruction { opcode, mnemonic: "SET 4,C", size: 2, cycles: 8, _fn: Instruction::op_cbe1 },
+            0xCBE2 => Instruction { opcode, mnemonic: "SET 4,D", size: 2, cycles: 8, _fn: Instruction::op_cbe2 },
+            0xCBE3 => Instruction { opcode, mnemonic: "SET 4,E", size: 2, cycles: 8, _fn: Instruction::op_cbe3 },
+            0xCBE4 => Instruction { opcode, mnemonic: "SET 4,H", size: 2, cycles: 8, _fn: Instruction::op_cbe4 },
+            0xCBE5 => Instruction { opcode, mnemonic: "SET 4,L", size: 2, cycles: 8, _fn: Instruction::op_cbe5 },
+            0xCBE6 => Instruction { opcode, mnemonic: "SET 4,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbe6 },
+            0xCBE7 => Instruction { opcode, mnemonic: "SET 4,A", size: 2, cycles: 8, _fn: Instruction::op_cbe7 },
+            0xCBE8 => Instruction { opcode, mnemonic: "SET 5,B", size: 2, cycles: 8, _fn: Instruction::op_cbe8 },
+            0xCBE9 => Instruction { opcode, mnemonic: "SET 5,C", size: 2, cycles: 8, _fn: Instruction::op_cbe9 },
+            0xCBEA => Instruction { opcode, mnemonic: "SET 5,D", size: 2, cycles: 8, _fn: Instruction::op_cbea },
+            0xCBEB => Instruction { opcode, mnemonic: "SET 5,E", size: 2, cycles: 8, _fn: Instruction::op_cbeb },
+            0xCBEC => Instruction { opcode, mnemonic: "SET 5,F", size: 2, cycles: 8, _fn: Instruction::op_cbec },
+            0xCBED => Instruction { opcode, mnemonic: "SET 5,H", size: 2, cycles: 8, _fn: Instruction::op_cbed },
+            0xCBEE => Instruction { opcode, mnemonic: "SET 5,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbee },
+            0xCBEF => Instruction { opcode, mnemonic: "SET 5,A", size: 2, cycles: 8, _fn: Instruction::op_cbef },
 
-            // 0xCBF0
+            0xCBF0 => Instruction { opcode, mnemonic: "SET 6,B", size: 2, cycles: 8, _fn: Instruction::op_cbf0 },
+            0xCBF1 => Instruction { opcode, mnemonic: "SET 6,C", size: 2, cycles: 8, _fn: Instruction::op_cbf1 },
+            0xCBF2 => Instruction { opcode, mnemonic: "SET 6,D", size: 2, cycles: 8, _fn: Instruction::op_cbf2 },
+            0xCBF3 => Instruction { opcode, mnemonic: "SET 6,E", size: 2, cycles: 8, _fn: Instruction::op_cbf3 },
+            0xCBF4 => Instruction { opcode, mnemonic: "SET 6,H", size: 2, cycles: 8, _fn: Instruction::op_cbf4 },
+            0xCBF5 => Instruction { opcode, mnemonic: "SET 6,L", size: 2, cycles: 8, _fn: Instruction::op_cbf5 },
+            0xCBF6 => Instruction { opcode, mnemonic: "SET 6,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbf6 },
+            0xCBF7 => Instruction { opcode, mnemonic: "SET 6,A", size: 2, cycles: 8, _fn: Instruction::op_cbf7 },
+            0xCBF8 => Instruction { opcode, mnemonic: "SET 7,B", size: 2, cycles: 8, _fn: Instruction::op_cbf8 },
+            0xCBF9 => Instruction { opcode, mnemonic: "SET 7,C", size: 2, cycles: 8, _fn: Instruction::op_cbf9 },
+            0xCBFA => Instruction { opcode, mnemonic: "SET 7,D", size: 2, cycles: 8, _fn: Instruction::op_cbfa },
+            0xCBFB => Instruction { opcode, mnemonic: "SET 7,E", size: 2, cycles: 8, _fn: Instruction::op_cbfb },
+            0xCBFC => Instruction { opcode, mnemonic: "SET 7,F", size: 2, cycles: 8, _fn: Instruction::op_cbfc },
+            0xCBFD => Instruction { opcode, mnemonic: "SET 7,H", size: 2, cycles: 8, _fn: Instruction::op_cbfd },
+            0xCBFE => Instruction { opcode, mnemonic: "SET 7,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbfe },
+            0xCBFF => Instruction { opcode, mnemonic: "SET 7,A", size: 2, cycles: 8, _fn: Instruction::op_cbff },
 
             _ => Instruction { opcode, mnemonic: "Unimplemented", size: 1, cycles: -1, _fn: Instruction::unimplemented },
         }
@@ -714,40 +834,63 @@ impl Instruction {
     }
 
     /// RL, RR
-    fn rotate(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, is_left: bool) -> i16 {
+    /// RLA, RRA (preserve zero flag)
+    fn rotate(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8],
+            target: Src, is_left: bool, preserve_zero: bool) -> i16 {
         let value = Instruction::get_source_value(cpu, mmu, args, target) as u8;
-        let old_flags = cpu.registers.get_flags();
-        let (result, flags) = if is_left {
-            alu::rotate_left(value, old_flags.carry)
+        let original_flags = cpu.registers.get_flags();
+        let (result, mut flags) = if is_left {
+            alu::rotate_left(value, original_flags.carry)
         } else {
-            alu::rotate_right(value, old_flags.carry)
+            alu::rotate_right(value, original_flags.carry)
         };
+        if preserve_zero {
+            flags.zero = original_flags.zero;
+        }
         Instruction::set_target_value(cpu, mmu, args, target, result as u16);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
     /// RLC, RRC
-    fn rotate_circular(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, is_left: bool) -> i16 {
+    /// RLCA, RRCA (preserve zero flag)
+    fn rotate_circular(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8],
+            target: Src, is_left: bool, preserve_zero: bool) -> i16 {
         let value = Instruction::get_source_value(cpu, mmu, args, target) as u8;
-        let (result, flags) = if is_left {
+        let original_flags = cpu.registers.get_flags();
+        let (result, mut flags) = if is_left {
             alu::rotate_left_circular(value)
         } else {
             alu::rotate_right_circular(value)
         };
+        if preserve_zero {
+            flags.zero = original_flags.zero;
+        }
         Instruction::set_target_value(cpu, mmu, args, target, result as u16);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
-    /// BIT N,r, BIT N,(HL)
-    fn bit_n(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src, n: u8) -> i16 {
+    /// BIT
+    fn bit(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src, n: u8) -> i16 {
         let value = Instruction::get_source_value(cpu, mmu, args, source);
         let mut flags = cpu.registers.get_flags();
         flags.zero = value & (1 << n) == 0;
         flags.subtract = false;
         flags.half_carry = true;
         cpu.registers.set_flags(flags);
+        self .cycles
+    }
+
+    /// SET, RES
+    fn set(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src, n: u8, set: bool) -> i16 {
+        let mut value = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        if set {
+            value |= 1 << n;
+        } else {
+            value &= !(value & (1 << n));
+        }
+        Instruction::set_target_value(cpu, mmu, args, source, value as u16);
         self .cycles
     }
 
@@ -804,11 +947,7 @@ impl Instruction {
     /// 1 4
     /// 0 0 0 C
     fn op_0007(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        let value = cpu.registers.get_byte(CpuRegIndex::A);
-        let (result, flags) = alu::rotate_left_circular(value);
-        cpu.registers.set_byte(CpuRegIndex::A, result);
-        cpu.registers.set_flags(flags);
-        self.cycles
+        self.rotate_circular(cpu, mmu, args, Src::A, true, true)
     }
 
     /// LD (a16),SP
@@ -860,6 +999,13 @@ impl Instruction {
         self.ld(cpu, mmu, args, Src::C, Src::D8)
     }
 
+    /// RRCA
+    /// 1 4
+    /// 0 0 0 C
+    fn op_000f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::A, false, true)
+    }
+
     /// LD DE,d16
     /// 3 12
     /// - - - -
@@ -906,12 +1052,7 @@ impl Instruction {
     /// 1 4
     /// Z 0 0 C
     fn op_0017(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        let value = cpu.registers.get_byte(CpuRegIndex::A);
-        let old_flags = cpu.registers.get_flags();
-        let (result, flags) = alu::rotate_left(value, old_flags.carry);
-        cpu.registers.set_byte(CpuRegIndex::A, result);
-        cpu.registers.set_flags(flags);
-        self.cycles
+        self.rotate(cpu, mmu, args, Src::A, true, true)
     }
 
     /// JR r8
@@ -962,6 +1103,13 @@ impl Instruction {
     /// - - - -
     fn op_001e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.ld(cpu, mmu, args, Src::E, Src::D8)
+    }
+
+    /// RRA
+    /// 1 4
+    /// 0 0 0 C
+    fn op_001f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate(cpu, mmu, args, Src::A, false, true)
     }
 
     /// JR NZ,r8
@@ -2166,116 +2314,228 @@ impl Instruction {
 
     /// =================== CB PREFIXED ===================
 
+    /// RLC B
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb00(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::B, true, false)
+    }
+
+    /// RLC C
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb01(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::C, true, false)
+    }
+
+    /// RLC D
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb02(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::D, true, false)
+    }
+
+    /// RLC E
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb03(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::E, true, false)
+    }
+
+    /// RLC H
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb04(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::H, true, false)
+    }
+
+    /// RLC L
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb05(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::L, true, false)
+    }
+
+    /// RLC (HL)
+    /// 2 16
+    /// Z 0 0 C
+    fn op_cb06(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::HLa, true, false)
+    }
+
+    /// RLC A
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb07(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::A, true, false)
+    }
+
+    /// RRC B
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb08(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::B, false, false)
+    }
+
+    /// RRC C
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb09(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::C, false, false)
+    }
+
+    /// RRC D
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb0a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::D, false, false)
+    }
+
+    /// RRC E
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb0b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::E, false, false)
+    }
+
+    /// RRC H
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb0c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::H, false, false)
+    }
+
+    /// RRC L
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb0d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::L, false, false)
+    }
+
+    /// RRC (HL)
+    /// 2 16
+    /// Z 0 0 C
+    fn op_cb0e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::HLa, false, false)
+    }
+
+    /// RRC A
+    /// 2 8
+    /// Z 0 0 C
+    fn op_cb0f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.rotate_circular(cpu, mmu, args, Src::A, false, false)
+    }
+
     /// RL B
     /// 2 8
     /// Z 0 0 C
     fn op_cb10(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::B, true)
+        self.rotate(cpu, mmu, args, Src::B, true, false)
     }
 
     /// RL C
     /// 2 8
     /// Z 0 0 C
     fn op_cb11(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::C, true)
+        self.rotate(cpu, mmu, args, Src::C, true, false)
     }
 
     /// RL D
     /// 2 8
     /// Z 0 0 C
     fn op_cb12(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::D, true)
+        self.rotate(cpu, mmu, args, Src::D, true, false)
     }
 
     /// RL E
     /// 2 8
     /// Z 0 0 C
     fn op_cb13(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::E, true)
+        self.rotate(cpu, mmu, args, Src::E, true, false)
     }
 
     /// RL H
     /// 2 8
     /// Z 0 0 C
     fn op_cb14(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::H, true)
+        self.rotate(cpu, mmu, args, Src::H, true, false)
     }
 
     /// RL L
     /// 2 8
     /// Z 0 0 C
     fn op_cb15(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::L, true)
+        self.rotate(cpu, mmu, args, Src::L, true, false)
     }
 
     /// RL (HL)
     /// 2 16
     /// Z 0 0 C
     fn op_cb16(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::HLa, true)
+        self.rotate(cpu, mmu, args, Src::HLa, true, false)
     }
 
     /// RL A
     /// 2 8
     /// Z 0 0 C
     fn op_cb17(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::A, true)
+        self.rotate(cpu, mmu, args, Src::A, true, false)
     }
 
     /// RR B
     /// 2 8
     /// Z 0 0 C
     fn op_cb18(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::B, false)
+        self.rotate(cpu, mmu, args, Src::B, false, false)
     }
 
     /// RR C
     /// 2 8
     /// Z 0 0 C
     fn op_cb19(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::C, false)
+        self.rotate(cpu, mmu, args, Src::C, false, false)
     }
 
     /// RR D
     /// 2 8
     /// Z 0 0 C
     fn op_cb1a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::D, false)
+        self.rotate(cpu, mmu, args, Src::D, false, false)
     }
 
     /// RR E
     /// 2 8
     /// Z 0 0 C
     fn op_cb1b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::E, false)
+        self.rotate(cpu, mmu, args, Src::E, false, false)
     }
 
     /// RR H
     /// 2 8
     /// Z 0 0 C
     fn op_cb1c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::H, false)
+        self.rotate(cpu, mmu, args, Src::H, false, false)
     }
 
     /// RR L
     /// 2 8
     /// Z 0 0 C
     fn op_cb1d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::L, false)
+        self.rotate(cpu, mmu, args, Src::L, false, false)
     }
 
     /// RR (HL)
     /// 2 16
     /// Z 0 0 C
     fn op_cb1e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::HLa, false)
+        self.rotate(cpu, mmu, args, Src::HLa, false, false)
     }
 
     /// RR A
     /// 2 8
     /// Z 0 0 C
     fn op_cb1f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.rotate(cpu, mmu, args, Src::A, false)
+        self.rotate(cpu, mmu, args, Src::A, false, false)
     }
 
     /// SLA B
@@ -2450,447 +2710,1343 @@ impl Instruction {
     /// 2 8
     /// Z 0 1 -
     fn op_cb40(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::B, 0)
+        self.bit(cpu, mmu, args, Src::B, 0)
     }
 
     /// BIT 0,C
     /// 2 8
     /// Z 0 1 -
     fn op_cb41(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::C, 0)
+        self.bit(cpu, mmu, args, Src::C, 0)
     }
 
     /// BIT 0,D
     /// 2 8
     /// Z 0 1 -
     fn op_cb42(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::D, 0)
+        self.bit(cpu, mmu, args, Src::D, 0)
     }
 
     /// BIT 0,E
     /// 2 8
     /// Z 0 1 -
     fn op_cb43(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::E, 0)
+        self.bit(cpu, mmu, args, Src::E, 0)
     }
 
     /// BIT 0,H
     /// 2 8
     /// Z 0 1 -
     fn op_cb44(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::H, 0)
+        self.bit(cpu, mmu, args, Src::H, 0)
     }
 
     /// BIT 0,L
     /// 2 8
     /// Z 0 1 -
     fn op_cb45(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::L, 0)
+        self.bit(cpu, mmu, args, Src::L, 0)
     }
 
     /// BIT 0,(HL)
     /// 2 16
     /// Z 0 1 -
     fn op_cb46(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::HLa, 0)
+        self.bit(cpu, mmu, args, Src::HLa, 0)
     }
 
     /// BIT 0,A
     /// 2 8
     /// Z 0 1 -
     fn op_cb47(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::A, 0)
+        self.bit(cpu, mmu, args, Src::A, 0)
     }
 
     /// BIT 1,B
     /// 2 8
     /// Z 0 1 -
     fn op_cb48(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::B, 1)
+        self.bit(cpu, mmu, args, Src::B, 1)
     }
 
     /// BIT 1,C
     /// 2 8
     /// Z 0 1 -
     fn op_cb49(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::C, 1)
+        self.bit(cpu, mmu, args, Src::C, 1)
     }
 
     /// BIT 1,D
     /// 2 8
     /// Z 0 1 -
     fn op_cb4a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::D, 1)
+        self.bit(cpu, mmu, args, Src::D, 1)
     }
 
     /// BIT 1,E
     /// 2 8
     /// Z 0 1 -
     fn op_cb4b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::E, 1)
+        self.bit(cpu, mmu, args, Src::E, 1)
     }
 
     /// BIT 1,H
     /// 2 8
     /// Z 0 1 -
     fn op_cb4c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::H, 1)
+        self.bit(cpu, mmu, args, Src::H, 1)
     }
 
     /// BIT 1,L
     /// 2 8
     /// Z 0 1 -
     fn op_cb4d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::L, 1)
+        self.bit(cpu, mmu, args, Src::L, 1)
     }
 
     /// BIT 1,(HL)
     /// 2 16
     /// Z 0 1 -
     fn op_cb4e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::HLa, 1)
+        self.bit(cpu, mmu, args, Src::HLa, 1)
     }
 
     /// BIT 1,A
     /// 2 8
     /// Z 0 1 -
     fn op_cb4f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::A, 1)
+        self.bit(cpu, mmu, args, Src::A, 1)
     }
 
     /// BIT 2,B
     /// 2 8
     /// Z 0 1 -
     fn op_cb50(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::B, 2)
+        self.bit(cpu, mmu, args, Src::B, 2)
     }
 
     /// BIT 2,C
     /// 2 8
     /// Z 0 1 -
     fn op_cb51(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::C, 2)
+        self.bit(cpu, mmu, args, Src::C, 2)
     }
 
     /// BIT 2,D
     /// 2 8
     /// Z 0 1 -
     fn op_cb52(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::D, 2)
+        self.bit(cpu, mmu, args, Src::D, 2)
     }
 
     /// BIT 2,E
     /// 2 8
     /// Z 0 1 -
     fn op_cb53(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::E, 2)
+        self.bit(cpu, mmu, args, Src::E, 2)
     }
 
     /// BIT 2,H
     /// 2 8
     /// Z 0 1 -
     fn op_cb54(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::H, 2)
+        self.bit(cpu, mmu, args, Src::H, 2)
     }
 
     /// BIT 2,L
     /// 2 8
     /// Z 0 1 -
     fn op_cb55(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::L, 2)
+        self.bit(cpu, mmu, args, Src::L, 2)
     }
 
     /// BIT 2,(HL)
     /// 2 16
     /// Z 0 1 -
     fn op_cb56(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::HLa, 2)
+        self.bit(cpu, mmu, args, Src::HLa, 2)
     }
 
     /// BIT 2,A
     /// 2 8
     /// Z 0 1 -
     fn op_cb57(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::A, 2)
+        self.bit(cpu, mmu, args, Src::A, 2)
     }
 
     /// BIT 3,B
     /// 2 8
     /// Z 0 1 -
     fn op_cb58(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::B, 3)
+        self.bit(cpu, mmu, args, Src::B, 3)
     }
 
     /// BIT 3,C
     /// 2 8
     /// Z 0 1 -
     fn op_cb59(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::C, 3)
+        self.bit(cpu, mmu, args, Src::C, 3)
     }
 
     /// BIT 3,D
     /// 2 8
     /// Z 0 1 -
     fn op_cb5a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::D, 3)
+        self.bit(cpu, mmu, args, Src::D, 3)
     }
 
     /// BIT 3,E
     /// 2 8
     /// Z 0 1 -
     fn op_cb5b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::E, 3)
+        self.bit(cpu, mmu, args, Src::E, 3)
     }
 
     /// BIT 3,H
     /// 2 8
     /// Z 0 1 -
     fn op_cb5c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::H, 3)
+        self.bit(cpu, mmu, args, Src::H, 3)
     }
 
     /// BIT 3,L
     /// 2 8
     /// Z 0 1 -
     fn op_cb5d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::L, 3)
+        self.bit(cpu, mmu, args, Src::L, 3)
     }
 
     /// BIT 3,(HL)
     /// 2 16
     /// Z 0 1 -
     fn op_cb5e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::HLa, 3)
+        self.bit(cpu, mmu, args, Src::HLa, 3)
     }
 
     /// BIT 3,A
     /// 2 8
     /// Z 0 1 -
     fn op_cb5f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::A, 3)
+        self.bit(cpu, mmu, args, Src::A, 3)
     }
 
     /// BIT 4,B
     /// 2 8
     /// Z 0 1 -
     fn op_cb60(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::B, 4)
+        self.bit(cpu, mmu, args, Src::B, 4)
     }
 
     /// BIT 4,C
     /// 2 8
     /// Z 0 1 -
     fn op_cb61(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::C, 4)
+        self.bit(cpu, mmu, args, Src::C, 4)
     }
 
     /// BIT 4,D
     /// 2 8
     /// Z 0 1 -
     fn op_cb62(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::D, 4)
+        self.bit(cpu, mmu, args, Src::D, 4)
     }
 
     /// BIT 4,E
     /// 2 8
     /// Z 0 1 -
     fn op_cb63(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::E, 4)
+        self.bit(cpu, mmu, args, Src::E, 4)
     }
 
     /// BIT 4,H
     /// 2 8
     /// Z 0 1 -
     fn op_cb64(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::H, 4)
+        self.bit(cpu, mmu, args, Src::H, 4)
     }
 
     /// BIT 4,L
     /// 2 8
     /// Z 0 1 -
     fn op_cb65(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::L, 4)
+        self.bit(cpu, mmu, args, Src::L, 4)
     }
 
     /// BIT 4,(HL)
     /// 2 16
     /// Z 0 1 -
     fn op_cb66(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::HLa, 4)
+        self.bit(cpu, mmu, args, Src::HLa, 4)
     }
 
     /// BIT 4,A
     /// 2 8
     /// Z 0 1 -
     fn op_cb67(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::A, 4)
+        self.bit(cpu, mmu, args, Src::A, 4)
     }
 
     /// BIT 5,B
     /// 2 8
     /// Z 0 1 -
     fn op_cb68(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::B, 5)
+        self.bit(cpu, mmu, args, Src::B, 5)
     }
 
     /// BIT 5,C
     /// 2 8
     /// Z 0 1 -
     fn op_cb69(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::C, 5)
+        self.bit(cpu, mmu, args, Src::C, 5)
     }
 
     /// BIT 5,D
     /// 2 8
     /// Z 0 1 -
     fn op_cb6a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::D, 5)
+        self.bit(cpu, mmu, args, Src::D, 5)
     }
 
     /// BIT 5,E
     /// 2 8
     /// Z 0 1 -
     fn op_cb6b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::E, 5)
+        self.bit(cpu, mmu, args, Src::E, 5)
     }
 
     /// BIT 5,H
     /// 2 8
     /// Z 0 1 -
     fn op_cb6c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::H, 5)
+        self.bit(cpu, mmu, args, Src::H, 5)
     }
 
     /// BIT 5,L
     /// 2 8
     /// Z 0 1 -
     fn op_cb6d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::L, 5)
+        self.bit(cpu, mmu, args, Src::L, 5)
     }
 
     /// BIT 5,(HL)
     /// 2 16
     /// Z 0 1 -
     fn op_cb6e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::HLa, 5)
+        self.bit(cpu, mmu, args, Src::HLa, 5)
     }
 
     /// BIT 5,A
     /// 2 8
     /// Z 0 1 -
     fn op_cb6f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::A, 5)
+        self.bit(cpu, mmu, args, Src::A, 5)
     }
 
     /// BIT 6,B
     /// 2 8
     /// Z 0 1 -
     fn op_cb70(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::B, 6)
+        self.bit(cpu, mmu, args, Src::B, 6)
     }
 
     /// BIT 6,C
     /// 2 8
     /// Z 0 1 -
     fn op_cb71(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::C, 6)
+        self.bit(cpu, mmu, args, Src::C, 6)
     }
 
     /// BIT 6,D
     /// 2 8
     /// Z 0 1 -
     fn op_cb72(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::D, 6)
+        self.bit(cpu, mmu, args, Src::D, 6)
     }
 
     /// BIT 6,E
     /// 2 8
     /// Z 0 1 -
     fn op_cb73(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::E, 6)
+        self.bit(cpu, mmu, args, Src::E, 6)
     }
 
     /// BIT 6,H
     /// 2 8
     /// Z 0 1 -
     fn op_cb74(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::H, 6)
+        self.bit(cpu, mmu, args, Src::H, 6)
     }
 
     /// BIT 6,L
     /// 2 8
     /// Z 0 1 -
     fn op_cb75(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::L, 6)
+        self.bit(cpu, mmu, args, Src::L, 6)
     }
 
     /// BIT 6,(HL)
     /// 2 16
     /// Z 0 1 -
     fn op_cb76(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::HLa, 6)
+        self.bit(cpu, mmu, args, Src::HLa, 6)
     }
 
     /// BIT 6,A
     /// 2 8
     /// Z 0 1 -
     fn op_cb77(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::A, 6)
+        self.bit(cpu, mmu, args, Src::A, 6)
     }
 
     /// BIT 7,B
     /// 2 8
     /// Z 0 1 -
     fn op_cb78(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::B, 7)
+        self.bit(cpu, mmu, args, Src::B, 7)
     }
 
     /// BIT 7,C
     /// 2 8
     /// Z 0 1 -
     fn op_cb79(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::C, 7)
+        self.bit(cpu, mmu, args, Src::C, 7)
     }
 
     /// BIT 7,D
     /// 2 8
     /// Z 0 1 -
     fn op_cb7a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::D, 7)
+        self.bit(cpu, mmu, args, Src::D, 7)
     }
 
     /// BIT 7,E
     /// 2 8
     /// Z 0 1 -
     fn op_cb7b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::E, 7)
+        self.bit(cpu, mmu, args, Src::E, 7)
     }
 
     /// BIT 7,H
     /// 2 8
     /// Z 0 1 -
     fn op_cb7c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::H, 7)
+        self.bit(cpu, mmu, args, Src::H, 7)
     }
 
     /// BIT 7,L
     /// 2 8
     /// Z 0 1 -
     fn op_cb7d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::L, 7)
+        self.bit(cpu, mmu, args, Src::L, 7)
     }
 
     /// BIT 7,(HL)
     /// 2 16
     /// Z 0 1 -
     fn op_cb7e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::HLa, 7)
+        self.bit(cpu, mmu, args, Src::HLa, 7)
     }
 
     /// BIT 7,A
     /// 2 8
     /// Z 0 1 -
     fn op_cb7f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.bit_n(cpu, mmu, args, Src::A, 7)
+        self.bit(cpu, mmu, args, Src::A, 7)
+    }
+
+    /// RES 0,B
+    /// 2 8
+    /// - - - -
+    fn op_cb80(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 0, false)
+    }
+
+    /// RES 0,C
+    /// 2 8
+    /// - - - -
+    fn op_cb81(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 0, false)
+    }
+
+    /// RES 0,D
+    /// 2 8
+    /// - - - -
+    fn op_cb82(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 0, false)
+    }
+
+    /// RES 0,E
+    /// 2 8
+    /// - - - -
+    fn op_cb83(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 0, false)
+    }
+
+    /// RES 0,H
+    /// 2 8
+    /// - - - -
+    fn op_cb84(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 0, false)
+    }
+
+    /// RES 0,L
+    /// 2 8
+    /// - - - -
+    fn op_cb85(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 0, false)
+    }
+
+    /// RES 0,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cb86(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 0, false)
+    }
+
+    /// RES 0,A
+    /// 2 8
+    /// - - - -
+    fn op_cb87(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 0, false)
+    }
+
+    /// RES 1,B
+    /// 2 8
+    /// - - - -
+    fn op_cb88(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 1, false)
+    }
+
+    /// RES 1,C
+    /// 2 8
+    /// - - - -
+    fn op_cb89(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 1, false)
+    }
+
+    /// RES 1,D
+    /// 2 8
+    /// - - - -
+    fn op_cb8a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 1, false)
+    }
+
+    /// RES 1,E
+    /// 2 8
+    /// - - - -
+    fn op_cb8b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 1, false)
+    }
+
+    /// RES 1,H
+    /// 2 8
+    /// - - - -
+    fn op_cb8c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 1, false)
+    }
+
+    /// RES 1,L
+    /// 2 8
+    /// - - - -
+    fn op_cb8d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 1, false)
+    }
+
+    /// RES 1,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cb8e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 1, false)
+    }
+
+    /// RES 1,A
+    /// 2 8
+    /// - - - -
+    fn op_cb8f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 1, false)
+    }
+
+    /// RES 2,B
+    /// 2 8
+    /// - - - -
+    fn op_cb90(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 2, false)
+    }
+
+    /// RES 2,C
+    /// 2 8
+    /// - - - -
+    fn op_cb91(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 2, false)
+    }
+
+    /// RES 2,D
+    /// 2 8
+    /// - - - -
+    fn op_cb92(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 2, false)
+    }
+
+    /// RES 2,E
+    /// 2 8
+    /// - - - -
+    fn op_cb93(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 2, false)
+    }
+
+    /// RES 2,H
+    /// 2 8
+    /// - - - -
+    fn op_cb94(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 2, false)
+    }
+
+    /// RES 2,L
+    /// 2 8
+    /// - - - -
+    fn op_cb95(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 2, false)
+    }
+
+    /// RES 2,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cb96(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 2, false)
+    }
+
+    /// RES 2,A
+    /// 2 8
+    /// - - - -
+    fn op_cb97(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 2, false)
+    }
+
+    /// RES 3,B
+    /// 2 8
+    /// - - - -
+    fn op_cb98(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 3, false)
+    }
+
+    /// RES 3,C
+    /// 2 8
+    /// - - - -
+    fn op_cb99(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 3, false)
+    }
+
+    /// RES 3,D
+    /// 2 8
+    /// - - - -
+    fn op_cb9a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 3, false)
+    }
+
+    /// RES 3,E
+    /// 2 8
+    /// - - - -
+    fn op_cb9b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 3, false)
+    }
+
+    /// RES 3,H
+    /// 2 8
+    /// - - - -
+    fn op_cb9c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 3, false)
+    }
+
+    /// RES 3,L
+    /// 2 8
+    /// - - - -
+    fn op_cb9d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 3, false)
+    }
+
+    /// RES 3,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cb9e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 3, false)
+    }
+
+    /// RES 3,A
+    /// 2 8
+    /// - - - -
+    fn op_cb9f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 3, false)
+    }
+
+    /// RES 4,B
+    /// 2 8
+    /// - - - -
+    fn op_cba0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 4, false)
+    }
+
+    /// RES 4,C
+    /// 2 8
+    /// - - - -
+    fn op_cba1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 4, false)
+    }
+
+    /// RES 4,D
+    /// 2 8
+    /// - - - -
+    fn op_cba2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 4, false)
+    }
+
+    /// RES 4,E
+    /// 2 8
+    /// - - - -
+    fn op_cba3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 4, false)
+    }
+
+    /// RES 4,H
+    /// 2 8
+    /// - - - -
+    fn op_cba4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 4, false)
+    }
+
+    /// RES 4,L
+    /// 2 8
+    /// - - - -
+    fn op_cba5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 4, false)
+    }
+
+    /// RES 4,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cba6(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 4, false)
+    }
+
+    /// RES 4,A
+    /// 2 8
+    /// - - - -
+    fn op_cba7(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 4, false)
+    }
+
+    /// RES 5,B
+    /// 2 8
+    /// - - - -
+    fn op_cba8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 5, false)
+    }
+
+    /// RES 5,C
+    /// 2 8
+    /// - - - -
+    fn op_cba9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 5, false)
+    }
+
+    /// RES 5,D
+    /// 2 8
+    /// - - - -
+    fn op_cbaa(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 5, false)
+    }
+
+    /// RES 5,E
+    /// 2 8
+    /// - - - -
+    fn op_cbab(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 5, false)
+    }
+
+    /// RES 5,H
+    /// 2 8
+    /// - - - -
+    fn op_cbac(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 5, false)
+    }
+
+    /// RES 5,L
+    /// 2 8
+    /// - - - -
+    fn op_cbad(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 5, false)
+    }
+
+    /// RES 5,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbae(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 5, false)
+    }
+
+    /// RES 5,A
+    /// 2 8
+    /// - - - -
+    fn op_cbaf(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 5, false)
+    }
+
+    /// RES 6,B
+    /// 2 8
+    /// - - - -
+    fn op_cbb0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 6, false)
+    }
+
+    /// RES 6,C
+    /// 2 8
+    /// - - - -
+    fn op_cbb1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 6, false)
+    }
+
+    /// RES 6,D
+    /// 2 8
+    /// - - - -
+    fn op_cbb2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 6, false)
+    }
+
+    /// RES 6,E
+    /// 2 8
+    /// - - - -
+    fn op_cbb3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 6, false)
+    }
+
+    /// RES 6,H
+    /// 2 8
+    /// - - - -
+    fn op_cbb4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 6, false)
+    }
+
+    /// RES 6,L
+    /// 2 8
+    /// - - - -
+    fn op_cbb5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 6, false)
+    }
+
+    /// RES 6,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbb6(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 6, false)
+    }
+
+    /// RES 6,A
+    /// 2 8
+    /// - - - -
+    fn op_cbb7(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 6, false)
+    }
+
+    /// RES 5,B
+    /// 2 8
+    /// - - - -
+    fn op_cbb8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 5, false)
+    }
+
+    /// RES 5,C
+    /// 2 8
+    /// - - - -
+    fn op_cbb9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 5, false)
+    }
+
+    /// RES 5,D
+    /// 2 8
+    /// - - - -
+    fn op_cbba(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 5, false)
+    }
+
+    /// RES 5,E
+    /// 2 8
+    /// - - - -
+    fn op_cbbb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 5, false)
+    }
+
+    /// RES 5,H
+    /// 2 8
+    /// - - - -
+    fn op_cbbc(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 5, false)
+    }
+
+    /// RES 5,L
+    /// 2 8
+    /// - - - -
+    fn op_cbbd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 5, false)
+    }
+
+    /// RES 5,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbbe(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 5, false)
+    }
+
+    /// RES 5,A
+    /// 2 8
+    /// - - - -
+    fn op_cbbf(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 5, false)
+    }
+
+    /// SET 0,B
+    /// 2 8
+    /// - - - -
+    fn op_cbc0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 0, true)
+    }
+
+    /// SET 0,C
+    /// 2 8
+    /// - - - -
+    fn op_cbc1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 0, true)
+    }
+
+    /// SET 0,D
+    /// 2 8
+    /// - - - -
+    fn op_cbc2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 0, true)
+    }
+
+    /// SET 0,E
+    /// 2 8
+    /// - - - -
+    fn op_cbc3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 0, true)
+    }
+
+    /// SET 0,H
+    /// 2 8
+    /// - - - -
+    fn op_cbc4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 0, true)
+    }
+
+    /// SET 0,L
+    /// 2 8
+    /// - - - -
+    fn op_cbc5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 0, true)
+    }
+
+    /// SET 0,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbc6(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 0, true)
+    }
+
+    /// SET 0,A
+    /// 2 8
+    /// - - - -
+    fn op_cbc7(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 0, true)
+    }
+
+    /// SET 1,B
+    /// 2 8
+    /// - - - -
+    fn op_cbc8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 1, true)
+    }
+
+    /// SET 1,C
+    /// 2 8
+    /// - - - -
+    fn op_cbc9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 1, true)
+    }
+
+    /// SET 1,D
+    /// 2 8
+    /// - - - -
+    fn op_cbca(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 1, true)
+    }
+
+    /// SET 1,E
+    /// 2 8
+    /// - - - -
+    fn op_cbcb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 1, true)
+    }
+
+    /// SET 1,H
+    /// 2 8
+    /// - - - -
+    fn op_cbcc(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 1, true)
+    }
+
+    /// SET 1,L
+    /// 2 8
+    /// - - - -
+    fn op_cbcd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 1, true)
+    }
+
+    /// SET 1,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbce(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 1, true)
+    }
+
+    /// SET 1,A
+    /// 2 8
+    /// - - - -
+    fn op_cbcf(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 1, true)
+    }
+
+    /// SET 2,B
+    /// 2 8
+    /// - - - -
+    fn op_cbd0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 2, true)
+    }
+
+    /// SET 2,C
+    /// 2 8
+    /// - - - -
+    fn op_cbd1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 2, true)
+    }
+
+    /// SET 2,D
+    /// 2 8
+    /// - - - -
+    fn op_cbd2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 2, true)
+    }
+
+    /// SET 2,E
+    /// 2 8
+    /// - - - -
+    fn op_cbd3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 2, true)
+    }
+
+    /// SET 2,H
+    /// 2 8
+    /// - - - -
+    fn op_cbd4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 2, true)
+    }
+
+    /// SET 2,L
+    /// 2 8
+    /// - - - -
+    fn op_cbd5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 2, true)
+    }
+
+    /// SET 2,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbd6(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 2, true)
+    }
+
+    /// SET 2,A
+    /// 2 8
+    /// - - - -
+    fn op_cbd7(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 2, true)
+    }
+
+    /// SET 3,B
+    /// 2 8
+    /// - - - -
+    fn op_cbd8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 3, true)
+    }
+
+    /// SET 3,C
+    /// 2 8
+    /// - - - -
+    fn op_cbd9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 3, true)
+    }
+
+    /// SET 3,D
+    /// 2 8
+    /// - - - -
+    fn op_cbda(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 3, true)
+    }
+
+    /// SET 3,E
+    /// 2 8
+    /// - - - -
+    fn op_cbdb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 3, true)
+    }
+
+    /// SET 3,H
+    /// 2 8
+    /// - - - -
+    fn op_cbdc(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 3, true)
+    }
+
+    /// SET 3,L
+    /// 2 8
+    /// - - - -
+    fn op_cbdd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 3, true)
+    }
+
+    /// SET 3,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbde(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 3, true)
+    }
+
+    /// SET 3,A
+    /// 2 8
+    /// - - - -
+    fn op_cbdf(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 3, true)
+    }
+    
+    /// SET 4,B
+    /// 2 8
+    /// - - - -
+    fn op_cbe0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 4, true)
+    }
+
+    /// SET 4,C
+    /// 2 8
+    /// - - - -
+    fn op_cbe1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 4, true)
+    }
+
+    /// SET 4,D
+    /// 2 8
+    /// - - - -
+    fn op_cbe2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 4, true)
+    }
+
+    /// SET 4,E
+    /// 2 8
+    /// - - - -
+    fn op_cbe3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 4, true)
+    }
+
+    /// SET 4,H
+    /// 2 8
+    /// - - - -
+    fn op_cbe4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 4, true)
+    }
+
+    /// SET 4,L
+    /// 2 8
+    /// - - - -
+    fn op_cbe5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 4, true)
+    }
+
+    /// SET 4,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbe6(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 4, true)
+    }
+
+    /// SET 4,A
+    /// 2 8
+    /// - - - -
+    fn op_cbe7(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 4, true)
+    }
+
+    /// SET 5,B
+    /// 2 8
+    /// - - - -
+    fn op_cbe8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 5, true)
+    }
+
+    /// SET 5,C
+    /// 2 8
+    /// - - - -
+    fn op_cbe9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 5, true)
+    }
+
+    /// SET 5,D
+    /// 2 8
+    /// - - - -
+    fn op_cbea(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 5, true)
+    }
+
+    /// SET 5,E
+    /// 2 8
+    /// - - - -
+    fn op_cbeb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 5, true)
+    }
+
+    /// SET 5,H
+    /// 2 8
+    /// - - - -
+    fn op_cbec(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 5, true)
+    }
+
+    /// SET 5,L
+    /// 2 8
+    /// - - - -
+    fn op_cbed(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 5, true)
+    }
+
+    /// SET 5,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbee(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 5, true)
+    }
+
+    /// SET 5,A
+    /// 2 8
+    /// - - - -
+    fn op_cbef(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 5, true)
+    }
+
+    /// SET 6,B
+    /// 2 8
+    /// - - - -
+    fn op_cbf0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 6, true)
+    }
+
+    /// SET 6,C
+    /// 2 8
+    /// - - - -
+    fn op_cbf1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 6, true)
+    }
+
+    /// SET 6,D
+    /// 2 8
+    /// - - - -
+    fn op_cbf2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 6, true)
+    }
+
+    /// SET 6,E
+    /// 2 8
+    /// - - - -
+    fn op_cbf3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 6, true)
+    }
+
+    /// SET 6,H
+    /// 2 8
+    /// - - - -
+    fn op_cbf4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 6, true)
+    }
+
+    /// SET 6,L
+    /// 2 8
+    /// - - - -
+    fn op_cbf5(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 6, true)
+    }
+
+    /// SET 6,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbf6(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 6, true)
+    }
+
+    /// SET 6,A
+    /// 2 8
+    /// - - - -
+    fn op_cbf7(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 6, true)
+    }
+
+    /// SET 7,B
+    /// 2 8
+    /// - - - -
+    fn op_cbf8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::B, 7, true)
+    }
+
+    /// SET 7,C
+    /// 2 8
+    /// - - - -
+    fn op_cbf9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::C, 7, true)
+    }
+
+    /// SET 7,D
+    /// 2 8
+    /// - - - -
+    fn op_cbfa(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::D, 7, true)
+    }
+
+    /// SET 7,E
+    /// 2 8
+    /// - - - -
+    fn op_cbfb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::E, 7, true)
+    }
+
+    /// SET 7,H
+    /// 2 8
+    /// - - - -
+    fn op_cbfc(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::H, 7, true)
+    }
+
+    /// SET 7,L
+    /// 2 8
+    /// - - - -
+    fn op_cbfd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::L, 7, true)
+    }
+
+    /// SET 7,(HL)
+    /// 2 16
+    /// - - - -
+    fn op_cbfe(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::HLa, 7, true)
+    }
+
+    /// SET 7,A
+    /// 2 8
+    /// - - - -
+    fn op_cbff(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.set(cpu, mmu, args, Src::A, 7, true)
     }
 }
