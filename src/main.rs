@@ -16,6 +16,10 @@ use crate::console::cpu_registers::{CpuRegIndex, CpuRegisters};
 
 const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/DMG_ROM.bin";
 
+const GAME_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/games/Tetris.gb";
+// const GAME_FILEPATH: &str = "/home/jordan/Games/GameBoy/GB/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb";
+// const GAME_FILEPATH: &str = "/home/jordan/Games/GameBoy/GB/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb";
+
 const TEST_ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/";
 const TEST_ROMS: [&str; 1] = [
     "cpu_instrs.gb",
@@ -32,8 +36,6 @@ const TEST_ROMS: [&str; 1] = [
     // "individual/10-bit ops.gb",
     // "individual/11-op a,(hl).gb",
 ];
-
-const GAME_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/games/Tetris.gb";
 
 fn disassemble_roms() {
     let bootrom_cartridge = Cartridge::new(BOOTROM_FILEPATH.as_ref());
@@ -66,7 +68,8 @@ fn main() {
 
     // gamboy.run(CartridgeOption::NONE, false);
 
-    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), true);
+    gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), false);
+    return;
 
     for test_rom in TEST_ROMS {
         let filepath = format!("{}{}", TEST_ROM_DIR, test_rom);

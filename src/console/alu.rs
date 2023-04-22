@@ -1,7 +1,7 @@
 use crate::console::cpu_registers::{Flags};
 
 // Two's compliment, converted to i16
-pub(crate) fn signed_byte(value: u8) -> i16 {
+pub(crate) fn signed_8(value: u8) -> i16 {
     if value & 0x80 == 0 {
         value as i16
     } else {
@@ -67,10 +67,9 @@ pub(crate) fn rotate_right_circular(value: u8) -> (u8, Flags) {
 
 /// ADD
 
-pub(crate) fn add_byte(a: u8, b: u8) -> (u8, Flags) {
+pub(crate) fn add_8(a: u8, b: u8) -> (u8, Flags) {
     let half_carry = (a & 0x0F) + (b & 0x0F) > 0x0F;
     let (result, carry) = a.overflowing_add(b);
-
     (result, Flags {
         zero: result == 0,
         subtract: false,
@@ -79,12 +78,22 @@ pub(crate) fn add_byte(a: u8, b: u8) -> (u8, Flags) {
     })
 }
 
-pub(crate) fn add_word(a: u16, b: u16) -> (u16, Flags) {
-    let half_carry = (a & 0x00FF) + (b & 0x00FF) > 0x00FF;
-    let (result, carry) = a.overflowing_add(b);
-
+pub(crate) fn adc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
+    let half_carry = (a & 0x0F) + (b & 0x0F) > 0x0F;
+    let (result, carry) = a.overflowing_add(b + original_flags.carry as u8);
     (result, Flags {
         zero: result == 0,
+        subtract: false,
+        half_carry,
+        carry,
+    })
+}
+
+pub(crate) fn add_16(a: u16, b: u16, new_zero: bool) -> (u16, Flags) {
+    let half_carry = (a & 0x00FF) + (b & 0x00FF) > 0x00FF;
+    let (result, carry) = a.overflowing_add(b);
+    (result, Flags {
+        zero: new_zero,
         subtract: false,
         half_carry,
         carry,
@@ -93,10 +102,9 @@ pub(crate) fn add_word(a: u16, b: u16) -> (u16, Flags) {
 
 /// SUB
 
-pub(crate) fn subtract_byte(a: u8, b: u8) -> (u8, Flags) {
+pub(crate) fn subtract_8(a: u8, b: u8) -> (u8, Flags) {
     let half_carry = (a & 0x0F) < (b & 0x0F);
     let (result, carry) = a.overflowing_sub(b);
-
     (result, Flags {
         zero: result == 0,
         subtract: true,
@@ -105,9 +113,20 @@ pub(crate) fn subtract_byte(a: u8, b: u8) -> (u8, Flags) {
     })
 }
 
-pub(crate) fn subtract_word(a: u16, b: u16) -> (u16, Flags) {
+pub(crate) fn subtract_16(a: u16, b: u16) -> (u16, Flags) {
     let half_carry = (a & 0x00FF) < (b & 0x00FF);
     let (result, carry) = a.overflowing_sub(b);
+    (result, Flags {
+        zero: false,
+        subtract: true,
+        half_carry,
+        carry,
+    })
+}
+
+pub(crate) fn sbc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
+    let half_carry = (a & 0x0F) < (b & 0x0F);
+    let (result, carry) = a.overflowing_sub(b + original_flags.carry as u8);
     (result, Flags {
         zero: result == 0,
         subtract: true,
@@ -119,8 +138,8 @@ pub(crate) fn subtract_word(a: u16, b: u16) -> (u16, Flags) {
 /// INC
 
 /// Original carry flag is preserved
-pub(crate) fn increment_byte(a: u8, original_carry: bool) -> (u8, Flags) {
-    let (result, add_flags) = add_byte(a, 1);
+pub(crate) fn increment_8(a: u8, original_carry: bool) -> (u8, Flags) {
+    let (result, add_flags) = add_8(a, 1);
     (result, Flags {
         zero: add_flags.zero,
         subtract: add_flags.subtract,
@@ -130,16 +149,16 @@ pub(crate) fn increment_byte(a: u8, original_carry: bool) -> (u8, Flags) {
 }
 
 /// All original flags are preserved
-pub(crate) fn increment_word(a: u16) -> u16 {
-    let (result, _) = add_word(a, 1);
+pub(crate) fn increment_16(a: u16) -> u16 {
+    let (result, _) = a.overflowing_add(1);
     result
 }
 
 /// DEC
 
 /// Original carry flag is preserved
-pub(crate) fn decrement_byte(a: u8, original_carry: bool) -> (u8, Flags) {
-    let (result, sub_flags) = subtract_byte(a, 1);
+pub(crate) fn decrement_8(a: u8, original_carry: bool) -> (u8, Flags) {
+    let (result, sub_flags) = subtract_8(a, 1);
 
     (result, Flags {
         zero: sub_flags.zero,
@@ -150,13 +169,13 @@ pub(crate) fn decrement_byte(a: u8, original_carry: bool) -> (u8, Flags) {
 }
 
 /// All original flags are preserved
-pub(crate) fn decrement_word(a: u16) -> u16 {
-    let (result, _) = subtract_word(a, 1);
+pub(crate) fn decrement_16(a: u16) -> u16 {
+    let (result, _) = subtract_16(a, 1);
     result
 }
 
 /// OR
-pub(crate) fn or_byte(a: u8, b: u8) -> (u8, Flags) {
+pub(crate) fn or_8(a: u8, b: u8) -> (u8, Flags) {
     let result = a | b;
     (result, Flags {
         zero: result == 0,
@@ -167,7 +186,7 @@ pub(crate) fn or_byte(a: u8, b: u8) -> (u8, Flags) {
 }
 
 /// XOR
-pub(crate) fn xor_byte(a: u8, b: u8) -> (u8, Flags) {
+pub(crate) fn xor_8(a: u8, b: u8) -> (u8, Flags) {
     let result = a ^ b;
     (result, Flags {
         zero: result == 0,
@@ -178,7 +197,7 @@ pub(crate) fn xor_byte(a: u8, b: u8) -> (u8, Flags) {
 }
 
 /// AND
-pub(crate) fn and_byte(a: u8, b: u8) -> (u8, Flags) {
+pub(crate) fn and_8(a: u8, b: u8) -> (u8, Flags) {
     let result = a & b;
     (result, Flags {
         zero: result == 0,
@@ -188,7 +207,7 @@ pub(crate) fn and_byte(a: u8, b: u8) -> (u8, Flags) {
     })
 }
 
-/// SLA, SLL
+/// SLA
 pub(crate) fn shift_left(a: u8, is_arithmetic: bool) -> (u8, Flags) {
     let carry = a >> 7 == 1;
     let mut result = a << 1;
@@ -198,7 +217,7 @@ pub(crate) fn shift_left(a: u8, is_arithmetic: bool) -> (u8, Flags) {
     (result, Flags {
         zero: result == 0,
         subtract: false,
-        half_carry: true,
+        half_carry: false,
         carry: carry,
     })
 }
@@ -213,7 +232,39 @@ pub(crate) fn shift_right(a: u8, is_arithmetic: bool) -> (u8, Flags) {
     (result, Flags {
         zero: result == 0,
         subtract: false,
-        half_carry: true,
+        half_carry: false,
+        carry: carry,
+    })
+}
+
+/// DAA -- decimal adjust accumulator, BCD adjust
+///
+/// if the least significant four bits of A contain a non-BCD digit
+/// (i. e. it is greater than 9) or the H flag is set,
+/// then $06 is added to the register.
+///
+/// Then the four most significant bits are checked.
+/// If this more significant digit also happens to be greater than 9
+/// or the C flag is set, then $60 is added.
+///
+/// If this second addition was needed, the C flag is set after execution,
+/// otherwise it is reset.
+pub(crate) fn daa(a: u8, original_flags: Flags) -> (u8, Flags) {
+    let mut result = a;
+    let mut carry = false;
+
+    if ((result & 0x0F) > 9) || original_flags.half_carry {
+        result += 6;
+    }
+    if (((result & 0xF0) >> 4) > 9) || original_flags.carry {
+        result += 0x60;
+        carry = true;
+    }
+
+    (result, Flags {
+        zero: result == 0,
+        subtract: original_flags.subtract,
+        half_carry: false,
         carry: carry,
     })
 }

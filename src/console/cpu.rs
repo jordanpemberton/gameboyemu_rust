@@ -47,6 +47,7 @@ impl Cpu {
 
     pub(crate) fn step(&mut self, mmu: &mut Mmu) -> i16 {
         if self.is_halted {
+            // TODO -- un-halt when interrupts
             0
         } else {
             let start_pc = self.registers.get_word(CpuRegIndex::PC);
