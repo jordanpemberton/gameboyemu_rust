@@ -231,7 +231,7 @@ impl Instruction {
             0x00BE => Instruction { opcode, mnemonic: "CP (HL)", size: 1, cycles: 8, _fn: Instruction::op_00be },
             // 0x00BF
 
-            // 0x00C0 => RET NZ
+            0x00C0 => Instruction { opcode, mnemonic: "RET NZ", size: 1, cycles: 8, _fn: Instruction::op_00c0 },
             0x00C1 => Instruction { opcode, mnemonic: "POP BC", size: 1, cycles: 12, _fn: Instruction::op_00c1 },
             // 0x00C2
             0x00C3 => Instruction { opcode, mnemonic: "JP a16", size: 3, cycles: 16, _fn: Instruction::op_00c3 },
@@ -239,16 +239,16 @@ impl Instruction {
             0x00C5 => Instruction { opcode, mnemonic: "PUSH BC", size: 1, cycles: 16, _fn: Instruction::op_00c5 },
             0x00C6 => Instruction { opcode, mnemonic: "ADD A,d8", size: 2, cycles: 8, _fn: Instruction::op_00c6 },
             0x00C7 => Instruction { opcode, mnemonic: "RST 00H", size: 1, cycles: 16, _fn: Instruction::op_00c7 },
-            // 0x00C8
+            0x00C8 => Instruction { opcode, mnemonic: "RET Z", size: 1, cycles: 8, _fn: Instruction::op_00c8 },
             0x00C9 => Instruction { opcode, mnemonic: "RET", size: 1, cycles: 16, _fn: Instruction::op_00c9 },
             // 0x00CA
             // 0x00CB
             // 0x00CC
             0x00CD => Instruction { opcode, mnemonic: "CALL a16", size: 3, cycles: 24, _fn: Instruction::op_00cd },
-            // 0x00CE => Instruction { opcode, mnemonic: "ADC A,d8", size: 2, cycles: 8, _fn: Instruction::op_00ce },
+            0x00CE => Instruction { opcode, mnemonic: "ADC A,d8", size: 2, cycles: 8, _fn: Instruction::op_00ce },
             0x00CF => Instruction { opcode, mnemonic: "RST 08H", size: 1, cycles: 16, _fn: Instruction::op_00cf },
 
-            // 0x00D0 => RET NC
+            0x00D0 => Instruction { opcode, mnemonic: "RET NC", size: 1, cycles: 8, _fn: Instruction::op_00d0 },
             0x00D1 => Instruction { opcode, mnemonic: "POP DE", size: 1, cycles: 12, _fn: Instruction::op_00d1 },
             // 0x00D2 => JP NC,a16
             0x00D3 => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
@@ -256,8 +256,8 @@ impl Instruction {
             0x00D5 => Instruction { opcode, mnemonic: "PUSH DE", size: 1, cycles: 16, _fn: Instruction::op_00d5 },
             0x00D6 => Instruction { opcode, mnemonic: "SUB d8", size: 2, cycles: 8, _fn: Instruction::op_00d6 },
             0x00d7 => Instruction { opcode, mnemonic: "RST 10H", size: 1, cycles: 16, _fn: Instruction::op_00d7 },
-            // 0x00D8 => RET C
-            // 0x00D9 => RETI
+            0x00D8 => Instruction { opcode, mnemonic: "RET C", size: 1, cycles: 8, _fn: Instruction::op_00d8 },
+            0x00D9 => Instruction { opcode, mnemonic: "RET I", size: 1, cycles: 16, _fn: Instruction::op_00d9 },
             // 0x00DA => JP C,a16
             0x00DB => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
             // 0x00DC => CALL C,a16
@@ -274,7 +274,7 @@ impl Instruction {
             0x00E6 => Instruction { opcode, mnemonic: "AND d8", size: 2, cycles: 8, _fn: Instruction::op_00e6 },
             0x00E7 => Instruction { opcode, mnemonic: "RST 20H", size: 1, cycles: 16, _fn: Instruction::op_00e7 },
             0x00E8 => Instruction { opcode, mnemonic: "ADD SP,r8", size: 2, cycles: 16, _fn: Instruction::op_00e8 },
-            // 0x00E9 => JP HL
+            0x00E9 => Instruction { opcode, mnemonic: "JP HL", size: 1, cycles: 4, _fn: Instruction::op_00e9 },
             0x00EA => Instruction { opcode, mnemonic: "LD (a16),A", size: 3, cycles: 16, _fn: Instruction::op_00ea },
             0x00EB => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
             0x00EC => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
@@ -2254,6 +2254,17 @@ impl Instruction {
         self.cycles
     }
 
+    /// RET NZ
+    /// 1 8/20
+    /// - - - -
+    fn op_00c0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if !cpu.registers.get_flags().zero {
+            self.pop(cpu, mmu, CpuRegIndex::PC);
+            self.cycles += 12;
+        }
+        self.cycles
+    }
+
     /// POP BC
     /// 1 12
     /// - - - -
@@ -2303,6 +2314,17 @@ impl Instruction {
         self.call(cpu, mmu, 0x00)
     }
 
+    /// RET Z
+    /// 1 8/20
+    /// - - - -
+    fn op_00c8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if !cpu.registers.get_flags().zero {
+            self.pop(cpu, mmu, CpuRegIndex::PC);
+            self.cycles += 12;
+        }
+        self.cycles
+    }
+
     /// RET
     /// 1 16
     /// - - - -
@@ -2321,15 +2343,26 @@ impl Instruction {
     /// ADC A,d8
     /// 2 8
     /// Z 0 H C
-    // fn op_00ce(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-    //     self.add_8(cpu, mmu, args, Src::A, Src::D8)
-    // }
+    fn op_00ce(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.adc_8(cpu, mmu, args, Src::A, Src::D8)
+    }
 
     /// RST 08H
     /// 1 16
     /// - - - -
     fn op_00cf(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.call(cpu, mmu, 0x08)
+    }
+
+    /// RET NC
+    /// 1 8/20
+    /// - - - -
+    fn op_00d0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if !cpu.registers.get_flags().carry {
+            self.pop(cpu, mmu, CpuRegIndex::PC);
+            self.cycles += 12;
+        }
+        self.cycles
     }
 
     /// POP DE
@@ -2360,8 +2393,25 @@ impl Instruction {
         self.call(cpu, mmu, 0x10)
     }
 
-    // 00d8
-    // 00d9
+    /// RET C
+    /// 1 8/20
+    /// - - - -
+    fn op_00d8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if cpu.registers.get_flags().carry {
+            self.pop(cpu, mmu, CpuRegIndex::PC);
+            self.cycles += 12;
+        }
+        self.cycles
+    }
+
+    /// RET I
+    /// 1 16
+    /// - - - -
+    fn op_00d9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        cpu.interrupts.set_ime(true, mmu);
+        self.pop(cpu, mmu, CpuRegIndex::PC)
+    }
+
     // 00da
     // 00dc
 
@@ -2440,6 +2490,15 @@ impl Instruction {
         cpu.registers.set_flags(flags);
         self.cycles
     }
+
+    /// JP HL
+    /// 1 4
+    /// - - - -
+    fn op_00e9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.jump(cpu, cpu.registers.get_word(CpuRegIndex::HL));
+        self.cycles
+    }
+
 
     /// LD (a16),A 
     /// 3 16 
