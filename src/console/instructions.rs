@@ -701,7 +701,9 @@ impl Instruction {
 
     /// CALL
     fn call(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, address: u16) -> i16 {
-        self.push(cpu, mmu, CpuRegIndex::PC)
+        self.push(cpu, mmu, CpuRegIndex::PC);
+        self.jump(cpu, address);
+        self.cycles
     }
 
     /// LD
