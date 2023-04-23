@@ -1,5 +1,6 @@
 #![allow(unused_variables)]
 
+use sdl2::keyboard::Keycode::Insert;
 use sdl2::log::set_output_function;
 use crate::console::alu;
 use crate::console::cpu::{Cpu, PREFIX_BYTE};
@@ -222,18 +223,18 @@ impl Instruction {
             0x00B5 => Instruction { opcode, mnemonic: "OR L", size: 1, cycles: 4, _fn: Instruction::op_00b5 },
             0x00B6 => Instruction { opcode, mnemonic: "OR (HL)", size: 1, cycles: 8, _fn: Instruction::op_00b6 },
             0x00B7 => Instruction { opcode, mnemonic: "OR A", size: 1, cycles: 4, _fn: Instruction::op_00b7 },
-            // 0x00B8 => CP
-            // 0x00B9
-            // 0x00BA
-            // 0x00BB
-            // 0x00BC
-            // 0x00BD
+            0x00B8 => Instruction { opcode, mnemonic: "CP B", size: 1, cycles: 4, _fn: Instruction::op_00b8 },
+            0x00B9 => Instruction { opcode, mnemonic: "CP C", size: 1, cycles: 4, _fn: Instruction::op_00b9 },
+            0x00BA => Instruction { opcode, mnemonic: "CP D", size: 1, cycles: 4, _fn: Instruction::op_00ba },
+            0x00BB => Instruction { opcode, mnemonic: "CP E", size: 1, cycles: 4, _fn: Instruction::op_00bb },
+            0x00BC => Instruction { opcode, mnemonic: "CP H", size: 1, cycles: 4, _fn: Instruction::op_00bc },
+            0x00BD => Instruction { opcode, mnemonic: "CP L", size: 1, cycles: 4, _fn: Instruction::op_00bd },
             0x00BE => Instruction { opcode, mnemonic: "CP (HL)", size: 1, cycles: 8, _fn: Instruction::op_00be },
-            // 0x00BF
+            0x00BF => Instruction { opcode, mnemonic: "CP A", size: 1, cycles: 4, _fn: Instruction::op_00bf },
 
             0x00C0 => Instruction { opcode, mnemonic: "RET NZ", size: 1, cycles: 8, _fn: Instruction::op_00c0 },
             0x00C1 => Instruction { opcode, mnemonic: "POP BC", size: 1, cycles: 12, _fn: Instruction::op_00c1 },
-            // 0x00C2
+            0x00C2 => Instruction { opcode, mnemonic: "JP NZ,a16", size: 3, cycles: 12, _fn: Instruction::op_00c2 },
             0x00C3 => Instruction { opcode, mnemonic: "JP a16", size: 3, cycles: 16, _fn: Instruction::op_00c3 },
             0x00C4 => Instruction { opcode, mnemonic: "CALL NZ,a16", size: 3, cycles: 12, _fn: Instruction::op_00c4 },
             0x00C5 => Instruction { opcode, mnemonic: "PUSH BC", size: 1, cycles: 16, _fn: Instruction::op_00c5 },
@@ -241,26 +242,26 @@ impl Instruction {
             0x00C7 => Instruction { opcode, mnemonic: "RST 00H", size: 1, cycles: 16, _fn: Instruction::op_00c7 },
             0x00C8 => Instruction { opcode, mnemonic: "RET Z", size: 1, cycles: 8, _fn: Instruction::op_00c8 },
             0x00C9 => Instruction { opcode, mnemonic: "RET", size: 1, cycles: 16, _fn: Instruction::op_00c9 },
-            // 0x00CA
-            // 0x00CB
-            // 0x00CC
+            0x00CA => Instruction { opcode, mnemonic: "JP Z,a16", size: 3, cycles: 12, _fn: Instruction::op_00ca },
+            // 0x00CB // PREFIX
+            0x00CC => Instruction { opcode, mnemonic: "CALL Z,a16", size: 3, cycles: 12, _fn: Instruction::op_00cc },
             0x00CD => Instruction { opcode, mnemonic: "CALL a16", size: 3, cycles: 24, _fn: Instruction::op_00cd },
             0x00CE => Instruction { opcode, mnemonic: "ADC A,d8", size: 2, cycles: 8, _fn: Instruction::op_00ce },
             0x00CF => Instruction { opcode, mnemonic: "RST 08H", size: 1, cycles: 16, _fn: Instruction::op_00cf },
 
             0x00D0 => Instruction { opcode, mnemonic: "RET NC", size: 1, cycles: 8, _fn: Instruction::op_00d0 },
             0x00D1 => Instruction { opcode, mnemonic: "POP DE", size: 1, cycles: 12, _fn: Instruction::op_00d1 },
-            // 0x00D2 => JP NC,a16
+            0x00D2 => Instruction { opcode, mnemonic: "JP NC,a16", size: 3, cycles: 12, _fn: Instruction::op_00d2 },
             0x00D3 => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
-            // 0x00D4 => CALL NC,a16
+            0x00D4 => Instruction { opcode, mnemonic: "CALL NC,a16", size: 3, cycles: 12, _fn: Instruction::op_00d4 },
             0x00D5 => Instruction { opcode, mnemonic: "PUSH DE", size: 1, cycles: 16, _fn: Instruction::op_00d5 },
             0x00D6 => Instruction { opcode, mnemonic: "SUB d8", size: 2, cycles: 8, _fn: Instruction::op_00d6 },
             0x00d7 => Instruction { opcode, mnemonic: "RST 10H", size: 1, cycles: 16, _fn: Instruction::op_00d7 },
             0x00D8 => Instruction { opcode, mnemonic: "RET C", size: 1, cycles: 8, _fn: Instruction::op_00d8 },
             0x00D9 => Instruction { opcode, mnemonic: "RET I", size: 1, cycles: 16, _fn: Instruction::op_00d9 },
-            // 0x00DA => JP C,a16
+            0x00DA => Instruction { opcode, mnemonic: "JP C,a16", size: 3, cycles: 12, _fn: Instruction::op_00da },
             0x00DB => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
-            // 0x00DC => CALL C,a16
+            0x00DC => Instruction { opcode, mnemonic: "CALL C,a16", size: 3, cycles: 12, _fn: Instruction::op_00dc },
             0x00DD => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
             0x00DE => Instruction { opcode, mnemonic: "SBC A,d8", size: 2, cycles: 8, _fn: Instruction::op_00de },
             0x00DF => Instruction { opcode, mnemonic: "RST 18H", size: 1, cycles: 16, _fn: Instruction::op_00df },
@@ -352,7 +353,7 @@ impl Instruction {
             0xCB2E => Instruction { opcode, mnemonic: "SRA (HL)", size: 2, cycles: 16, _fn: Instruction::op_cb2e },
             0xCB2F => Instruction { opcode, mnemonic: "SRA A", size: 2, cycles: 8, _fn: Instruction::op_cb2f },
 
-            // 0xCB30
+            // 0xCB30 => SWAP
             // 0xCB31
             // 0xCB32
             // 0xCB33
@@ -901,6 +902,15 @@ impl Instruction {
         self .cycles
     }
 
+    /// CP
+    fn cp(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
+        let a = cpu.registers.get_byte(CpuRegIndex::A);
+        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let (_, flags) = alu::subtract_8(a, b);
+        cpu.registers.set_flags(flags);
+        self.cycles
+    }
+
     /// NOP
     /// 1 4
     /// - - - -
@@ -1164,7 +1174,7 @@ impl Instruction {
     /// 1 4
     /// Z 0 H -
     fn op_0024(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.increment_8(cpu, mmu, args, Src::H)
+         self.increment_8(cpu, mmu, args, Src::H)
     }
 
     /// DEC H
@@ -2242,16 +2252,60 @@ impl Instruction {
         self.or(cpu, mmu, args, Src::A)
     }
 
+    /// CP B
+    /// 1 4
+    /// Z 1 H C
+    fn op_00b8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.cp(cpu, mmu, args, Src::B)
+    }
+
+    /// CP C
+    /// 1 4
+    /// Z 1 H C
+    fn op_00b9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.cp(cpu, mmu, args, Src::C)
+    }
+
+    /// CP D
+    /// 1 4
+    /// Z 1 H C
+    fn op_00ba(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.cp(cpu, mmu, args, Src::D)
+    }
+
+    /// CP E
+    /// 1 4
+    /// Z 1 H C
+    fn op_00bb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.cp(cpu, mmu, args, Src::E)
+    }
+
+    /// CP H
+    /// 1 4
+    /// Z 1 H C
+    fn op_00bc(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.cp(cpu, mmu, args, Src::H)
+    }
+
+    /// CP L
+    /// 1 4
+    /// Z 1 H C
+    fn op_00bd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.cp(cpu, mmu, args, Src::L)
+    }
+
     /// CP (HL)
     /// 1 8
     /// Z 1 H C
     fn op_00be(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let source_address = cpu.registers.get_word(CpuRegIndex::HL);
-        let b = mmu.read_byte(source_address);
-        let (result, flags) = alu::subtract_8(a, b);
-        cpu.registers.set_flags(flags);
-        self.cycles
+        self.cp(cpu, mmu, args, Src::HLa)
+    }
+
+    /// CP A
+    /// 1 4
+    /// Z 1 H C
+    fn op_00bf(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.cp(cpu, mmu, args, Src::A)
     }
 
     /// RET NZ
@@ -2272,6 +2326,18 @@ impl Instruction {
         self.pop(cpu, mmu, CpuRegIndex::BC)
     }
 
+    /// JP NZ,a16
+    /// 3 12/16
+    /// - - - -
+    fn op_00c2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if !cpu.registers.get_flags().zero {
+            let address = ((args[1] as u16) << 8) | (args[0] as u16);
+            self.jump(cpu, address);
+            self.cycles += 4;
+        }
+        self.cycles
+    }
+
     /// JP a16
     /// 3 16
     /// - - - -
@@ -2285,7 +2351,7 @@ impl Instruction {
     /// 3 12/24
     /// - - - -
     fn op_00c4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        if !(cpu.registers.get_flags().zero) {
+        if !cpu.registers.get_flags().zero {
             let address = ((args[1] as u16) << 8) | (args[0] as u16);
             self.call(cpu, mmu, address);
             self.cycles += 12;
@@ -2332,6 +2398,30 @@ impl Instruction {
         self.pop(cpu, mmu, CpuRegIndex::PC)
     }
 
+    /// JP Z,a16
+    /// 3 12/16
+    /// - - - -
+    fn op_00ca(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if cpu.registers.get_flags().zero {
+            let address = ((args[1] as u16) << 8) | (args[0] as u16);
+            self.jump(cpu, address);
+            self.cycles += 4;
+        }
+        self.cycles
+    }
+
+    /// CALL Z,a16
+    /// 3 12/24
+    /// - - - -
+    fn op_00cc(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if cpu.registers.get_flags().zero {
+            let address = ((args[1] as u16) << 8) | (args[0] as u16);
+            self.call(cpu, mmu, address);
+            self.cycles += 12;
+        }
+        self.cycles
+    }
+
     /// CALL a16
     /// 3 24
     /// - - - -
@@ -2370,6 +2460,30 @@ impl Instruction {
     /// - - - -
     fn op_00d1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.pop(cpu, mmu, CpuRegIndex::DE)
+    }
+
+    /// JP NC,a16
+    /// 3 12/16
+    /// - - - -
+    fn op_00d2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if !cpu.registers.get_flags().carry {
+            let address = ((args[1] as u16) << 8) | (args[0] as u16);
+            self.jump(cpu, address);
+            self.cycles += 4;
+        }
+        self.cycles
+    }
+
+    /// CALL NC,a16
+    /// 3 12/24
+    /// - - - -
+    fn op_00d4(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if !cpu.registers.get_flags().carry {
+            let address = ((args[1] as u16) << 8) | (args[0] as u16);
+            self.call(cpu, mmu, address);
+            self.cycles += 12;
+        }
+        self.cycles
     }
 
     /// PUSH DE
@@ -2412,8 +2526,29 @@ impl Instruction {
         self.pop(cpu, mmu, CpuRegIndex::PC)
     }
 
-    // 00da
-    // 00dc
+    /// JP C,a16
+    /// 3 12/16
+    /// - - - -
+    fn op_00da(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if cpu.registers.get_flags().carry {
+            let address = ((args[1] as u16) << 8) | (args[0] as u16);
+            self.jump(cpu, address);
+            self.cycles += 4;
+        }
+        self.cycles
+    }
+
+    /// CALL C,a16
+    /// 3 12/24
+    /// - - - -
+    fn op_00dc(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        if cpu.registers.get_flags().carry {
+            let address = ((args[1] as u16) << 8) | (args[0] as u16);
+            self.call(cpu, mmu, address);
+            self.cycles += 12;
+        }
+        self.cycles
+    }
 
     /// SBC A,d8
     /// 2 8
@@ -2601,10 +2736,7 @@ impl Instruction {
     /// 2 8
     /// Z 1 H C
     fn op_00fe(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let (result, flags) = alu::subtract_8(a, args[0]);
-        cpu.registers.set_flags(flags);
-        self.cycles
+        self.cp(cpu, mmu, args, Src::D8)
     }
 
     /// RST 38H
