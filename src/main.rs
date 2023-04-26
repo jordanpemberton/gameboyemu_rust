@@ -69,7 +69,7 @@ fn main() {
 
     // gamboy.run(CartridgeOption::NONE, false);
 
-    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), false);
+    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), true);
 
     for test_rom in TEST_ROMS {
         let filepath = format!("{}{}", TEST_ROM_DIR, test_rom);

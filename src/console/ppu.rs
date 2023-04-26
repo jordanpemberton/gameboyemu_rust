@@ -471,6 +471,24 @@ impl Ppu {
 
     fn oam_search(&mut self, mmu: &mut Mmu) {
         // TODO
+        let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::OamSearch as usize].1 - 1;
+        if is_last_line
+        {
+            self.lcd_control.read_from_mem(mmu);
+            let obj_enabled = self.lcd_control.check_bit(LcdControlRegBit::ObjEnabled);
+            if obj_enabled {
+                let index_mode_8000 = self.lcd_control.check_bit(LcdControlRegBit::TiledataIsAt8000);
+                // Sprite Tiles Table located at $8000-8FFF
+                let sprite_tiles_address = 0x8000;
+
+                // Sprite attributes reside in the Sprite Attribute Table (OAM: Object Attribute Memory) at $FE00-FE9F.
+                let attribute_data = mmu.read_buffer(0xFE00, 0xFE9F, Endianness::LITTLE);
+
+                // TODO load sprite tiles and attributes correctly, draw sprites correctly pixel transfer
+                let tilemap = TileMap::fetch_tiles(mmu, sprite_tiles_address, index_mode_8000);
+                self.sprites = TileMap::to_lcd(&tilemap, &self.palettes);
+            }
+        }
     }
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
