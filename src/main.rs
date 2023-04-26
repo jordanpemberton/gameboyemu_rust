@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
+#![allow(unreachable_code)]
 #![allow(unreachable_patterns)]
 #![allow(unused_imports)]
 #![allow(unused_variables)]
@@ -68,8 +69,7 @@ fn main() {
 
     // gamboy.run(CartridgeOption::NONE, false);
 
-    gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), false);
-    return;
+    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), false);
 
     for test_rom in TEST_ROMS {
         let filepath = format!("{}{}", TEST_ROM_DIR, test_rom);

@@ -291,8 +291,8 @@ impl Instruction {
             0x00F5 => Instruction { opcode, mnemonic: "PUSH AF", size: 1, cycles: 16, _fn: Instruction::op_00f5 },
             0x00F6 => Instruction { opcode, mnemonic: "OR d8", size: 2, cycles: 8, _fn: Instruction::op_00f6 },
             0x00F7 => Instruction { opcode, mnemonic: "RST 30H", size: 1, cycles: 16, _fn: Instruction::op_00f7 },
-            // 0x00F8 => Instruction { opcode, mnemonic: "LD HL,SP+r8", size: 2, cycles: 12, _fn: Instruction::op_00f8 },
-            // 0x00F9 => Instruction { opcode, mnemonic: "LD SP,HL", size: 1, cycles: 8, _fn: Instruction::op_00f9 },
+            0x00F8 => Instruction { opcode, mnemonic: "LD HL,SP+r8", size: 2, cycles: 12, _fn: Instruction::op_00f8 },
+            0x00F9 => Instruction { opcode, mnemonic: "LD SP,HL", size: 1, cycles: 8, _fn: Instruction::op_00f9 },
             0x00FA => Instruction { opcode, mnemonic: "LD A,(a16)", size: 3, cycles: 16, _fn: Instruction::op_00fa },
             0x00FB => Instruction { opcode, mnemonic: "EI", size: 1, cycles: 4, _fn: Instruction::op_00fb },
             0x00FC => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
@@ -353,14 +353,14 @@ impl Instruction {
             0xCB2E => Instruction { opcode, mnemonic: "SRA (HL)", size: 2, cycles: 16, _fn: Instruction::op_cb2e },
             0xCB2F => Instruction { opcode, mnemonic: "SRA A", size: 2, cycles: 8, _fn: Instruction::op_cb2f },
 
-            // 0xCB30 => SWAP
-            // 0xCB31
-            // 0xCB32
-            // 0xCB33
-            // 0xCB34
-            // 0xCB35
-            // 0xCB36
-            // 0xCB37
+            0xCB30 => Instruction { opcode, mnemonic: "SWAP B", size: 2, cycles: 8, _fn: Instruction::op_cb30 },
+            0xCB31 => Instruction { opcode, mnemonic: "SWAP C", size: 2, cycles: 8, _fn: Instruction::op_cb31 },
+            0xCB32 => Instruction { opcode, mnemonic: "SWAP D", size: 2, cycles: 8, _fn: Instruction::op_cb32 },
+            0xCB33 => Instruction { opcode, mnemonic: "SWAP E", size: 2, cycles: 8, _fn: Instruction::op_cb33 },
+            0xCB34 => Instruction { opcode, mnemonic: "SWAP H", size: 2, cycles: 8, _fn: Instruction::op_cb34 },
+            0xCB35 => Instruction { opcode, mnemonic: "SWAP L", size: 2, cycles: 8, _fn: Instruction::op_cb35 },
+            0xCB36 => Instruction { opcode, mnemonic: "SWAP (HL)", size: 2, cycles: 16, _fn: Instruction::op_cb36 },
+            0xCB37 => Instruction { opcode, mnemonic: "SWAP A", size: 2, cycles: 8, _fn: Instruction::op_cb37 },
             0xCB38 => Instruction { opcode, mnemonic: "SRL B", size: 2, cycles: 8, _fn: Instruction::op_cb38 },
             0xCB39 => Instruction { opcode, mnemonic: "SRL C", size: 2, cycles: 8, _fn: Instruction::op_cb39 },
             0xCB3A => Instruction { opcode, mnemonic: "SRL D", size: 2, cycles: 8, _fn: Instruction::op_cb3a },
@@ -587,7 +587,7 @@ impl Instruction {
     }
 
     fn unimplemented(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        println!("Opcode {:#06X} (\"{}\") is unimplemented.", self.opcode, self.mnemonic);
+        panic!("Opcode {:#06X} (\"{}\") is unimplemented.", self.opcode, self.mnemonic);
         self.cycles
     }
 
@@ -727,7 +727,9 @@ impl Instruction {
     fn add_hl(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
         let a = Instruction::get_source_value(cpu, mmu, args, Src::HL);
         let b = Instruction::get_source_value(cpu, mmu, args, source);
-        let (result, flags) = alu::add_16(a, b, cpu.registers.get_flags().zero);
+        let original_zero = cpu.registers.get_flags().zero;
+        let (result, mut flags) = alu::add_16(a, b);
+        flags.zero = original_zero;
         Instruction::set_target_value(cpu, mmu, args, Src::HL, result);
         cpu.registers.set_flags(flags);
         self.cycles
@@ -900,6 +902,21 @@ impl Instruction {
         }
         Instruction::set_target_value(cpu, mmu, args, source, value as u16);
         self .cycles
+    }
+
+    /// SWAP
+    fn swap(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
+        let mut value = Instruction::get_source_value(cpu, mmu, args, source);
+        value = ((value & 0xF0) >> 4) | ((value & 0x0F) << 4);
+        Instruction::set_target_value(cpu, mmu, args, source, value);
+        let flags = Flags{
+            zero: value == 0,
+            subtract: false,
+            half_carry: false,
+            carry: false,
+        };
+        cpu.registers.set_flags(flags);
+        self.cycles
     }
 
     /// CP
@@ -2616,11 +2633,13 @@ impl Instruction {
         let sp = Instruction::get_source_value(cpu, mmu, args, Src::SP);
         let d8 = Instruction::get_source_value(cpu, mmu, args, Src::D8) as u8;
         let signed = alu::signed_8(d8);
-        let (result, flags) = if signed < 0 {
+        let (result, mut flags) = if signed < 0 {
             alu::subtract_16(sp, (-signed) as u16)
         } else {
-            alu::add_16(sp, (-signed) as u16, false)
+            alu::add_16(sp, (-signed) as u16)
         };
+        flags.zero = false;
+        flags.subtract = false;
         Instruction::set_target_value(cpu, mmu, args, Src::SP, result as u16);
         cpu.registers.set_flags(flags);
         self.cycles
@@ -2715,6 +2734,32 @@ impl Instruction {
     /// - - - -
     fn op_00f7(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.call(cpu, mmu, 0x30)
+    }
+
+    /// LD HL,SP+r8
+    /// 2 12
+    /// 0 0 H C
+    /// HL = SP +/- dd ; dd is 8-bit signed number
+    fn op_00f8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        let a = cpu.registers.get_word(CpuRegIndex::SP);
+        let b = alu::signed_8(args[0]);
+        let (result, mut flags) = if b < 0 {
+             alu::subtract_16(a, (-b) as u16)
+        } else {
+            alu::add_16(a, b as u16)
+        };
+        flags.zero = false;
+        flags.subtract = false;
+        cpu.registers.set_word(CpuRegIndex::HL, result);
+        cpu.registers.set_flags(flags);
+        self.cycles
+    }
+
+    /// LD SP,HL
+    /// 1 8
+    /// - - - -
+    fn op_00f9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.ld(cpu, mmu, args, Src::SP, Src::HL)
     }
 
     /// LD A,(a16)
@@ -3082,6 +3127,62 @@ impl Instruction {
     /// Z 0 0 C
     fn op_cb2f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.shift(cpu, mmu, args, Src::A, false, true)
+    }
+
+    /// SWAP B
+    /// 2 8
+    /// Z 0 0 0
+    fn op_cb30(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.swap(cpu, mmu, args, Src::B)
+    }
+
+    /// SWAP C
+    /// 2 8
+    /// Z 0 0 0
+    fn op_cb31(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.swap(cpu, mmu, args, Src::C)
+    }
+
+    /// SWAP D
+    /// 2 8
+    /// Z 0 0 0
+    fn op_cb32(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.swap(cpu, mmu, args, Src::D)
+    }
+
+    /// SWAP E
+    /// 2 8
+    /// Z 0 0 0
+    fn op_cb33(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.swap(cpu, mmu, args, Src::E)
+    }
+
+    /// SWAP H
+    /// 2 8
+    /// Z 0 0 0
+    fn op_cb34(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.swap(cpu, mmu, args, Src::H)
+    }
+
+    /// SWAP L
+    /// 2 8
+    /// Z 0 0 0
+    fn op_cb35(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.swap(cpu, mmu, args, Src::L)
+    }
+
+    /// SWAP (HL)
+    /// 2 16
+    /// Z 0 0 0
+    fn op_cb36(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.swap(cpu, mmu, args, Src::HLa)
+    }
+
+    /// SWAP A
+    /// 2 8
+    /// Z 0 0 0
+    fn op_cb37(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        self.swap(cpu, mmu, args, Src::A)
     }
 
     /// SRL B

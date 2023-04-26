@@ -115,29 +115,16 @@ impl Tile {
     }
 }
 
-struct TileMap {
-    tile_indexes: [u8; 32 * 32],
-    tiles: [[Tile; 32]; 32],
-}
+struct TileMap {}
 
 impl TileMap {
-    fn new(tilemap_address: usize, tiledata_address: usize, mmu: &mut Mmu) -> TileMap {
-        let mut tilemap = TileMap {
-            tile_indexes: [0; 32 * 32],
-            tiles: [[Tile::new(); 32]; 32],
-        };
-        tilemap.fetch_indexes(tilemap_address, mmu);
-        tilemap.fetch_tiles(tiledata_address, mmu);
-        tilemap
-    }
-
-    fn to_lcd(&self, palettes: &[[u8; 4]; 4]) -> Lcd {
+    fn to_lcd(tiles: &[[Tile; 32]; 32], palettes: &[[u8; 4]; 4]) -> Lcd {
         let mut lcd = Lcd::new();
 
         // TODO sort by priority
         for row in 0..32 {
             for col in 0..32 {
-                let tile = self.tiles[row][col];
+                let tile = tiles[row][col];
                 let palette = palettes[tile.palette as usize];
                 for i in 0..TILE_PIXEL_HEIGHT as usize {
                     let lcd_row = row * TILE_PIXEL_HEIGHT as usize + i;
@@ -156,29 +143,34 @@ impl TileMap {
         lcd
     }
 
-    fn fetch_indexes(&mut self, tilemap_address: usize, mmu: &mut Mmu) {
-        self.tile_indexes = mmu.read_buffer(
-            tilemap_address,
-            tilemap_address + 1024,
-            Endianness::LITTLE)
-            .try_into().expect("Casting vec<u8> to [u8; 1024] failed.");
-        // TODO signed indexed in addressing mode base 8800
-    }
+    fn fetch_tiles(mmu: &mut Mmu, tiledata_address: usize, index_mode_8000: bool) -> [[Tile; 32]; 32] {
+        let indices: [u8; 32 * 32] = mmu.read_buffer(tiledata_address, tiledata_address + 0x400, Endianness::LITTLE)
+            .try_into().unwrap();
 
-    fn fetch_tiles(&mut self, tiledata_address: usize, mmu: &mut Mmu) {
-        let tiledata_size_bytes = 16;
+        let mut tiles = [[Tile::new(); 32]; 32];
+
         for row in 0..32 {
             for col in 0..32 {
-                let tile_index = self.tile_indexes[row * 32 + col] as usize;
-                let tile_address = tiledata_address + tile_index * tiledata_size_bytes;
-                let tile_bytes = mmu.read_buffer(
-                    tile_address,
-                    tile_address + tiledata_size_bytes,
-                    Endianness::LITTLE
-                ).try_into().expect("Casting vec<u8> to [u8; 16] failed.");
-                self.tiles[row][col] = Tile::read_tile(tile_bytes);
+                let tile_index = indices[row * 32 + col] as i32;
+
+                let address = if index_mode_8000 {
+                    // The “$8000 method” uses $8000 as its base pointer and uses an unsigned addressing,
+                    // meaning that tiles 0-127 are in block 0, and tiles 128-255 are in block 1.
+                    0x8000 + tile_index * 16
+                } else {
+                    // The “$8800 method” uses $9000 as its base pointer and uses a signed addressing,
+                    // meaning that tiles 0-127 are in block 2, and tiles -128 to -1 are in block 1.
+                    // Or, tiles 0-127 from block 2 and tiles 128-255 from block 1. (?)
+                    0x9000 + (if tile_index < 128 { tile_index } else { -(tile_index - 255) }) * 16
+                } as usize;
+
+                let tile_bytes: [u8; 16] = mmu.read_buffer(address, address + 16, Endianness::LITTLE)
+                    .try_into().unwrap();
+                tiles[row][col] = Tile::read_tile(tile_bytes);
             }
         }
+
+        tiles
     }
 }
 
@@ -331,6 +323,7 @@ impl LcdStatusRegister {
 
 pub(crate) struct Ppu {
     clocks: usize,
+    pub(crate) lcd_updated: bool,
 
     // Registers -- in IO RAM
     bgp: u8,        // palette
@@ -350,10 +343,6 @@ pub(crate) struct Ppu {
     pub(crate) palette: u8,
     palettes: [[u8; 4]; 4],
 
-    // Tilemaps
-    tilemap_9800: TileMap,
-    tilemap_9C00: TileMap,
-
     // Display output buffers
     pub(crate) background: Lcd,
     pub(crate) window: Lcd,
@@ -370,15 +359,13 @@ impl Ppu {
             [0,1,2,3],
         ];
 
-        let tilemap_9800 = TileMap::new(0x9800, 0x8000, mmu);
-        let tilemap_9C00 = TileMap::new(0x9C00, 0x8000, mmu);
-
-        let background = tilemap_9800.to_lcd(&palettes);
+        let background = Lcd::new();
         let window = Lcd::new();
         let sprites = Lcd::new();
 
         Ppu {
             clocks: 0,
+            lcd_updated: false,
             bgp: 0,
             ly: 0,
             lyc: 0,
@@ -388,16 +375,13 @@ impl Ppu {
             lcd_status: LcdStatusRegister::new(mmu),
             palette: 0,
             palettes,
-            tilemap_9800,
-            tilemap_9C00,
             background,
             window,
             sprites,
         }
     }
 
-    pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) -> bool {
-        let mut update_lcd = false;
+    pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
         self.clocks += cycles as usize;
 
         // Update
@@ -426,10 +410,9 @@ impl Ppu {
                 }
                 StatMode::PixelTransfer => {
                     if self.clocks < t {
-                        // wait // TODO correct fifo, drawing timing
+                        // TODO FIFO
                     } else {
                         self.pixel_transfer(mmu);
-                        update_lcd = true;
                         self.clocks = 0;
                         self.lcd_status.set_mode(StatMode::HBlank, mmu);
                         interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
@@ -474,8 +457,6 @@ impl Ppu {
         if self.ly == self.lyc {
             self.lcd_status.set_lyc(true, mmu);
         }
-
-        update_lcd
     }
 
     fn increment_ly(&mut self, mmu: &mut Mmu) {
@@ -493,14 +474,24 @@ impl Ppu {
     }
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
-        self.tilemap_9800.fetch_indexes(0x9800, mmu);
-        self.tilemap_9800.fetch_tiles(0x8000, mmu);
-        // self.tilemap_9800.fetch_tiles(0x8800, mmu);
-        self.background = self.tilemap_9800.to_lcd(&self.palettes);
+        // TODO implement pixel FIFO correctly
+        let is_first_line = self.ly <= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].0;
+        let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
+        if is_first_line {
+            self.lcd_updated = false;
+        }
+        if is_last_line && !self.lcd_updated
+        {
+            self.lcd_control.read_from_mem(mmu);
 
-        // self.tilemap_9C00.fetch_indexes(0x9C00, mmu);
-        // self.tilemap_9C00.fetch_tiles(0x8000, mmu);
-        // self.tilemap_9C00.fetch_tiles(0x8800, mmu);
-        // self.background = self.tilemap_9C00.to_lcd(&self.palettes);
+            let bg_enabled = self.lcd_control.check_bit(LcdControlRegBit::BackgroundAndWindowEnabled);
+            if bg_enabled {
+                let index_mode_8000 = self.lcd_control.check_bit(LcdControlRegBit::TiledataIsAt8000);
+                let bg_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::BackgroundTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
+                let tilemap = TileMap::fetch_tiles(mmu, bg_tilemap_address, index_mode_8000);
+                self.background = TileMap::to_lcd(&tilemap, &self.palettes);
+                self.lcd_updated = true;
+            }
+        }
     }
 }

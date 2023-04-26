@@ -15,9 +15,9 @@ pub(crate) fn signed_8(value: u8) -> i16 {
 /// Rotates register one bit to the left.
 /// Previous carry flag becomes the least significant bit,
 /// and previous most significant bit becomes the new carry flag.
-pub(crate) fn rotate_left(value: u8, carry: bool) -> (u8, Flags) {
+pub(crate) fn rotate_left(value: u8, original_carry: bool) -> (u8, Flags) {
     let bit7 = value >> 7;
-    let result = (value << 1) | if carry { 1 } else { 0 };
+    let result = (value << 1) | if original_carry { 1 } else { 0 };
     (result, Flags {
         zero: value == 0,
         subtract: false,
@@ -89,11 +89,11 @@ pub(crate) fn adc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
     })
 }
 
-pub(crate) fn add_16(a: u16, b: u16, new_zero: bool) -> (u16, Flags) {
+pub(crate) fn add_16(a: u16, b: u16) -> (u16, Flags) {
     let half_carry = (a & 0x00FF) + (b & 0x00FF) > 0x00FF;
     let (result, carry) = a.overflowing_add(b);
     (result, Flags {
-        zero: new_zero,
+        zero: result == 0,
         subtract: false,
         half_carry,
         carry,

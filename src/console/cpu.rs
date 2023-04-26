@@ -12,7 +12,7 @@ use crate::console::interrupts::Interrupts;
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
-const DEBUG_PRINT: bool = false;
+const DEBUG_PRINT: bool = true;
 
 pub(crate) struct Cpu {
     is_halted: bool,

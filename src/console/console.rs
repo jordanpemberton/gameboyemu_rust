@@ -166,7 +166,8 @@ impl Console {
         let mut cycles: i16 = self.cpu.step(&mut self.mmu);
         cycles += self.cpu.check_interrupts();
 
-        if self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu) {
+        self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
+        if self.ppu.lcd_updated {
             self.display.draw(&mut self.mmu, &mut self.ppu);
         }
 
