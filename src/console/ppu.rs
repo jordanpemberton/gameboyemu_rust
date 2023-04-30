@@ -594,7 +594,7 @@ impl Ppu {
                     continue;
                 }
 
-                self.lcd.data[self.ly as usize][x as usize] = color;
+                self.lcd.data[self.ly as usize][x as usize] = color + 4; // TEMP
             }
         }
     }

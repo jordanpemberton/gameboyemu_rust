@@ -114,7 +114,7 @@ impl Debugger {
             print!("|");
             for x in 0..LCD_PIXEL_WIDTH {
                 let color = ppu.lcd.data[y as usize][x as usize];
-                match color {
+                match color % 4 {
                     3 => print!("@"),
                     2 => print!("/"),
                     1 => print!("."),
