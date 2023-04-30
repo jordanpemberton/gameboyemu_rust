@@ -53,9 +53,7 @@ impl Display {
 
         self.canvas.clear();
 
-        self.draw_screen(&ppu.background);
-        // self.draw_screen(&ppu.window);
-        // self.draw_screen(&ppu.sprites);
+        self.draw_screen(&ppu.lcd);
 
         self.canvas.present();
         self.canvas.set_draw_color(COLORS[0]);

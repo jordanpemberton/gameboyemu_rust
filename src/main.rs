@@ -22,21 +22,21 @@ const GAME_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/games/Tetris
 // const GAME_FILEPATH: &str = "/home/jordan/Games/GameBoy/GB/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb";
 
 const TEST_ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/";
-const TEST_ROMS: [&str; 1] = [
+const TEST_ROMS: [&str; 12] = [
     "cpu_instrs.gb",
-
-    // "individual/01-special.gb",
-    // "individual/02-interrupts.gb",
-    // "individual/03-op sp,hl.gb",
-    // "individual/04-op r,imm.gb",
-    // "individual/05-op rp.gb",
-    // "individual/06-ld r,r.gb",
-    // "individual/07-jr,jp,call,ret,rst.gb",
-    // "individual/08-misc instrs.gb",
-    // "individual/09-op r,r.gb",
-    // "individual/10-bit ops.gb",
-    // "individual/11-op a,(hl).gb",
+    "individual/01-special.gb",
+    "individual/02-interrupts.gb",
+    "individual/03-op sp,hl.gb",
+    "individual/04-op r,imm.gb",
+    "individual/05-op rp.gb",
+    "individual/06-ld r,r.gb",
+    "individual/07-jr,jp,call,ret,rst.gb",
+    "individual/08-misc instrs.gb",
+    "individual/09-op r,r.gb",
+    "individual/10-bit ops.gb",
+    "individual/11-op a,(hl).gb",
 ];
+const TEST_ROM: usize = 0;
 
 fn disassemble_roms() {
     let bootrom_cartridge = Cartridge::new(BOOTROM_FILEPATH.as_ref());
@@ -67,14 +67,10 @@ fn main() {
 
     let mut gamboy = Console::new("GAMBOY",4, true, true);
 
-    // gamboy.run(CartridgeOption::NONE, false);
+    gamboy.run(CartridgeOption::NONE, false);
 
     // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), true);
 
-    for test_rom in TEST_ROMS {
-        let filepath = format!("{}{}", TEST_ROM_DIR, test_rom);
-        println!("============ BEGIN TEST {} ============", test_rom);
-        gamboy.run(CartridgeOption::SOME(Cartridge::new(filepath.as_str().as_ref())), true);
-        println!("============ END TEST {} ============\n\n\n", test_rom);
-    }
+    let test_filepath = format!("{}{}", TEST_ROM_DIR, TEST_ROMS[TEST_ROM]);
+    // gamboy.run(CartridgeOption::SOME(Cartridge::new(test_filepath.as_str().as_ref())), true);
 }

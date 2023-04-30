@@ -4,6 +4,7 @@ use crate::console::{
     cpu::Cpu
 };
 use crate::console::mmu::{Endianness, Mmu};
+use crate::console::ppu::{LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
 
 pub(crate) enum DebugAction {
     BREAK,
@@ -28,31 +29,34 @@ impl Debugger {
         self.enabled && self.active
     }
 
-    pub(crate) fn break_or_cont(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn break_or_cont(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         if self.enabled {
             self.active = !self.active;
             if self.active {
-                self.dump(cpu, mmu, locals);
+                self.dump(cpu, mmu, ppu, locals);
             }
         }
     }
 
-    pub(crate) fn peek(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn peek(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         if self.enabled {
-            self.dump(cpu, mmu, locals);
+            self.dump(cpu, mmu, ppu, locals);
         }
     }
 
-    pub(crate) fn step(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn step(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         // todo
     }
 
-    fn dump(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, locals: Option<HashMap<&str, &str>>) {
+    fn dump(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         if let Some(_cpu) = cpu {
             self.dump_cpu_state(_cpu);
         }
         if let Some(_mmu) = mmu {
             self.dump_mmu_state(_mmu);
+        }
+        if let Some(_ppu) = ppu {
+            self.draw_screen_stdout(_ppu);
         }
         if let Some(_locals) = locals {
             self.dump_key_value_pairs(_locals);
@@ -99,5 +103,30 @@ impl Debugger {
                 format!("\n{}\n", vram_values_str).as_str()
             )
         ]));
+    }
+
+    fn draw_screen_stdout(&mut self, ppu: &Ppu) {
+        for x in 0..LCD_PIXEL_WIDTH + 2 {
+            print!("_");
+        }
+        println!();
+        for y in 0..LCD_PIXEL_HEIGHT {
+            print!("|");
+            for x in 0..LCD_PIXEL_WIDTH {
+                let color = ppu.lcd.data[y as usize][x as usize];
+                match color {
+                    3 => print!("@"),
+                    2 => print!("/"),
+                    1 => print!("."),
+                    _ => print!(" "),
+                }
+            }
+            print!("|");
+            println!();
+        }
+        for x in 0..LCD_PIXEL_WIDTH + 2 {
+            print!("_");
+        }
+        println!();
     }
 }

@@ -105,6 +105,7 @@ impl Console {
                     debugger.break_or_cont(
                         Option::from(&mut self.cpu),
                         Option::from(&self.mmu),
+                        Option::from(&self.ppu),
                         Option::from(HashMap::from([]))
                     );
                     self.is_paused = debugger.is_active();
@@ -113,6 +114,7 @@ impl Console {
                     debugger.peek(
                         Option::from(&mut self.cpu),
                         Option::from(&self.mmu),
+                        Option::from(&self.ppu),
                         Option::from(HashMap::from([]))
                     );
                 }
@@ -131,6 +133,7 @@ impl Console {
             debugger.peek(
                 Option::from(&mut self.cpu),
                 Option::from(&self.mmu),
+                Option::from(&self.ppu),
                 Option::from(HashMap::from([]))
             );
         }
@@ -140,6 +143,7 @@ impl Console {
         loop {
             match self.input.poll() {
                 CallbackAction::ESCAPE => {
+                    self.debug_peek();
                     break;
                 }
                 CallbackAction::DEBUG(debug_action) => {
