@@ -15,13 +15,12 @@ use crate::console::disassembler;
 use crate::console::mmu::Mmu;
 use crate::console::cpu_registers::{CpuRegIndex, CpuRegisters};
 
-const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/DMG_ROM.bin";
+const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/dmg.bin";
 
 const GAME_FILEPATH: &str =
     // "/home/jordan/Games/GameBoy/GB/Tetris.gb"
-    "/home/jordan/Games/GameBoy/GB/Kirby's Dream Land (USA, Europe).gb"
-    // "/home/jordan/Games/GameBoy/GB/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb"
-    // "/home/jordan/Games/GameBoy/GB/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb"
+    "/home/jordan/Games/GameBoy/GB/Dr. Mario (Game Boy Prototype)/Dr. Mario (Prototype).gb"
+    // "/home/jordan/Games/GameBoy/GB/Kirby's Dream Land (USA, Europe).gb" // hits Invalid opcode F4 at 0x4C4A?
 ;
 
 const BLARGG_TEST_ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/blargg/cpu_instrs/";
@@ -56,8 +55,8 @@ const MEALY_TEST_ROMS: [&str; 12] = [
     "m3_scy_change.gb",
 ];
 
-const TEST_IS_BLARGG: bool = true;
-const TEST_ROM: usize = 6;
+const TEST_IS_BLARGG: bool = false;
+const TEST_ROM: usize = 0;
 
 fn disassemble_roms() {
     let bootrom_cartridge = Cartridge::new(BOOTROM_FILEPATH.as_ref());
@@ -94,7 +93,7 @@ fn main() {
 
     CpuRegisters::test();
 
-    let mut gamboy = Console::new("GAMBOY",4, true, true);
+    let mut gamboy = Console::new("GAMBOY",5, true, true);
 
     // gamboy.run(CartridgeOption::NONE, false);
 

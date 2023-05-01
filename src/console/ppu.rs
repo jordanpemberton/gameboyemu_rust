@@ -142,7 +142,6 @@ impl TileMap {
     fn to_lcd(&self, palette: &[u8; 4]) -> Lcd {
         let mut lcd = Lcd::new();
 
-        // TODO sort by priority
         for row in 0..32 {
             for col in 0..32 {
                 let tile = self.tiles[row][col];
@@ -532,72 +531,36 @@ impl Ppu {
     }
 
     fn draw_sprites(&mut self, mmu: &mut Mmu) {
-        let tiledata_address = 0x8000;
+        let tiledata_address: usize = 0x8000;
 
         for attr in self.sprite_attributes {
-            if self.ly + 16 < attr.y {
-                continue;
-            }
+            let tile_index = attr.tile_index as usize;
+            let tile_address = tiledata_address + tile_index * 16;
+            let tile_data = mmu.read_buffer(tile_address, tile_address + 16, Endianness::LITTLE);
+            let tile = Tile::read_tile(tile_data.try_into().unwrap());
 
-            let mut tile_yoff = self.ly + 16 - attr.y;
-            let sprite_size = if self.lcd_control.check_bit(LcdControlRegBit::SpriteSizeIs16) { 16 } else { 8 };
-            if tile_yoff >= sprite_size {
-                continue;
-            }
-            tile_yoff = if attr.flip_y {
-                sprite_size - 1 - tile_yoff
-            } else {
-                tile_yoff
-            };
+            let sprite_height = if self.lcd_control.check_bit(LcdControlRegBit::SpriteSizeIs16) { 16 } else { 8 };
+            let palette = if attr.palette_is_obp1 { 1 } else { 0 };
 
-            let mut tile_index = attr.tile_index;
-            if sprite_size == 16 {
-                if tile_yoff >= 8 {
-                    tile_index |= 0x01
-                } else {
-                    tile_index &= 0xFE
+            for row in 0..8 {
+                let y = (attr.y as i16 - sprite_height + row);
+                if y < 0 { continue };
+                let tile_row = if attr.flip_x { 8 - row } else { row } as usize;
+                for col in 0..8 {
+                    let x = (attr.x as i16 - 16 + col);
+                    if x < 0 { continue };
+                    let tile_col = if attr.flip_x { 8 - col } else { col } as usize;
+                    let color_i = tile.data[tile_row][tile_col] as usize;
+                    if color_i > 0 {
+                        let color = self.palettes[palette][color_i];
+                        // TODO selection priority and drawing priority
+                        let has_priority = true;
+                        let bg_color = self.lcd.data[y as usize][x as usize];
+                        if has_priority || bg_color == 0 {
+                            self.lcd.data[y as usize][x as usize] = color + 4; // TEMP colors to distinguish sprites
+                        }
+                    }
                 }
-            };
-
-            tile_yoff %= 8;
-
-            let vram_width = 172; // ?
-            for x in 0..vram_width as u8 {
-                if x + 8 < attr.x {
-                    continue;
-                }
-                let mut tile_xoff = x + 8 - attr.x;
-                if tile_xoff >= 8 {
-                    continue;
-                }
-                if attr.flip_x {
-                    tile_xoff = 7 - tile_xoff;
-                }
-
-                let tile_base = tiledata_address as usize + tile_index as usize * 16;
-                let tile_data = mmu.read_buffer(tile_base, tile_base + 16, Endianness::LITTLE);
-
-                let address = (tile_base as u16 + tile_yoff as u16 * 2) as u16;
-                let mut l = mmu.read_byte(address);
-                let mut h = mmu.read_byte(address + 1);
-                l = (l >> (7 - tile_xoff)) & 1;
-                h = ((h >> (7 - tile_xoff)) & 1) << 1;
-                let color = h | l;
-
-                if color == 0 {
-                    continue;
-                }
-                let palette = if attr.palette_is_obp1 { 1 } else { 0 };
-                let color = self.palettes[palette][color as usize];
-
-                // TODO selection priority and drawing priority
-                let bg_color = self.lcd.data[self.ly as usize][x as usize];
-                let priority = 0;
-                if priority + bg_color > 0 {
-                    continue;
-                }
-
-                self.lcd.data[self.ly as usize][x as usize] = color + 4; // TEMP
             }
         }
     }
