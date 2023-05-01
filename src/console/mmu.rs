@@ -97,17 +97,17 @@ impl Mmu {
     }
 
     pub(crate) fn load_word(&mut self, address: u16, value: u16, endian: Endianness) {
-        let mut lsb = ((value & 0xFF00) >> 8) as u8;
-        let mut msb = (value & 0x00FF) as u8;
+        let mut a = ((value & 0xFF00) >> 8) as u8;
+        let mut b = (value & 0x00FF) as u8;
 
         if endian == Endianness::BIG {
-            let temp = lsb;
-            lsb = msb;
-            msb = temp;
+            let temp = a;
+            a = b;
+            b = temp;
         }
 
-        self.load_byte(address, lsb);
-        self.load_byte(address + 1, msb);
+        self.load_byte(address, a);
+        self.load_byte(address + 1, b);
     }
 
     fn _read_buffer(mem: &[u8; 0x8000], begin: usize, end: usize, endian: Endianness) -> Vec<u8> {

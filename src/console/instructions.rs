@@ -243,7 +243,7 @@ impl Instruction {
             0x00C8 => Instruction { opcode, mnemonic: "RET Z", size: 1, cycles: 8, _fn: Instruction::op_00c8 },
             0x00C9 => Instruction { opcode, mnemonic: "RET", size: 1, cycles: 16, _fn: Instruction::op_00c9 },
             0x00CA => Instruction { opcode, mnemonic: "JP Z,a16", size: 3, cycles: 12, _fn: Instruction::op_00ca },
-            // 0x00CB // PREFIX
+            // 0x00CB = PREFIX
             0x00CC => Instruction { opcode, mnemonic: "CALL Z,a16", size: 3, cycles: 12, _fn: Instruction::op_00cc },
             0x00CD => Instruction { opcode, mnemonic: "CALL a16", size: 3, cycles: 24, _fn: Instruction::op_00cd },
             0x00CE => Instruction { opcode, mnemonic: "ADC A,d8", size: 2, cycles: 8, _fn: Instruction::op_00ce },
@@ -483,11 +483,11 @@ impl Instruction {
             0xCBA8 => Instruction { opcode, mnemonic: "RES 5,B", size: 2, cycles: 8, _fn: Instruction::op_cba8 },
             0xCBA9 => Instruction { opcode, mnemonic: "RES 5,C", size: 2, cycles: 8, _fn: Instruction::op_cba9 },
             0xCBAA => Instruction { opcode, mnemonic: "RES 5,D", size: 2, cycles: 8, _fn: Instruction::op_cbaa },
-            0xCB9B => Instruction { opcode, mnemonic: "RES 5,E", size: 2, cycles: 8, _fn: Instruction::op_cbab },
-            0xCB9C => Instruction { opcode, mnemonic: "RES 5,F", size: 2, cycles: 8, _fn: Instruction::op_cbac },
-            0xCB9D => Instruction { opcode, mnemonic: "RES 5,H", size: 2, cycles: 8, _fn: Instruction::op_cbad },
-            0xCB9E => Instruction { opcode, mnemonic: "RES 5,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbae },
-            0xCB9F => Instruction { opcode, mnemonic: "RES 5,A", size: 2, cycles: 8, _fn: Instruction::op_cbaf },
+            0xCBAB => Instruction { opcode, mnemonic: "RES 5,E", size: 2, cycles: 8, _fn: Instruction::op_cbab },
+            0xCBAC => Instruction { opcode, mnemonic: "RES 5,F", size: 2, cycles: 8, _fn: Instruction::op_cbac },
+            0xCBAD => Instruction { opcode, mnemonic: "RES 5,H", size: 2, cycles: 8, _fn: Instruction::op_cbad },
+            0xCBAE => Instruction { opcode, mnemonic: "RES 5,(HL)", size: 2, cycles: 16, _fn: Instruction::op_cbae },
+            0xCBAF => Instruction { opcode, mnemonic: "RES 5,A", size: 2, cycles: 8, _fn: Instruction::op_cbaf },
 
             0xCBB0 => Instruction { opcode, mnemonic: "RES 6,B", size: 2, cycles: 8, _fn: Instruction::op_cbb0 },
             0xCBB1 => Instruction { opcode, mnemonic: "RES 6,C", size: 2, cycles: 8, _fn: Instruction::op_cbb1 },

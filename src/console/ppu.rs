@@ -332,7 +332,7 @@ impl LcdStatusRegister {
         self.write_to_mem(mmu);
     }
 
-    fn set_lyc(&mut self, lyc_equals_ly: bool, mmu: &mut Mmu) {
+    fn set_lyc_eq_lc(&mut self, lyc_equals_ly: bool, mmu: &mut Mmu) {
         self.set_bit(LcdStatRegBit::LycEqLy, true, mmu);
     }
 }
@@ -393,7 +393,9 @@ impl Ppu {
     pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
         self.clocks += cycles as usize;
 
-        // Update
+        // Read current data in mem
+        self.ly = mmu.read_byte(LY_REG_ADDRESS);
+        self.lyc = mmu.read_byte(LYC_REG_ADDRESS);
         self.lcd_control.read_from_mem(mmu);
         self.lcd_status.read_from_mem(mmu);
 
@@ -402,69 +404,70 @@ impl Ppu {
         let (y0, y1) = MODE_LINE_RANGE[self.lcd_status.mode as usize];
 
         if self.ly < y0 || y1 <= self.ly {
-            panic!("Line {} is out of range {}..{} for Mode {:?}.", self.ly, y0, y1, self.lcd_status.mode);
-        } else {
-            let t = MODE_CLOCKS[self.lcd_status.mode as usize] as usize;
+            // panic!("Line {} is out of range {}..{} for Mode {:?}.", self.ly, y0, y1, self.lcd_status.mode);
+            self.ly = y0;
+        }
 
-            match self.lcd_status.mode {
-                StatMode::OamSearch => {
-                    if self.clocks < t {
-                        self.oam_search(mmu);
+        let t = MODE_CLOCKS[self.lcd_status.mode as usize] as usize;
+
+        match self.lcd_status.mode {
+            StatMode::OamSearch => {
+                if self.clocks < t {
+                    self.oam_search(mmu);
+                } else {
+                    self.clocks = 0;
+                    self.lcd_status.set_mode(StatMode::PixelTransfer, mmu);
+                    interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                    interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
+                }
+            }
+            StatMode::PixelTransfer => {
+                if self.clocks < t {
+                    // TODO FIFO
+                } else {
+                    self.pixel_transfer(mmu);
+                    self.clocks = 0;
+                    self.lcd_status.set_mode(StatMode::HBlank, mmu);
+                    interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
+                    interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
+                }
+            }
+            StatMode::HBlank => {
+                if self.clocks < t {
+                    // wait
+                } else {
+                    self.increment_ly(mmu);
+                    if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
+                        self.lcd_status.set_mode(StatMode::OamSearch, mmu);
+                        interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                        interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                     } else {
+                        self.lcd_status.set_mode(StatMode::VBlank, mmu);
+                        interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
+                        interrupts.requested.set_bit(InterruptRegBit::VBlank, true, mmu);
+                    }
+                }
+            }
+            StatMode::VBlank => {
+                if self.clocks < t {
+                    // wait
+                } else {
+                    self.increment_ly(mmu);
+                    if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
                         self.clocks = 0;
-                        self.lcd_status.set_mode(StatMode::PixelTransfer, mmu);
+                        self.lcd_status.set_mode(StatMode::OamSearch, mmu);
                         interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
                         interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                     }
                 }
-                StatMode::PixelTransfer => {
-                    if self.clocks < t {
-                        // TODO FIFO
-                    } else {
-                        self.pixel_transfer(mmu);
-                        self.clocks = 0;
-                        self.lcd_status.set_mode(StatMode::HBlank, mmu);
-                        interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
-                        interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
-                    }
-                }
-                StatMode::HBlank => {
-                    if self.clocks < t {
-                        // wait
-                    } else {
-                        self.increment_ly(mmu);
-                        if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
-                            self.lcd_status.set_mode(StatMode::OamSearch, mmu);
-                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
-                            interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
-                        } else {
-                            self.lcd_status.set_mode(StatMode::VBlank, mmu);
-                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
-                            interrupts.requested.set_bit(InterruptRegBit::VBlank, true, mmu);
-                        }
-                    }
-                }
-                StatMode::VBlank => {
-                    if self.clocks < t {
-                        // wait
-                    } else {
-                        self.increment_ly(mmu);
-                        if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
-                            self.clocks = 0;
-                            self.lcd_status.set_mode(StatMode::OamSearch, mmu);
-                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
-                            interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
-                        }
-                    }
-                }
-                _ => {
-                    panic!("Unrecognized mode {:?}.", self.lcd_status.mode);
-                }
+            }
+            _ => {
+                panic!("Unrecognized mode {:?}.", self.lcd_status.mode);
             }
         }
 
         if self.ly == self.lyc {
-            self.lcd_status.set_lyc(true, mmu);
+            self.lcd_status.set_lyc_eq_lc(true, mmu);
         }
     }
 
