@@ -84,7 +84,7 @@ impl Debugger {
 
         let mut i = 0;
         for row in 0..rows {
-            vram_values_str.push_str(format!("\n{:#06X} :", i).as_str());
+            vram_values_str.push_str(format!("\n{:#06X} :", i + 0x8000).as_str());
 
             for col in 0..cols {
                 if vram[i] > 0 {

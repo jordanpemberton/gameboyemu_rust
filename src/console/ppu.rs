@@ -131,11 +131,11 @@ struct TileMap {
 }
 
 impl TileMap {
-    fn new(mmu: &mut Mmu, tiledata_address: usize, index_mode_8000: bool) -> TileMap {
+    fn new(mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) -> TileMap {
         let mut tilemap = TileMap {
             tiles: [[Tile::new(); 32]; 32]
         };
-        tilemap.fetch_tiles(mmu, tiledata_address, index_mode_8000);
+        tilemap.fetch_tiles(mmu, tilemap_address, index_mode_8000);
         tilemap
     }
 
@@ -161,8 +161,8 @@ impl TileMap {
         lcd
     }
 
-    fn fetch_tiles(&mut self, mmu: &mut Mmu, tiledata_address: usize, index_mode_8000: bool) {
-        let indices: [u8; 32 * 32] = mmu.read_buffer(tiledata_address, tiledata_address + 0x400, Endianness::LITTLE)
+    fn fetch_tiles(&mut self, mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) {
+        let indices: [u8; 32 * 32] = mmu.read_buffer(tilemap_address, tilemap_address + 0x400, Endianness::LITTLE)
             .try_into().unwrap();
 
         for row in 0..32 {
@@ -175,9 +175,12 @@ impl TileMap {
                     0x8000 + tile_index * 16
                 } else {
                     // The “$8800 method” uses $9000 as its base pointer and uses a signed addressing,
-                    // meaning that tiles 0-127 are in block 2, and tiles -128 to -1 are in block 1.
-                    // Or, tiles 0-127 from block 2 and tiles 128-255 from block 1. (?)
-                    0x9000 + (if tile_index < 128 { tile_index } else { -(tile_index - 255) }) * 16
+                    // meaning that tiles 0-127 are in block 2, and tiles 128-255 are in block 1.
+                    if tile_index < 128 {
+                        0x9000 + tile_index * 16
+                    } else {
+                        0x8000 + tile_index * 16
+                    }
                 } as usize;
 
                 let tile_bytes: [u8; 16] = mmu.read_buffer(address, address + 16, Endianness::LITTLE)
@@ -199,7 +202,7 @@ enum LcdControlRegBit {
     // 3	BG tile map area	0=9800-9BFF, 1=9C00-9FFF
     BackgroundTilemapIsAt9C00 = 3,
     // 4	BG and Window tile data area	0=8800-97FF, 1=8000-8FFF
-    TiledataIsAt8000 = 4,
+    AddressingMode8000 = 4,
     // 5	Window enable	0=Off, 1=On
     WindowEnabled = 5,
     // 6	Window tile map area	0=9800-9BFF, 1=9C00-9FFF
@@ -505,12 +508,11 @@ impl Ppu {
         if is_first_line {
             self.lcd_updated = false;
         }
-        if is_last_line && !self.lcd_updated
-        {
+        if is_last_line && !self.lcd_updated {
             self.lcd_control.read_from_mem(mmu);
 
             if self.lcd_control.check_bit(LcdControlRegBit::BackgroundAndWindowEnabled) {
-                let index_mode_8000 = self.lcd_control.check_bit(LcdControlRegBit::TiledataIsAt8000);
+                let index_mode_8000 = self.lcd_control.check_bit(LcdControlRegBit::AddressingMode8000);
 
                 let background_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::BackgroundTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
                 let background_tilemap = TileMap::new(mmu, background_tilemap_address, index_mode_8000);
