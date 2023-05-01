@@ -13,7 +13,7 @@ pub(crate) struct Cartridge {
 impl Cartridge {
     pub(crate) fn new(filepath: &Path) -> Cartridge {
         Cartridge {
-            data: read(filepath).unwrap(),
+            data: read(filepath).expect(format!("Failed to read from {:?}", filepath).as_str()),
         }
     }
 }

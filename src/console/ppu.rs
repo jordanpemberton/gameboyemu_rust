@@ -543,13 +543,13 @@ impl Ppu {
             let palette = if attr.palette_is_obp1 { 1 } else { 0 };
 
             for row in 0..8 {
-                let y = (attr.y as i16 - sprite_height + row);
+                let y = attr.y as i16 - sprite_height + row;
                 if y < 0 { continue };
-                let tile_row = if attr.flip_x { 8 - row } else { row } as usize;
+                let tile_row = if attr.flip_x { 7 - row } else { row } as usize;
                 for col in 0..8 {
-                    let x = (attr.x as i16 - 16 + col);
+                    let x = attr.x as i16 - 16 + col;
                     if x < 0 { continue };
-                    let tile_col = if attr.flip_x { 8 - col } else { col } as usize;
+                    let tile_col = if attr.flip_x { 7 - col } else { col } as usize;
                     let color_i = tile.data[tile_row][tile_col] as usize;
                     if color_i > 0 {
                         let color = self.palettes[palette][color_i];

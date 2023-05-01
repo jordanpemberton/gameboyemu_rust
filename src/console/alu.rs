@@ -125,13 +125,15 @@ pub(crate) fn subtract_16(a: u16, b: u16) -> (u16, Flags) {
 }
 
 pub(crate) fn sbc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
-    let half_carry = (a & 0x0F) < (b & 0x0F);
-    let (result, carry) = a.overflowing_sub(b + original_flags.carry as u8);
+    let half_carry = (a & 0x0F) < (b & 0x0F + original_flags.carry as u8);
+    // ?
+    let (result, first_carry) = a.overflowing_sub(b);
+    let (result, second_carry) = result.overflowing_sub(original_flags.carry as u8);
     (result, Flags {
         zero: result == 0,
         subtract: true,
         half_carry,
-        carry,
+        carry: first_carry | second_carry,
     })
 }
 
