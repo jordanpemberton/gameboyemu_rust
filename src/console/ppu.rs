@@ -13,12 +13,6 @@ use crate::console::mmu::{Endianness, Mmu};
 
 pub(crate) const LCD_PIXEL_WIDTH: usize = 160;
 pub(crate) const LCD_PIXEL_HEIGHT: usize = 144;
-const TILE_PIXEL_WIDTH: usize = 8;
-const TILE_PIXEL_HEIGHT: usize = 8;
-const MAP_TILE_WIDTH: usize = 32;
-const MAP_TILE_HEIGHT: usize = 32;
-const MAP_PIXEL_WIDTH: usize = 256;
-const MAP_PIXEL_HEIGHT: usize = 256;
 
 const SCY_REG_ADDRESS: u16 = 0xFF42;
 const SCX_REG_ADDRESS: u16 = 0xFF43;
@@ -86,26 +80,26 @@ impl SpriteAttribute {
     }
 }
 
-type Tile = [[u8; TILE_PIXEL_WIDTH]; TILE_PIXEL_HEIGHT];
+type Tile = [[u8; 8]; 8];
 
 struct TileMap {
-    tiles: [[Tile; MAP_TILE_WIDTH]; MAP_TILE_HEIGHT],
+    tiles: [[Tile; 32]; 32],
 }
 
 impl TileMap {
     fn new(mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) -> TileMap {
         let mut tilemap = TileMap {
-            tiles: [[[[0; TILE_PIXEL_WIDTH]; TILE_PIXEL_HEIGHT]; MAP_TILE_WIDTH]; MAP_TILE_HEIGHT]
+            tiles: [[[[0; 8]; 8]; 32]; 32]
         };
         tilemap.fetch_tiles(mmu, tilemap_address, index_mode_8000);
         tilemap
     }
 
     fn read_tile(tile_bytes: [u8; 16]) -> Tile {
-        let mut tile: Tile = [[0; TILE_PIXEL_WIDTH]; TILE_PIXEL_HEIGHT];
+        let mut tile: Tile = [[0; 8]; 8];
 
-        for row in 0..TILE_PIXEL_HEIGHT {
-            for col in 0..TILE_PIXEL_WIDTH {
+        for row in 0..8 {
+            for col in 0..8 {
                 // Possible values = 0,1,2,3 (0b00,0b01,0b10,0b11)
                 let low = ((tile_bytes[row * 2] << col) >> 7) << 1;
                 let high = (tile_bytes[row * 2 + 1] << col) >> 7;
@@ -136,28 +130,30 @@ impl TileMap {
     }
 
     fn fetch_tiles(&mut self, mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) {
-        let indices: [u8; 32 * 32] = mmu.read_buffer(tilemap_address, tilemap_address + 0x400, Endianness::LITTLE)
+        let indices: [u8; 32 * 32] = mmu.read_buffer(
+                tilemap_address,
+                tilemap_address + 32 * 32,
+                Endianness::LITTLE)
             .try_into().unwrap();
 
         for row in 0..32 {
             for col in 0..32 {
                 let tile_index = indices[row * 32 + col] as i32;
 
-                let address = if index_mode_8000 {
-                    // The “$8000 method” uses $8000 as its base pointer and uses an unsigned addressing,
-                    // meaning that tiles 0-127 are in block 0, and tiles 128-255 are in block 1.
-                    0x8000 + tile_index * 16
+                // The “$8000 method” uses $8000 as its base pointer and uses an unsigned addressing,
+                // meaning that tiles 0-127 are in block 0, and tiles 128-255 are in block 1.
+                // The “$8800 method” uses $9000 as its base pointer and uses a signed addressing,
+                // meaning that tiles 0-127 are in block 2, and tiles 128-255 are in block 1.
+                let address = if !index_mode_8000 && tile_index < 128 {
+                    0x9000 + tile_index * 16
                 } else {
-                    // The “$8800 method” uses $9000 as its base pointer and uses a signed addressing,
-                    // meaning that tiles 0-127 are in block 2, and tiles 128-255 are in block 1.
-                    if tile_index < 128 {
-                        0x9000 + tile_index * 16
-                    } else {
-                        0x8000 + tile_index * 16
-                    }
+                    0x8000 + tile_index * 16
                 } as usize;
 
-                let tile_bytes: [u8; 16] = mmu.read_buffer(address, address + 16, Endianness::LITTLE)
+                let tile_bytes: [u8; 16] = mmu.read_buffer(
+                        address, 
+                        address + 16, 
+                        Endianness::LITTLE)
                     .try_into().unwrap();
 
                 self.tiles[row][col] = TileMap::read_tile(tile_bytes);
@@ -168,14 +164,14 @@ impl TileMap {
     fn to_lcd(&self, scy: usize, scx: usize, palette: &[u8; 4]) -> Lcd {
         let mut lcd = Lcd::new();
 
-        for row in 0..MAP_TILE_HEIGHT {
-            for col in 0..MAP_TILE_WIDTH {
+        for row in 0..32 {
+            for col in 0..32 {
                 let tile = self.tiles[row][col];
-                for i in 0..TILE_PIXEL_HEIGHT {
-                    let lcd_row = row * TILE_PIXEL_HEIGHT + scy + i;
+                for i in 0..8 {
+                    let lcd_row = row * 8 + scy + i;
                     if lcd_row >= LCD_PIXEL_HEIGHT { break }
-                    for j in 0..TILE_PIXEL_WIDTH {
-                        let lcd_col = col * TILE_PIXEL_WIDTH + scx + j;
+                    for j in 0..8 {
+                        let lcd_col = col * 8 + scx + j;
                         if lcd_col >= LCD_PIXEL_WIDTH { break }
                         let pixel = tile[i][j];
                         lcd.data[lcd_row][lcd_col] = palette[pixel as usize];
@@ -502,6 +498,12 @@ impl Ppu {
     }
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
+        // TEMP debugging perf problems
+        self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] += 1;
+        self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] %= 8;
+        self.lcd_updated = true;
+        return;
+
         // TODO implement pixel FIFO correctly
         let is_first_line = self.ly <= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].0;
         let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
@@ -553,7 +555,7 @@ impl Ppu {
                 if y < 0 { continue };
                 let tile_row = if attr.flip_x { 7 - row } else { row };
                 for col in 0..8 {
-                    let x = attr.x as i16 - 16 + col;
+                    let x = attr.x as i16 - 16 + col; // ?
                     if x < 0 { continue };
                     let tile_col = if attr.flip_x { 7 - col } else { col };
                     let color_i = tile[tile_row as usize][tile_col as usize];

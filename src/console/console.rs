@@ -99,9 +99,20 @@ impl Console {
         self.main_loop();
     }
 
-    fn poll(&mut self) -> i16 {
-        let mut status = 0;
+    fn debug_peek(&mut self) {
+        match self.debugger {
+            Some(ref mut debugger) => {
+                debugger.peek(
+                    Option::from(&self.cpu),
+                    Option::from(&self.mmu),
+                    Option::from(&self.ppu),
+                    Option::from(HashMap::from([])));
+            }
+            None => {}
+        }
+    }
 
+    fn poll(&mut self) -> bool {
         if self.clocks >= self.polling_speed {
             self.clocks = 0;
 
@@ -109,8 +120,7 @@ impl Console {
                 match event {
                     Event::Quit { .. }
                     | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                        status = -2;
-                        break;
+                        return false;
                     }
                     Event::KeyDown { keycode: Some(Keycode::B), .. } => {
                         match self.debugger {
@@ -136,13 +146,12 @@ impl Console {
                             None => {}
                         }
                     }
-                    _ => {
-                    }
+                    _ => {}
                 }
             }
         }
 
-        status
+        true
     }
 
     fn step(&mut self) -> i16 {
@@ -163,23 +172,15 @@ impl Console {
     fn main_loop(&mut self) {
         loop {
             if !self.is_paused {
-                let mut status = self.poll();
-                if status >= 0 {
-                    status = self.step();
+                let exit = !self.poll();
+                if exit {
+                    self.debug_peek();
+                    break;
                 }
 
+                let status = self.step();
                 if status < 0 {
-                    match self.debugger {
-                        Some(ref mut debugger) => {
-                            debugger.peek(
-                                Option::from(&self.cpu),
-                                Option::from(&self.mmu),
-                                Option::from(&self.ppu),
-                                Option::from(HashMap::from([])));
-                        }
-                        None => {}
-                    }
-
+                    self.debug_peek();
                     panic!("Console step attempt failed with status {} at address {:#06X}.",
                         status, self.cpu.registers.get_word(CpuRegIndex::PC));
                 }

@@ -114,7 +114,7 @@ fn main() {
 
     CpuRegisters::test();
 
-    let mut gamboy = Console::new("GAMBOY",5, true, false);
+    let mut gamboy = Console::new("GAMBOY",5, true, true);
 
     // gamboy.run(CartridgeOption::NONE, false);
 

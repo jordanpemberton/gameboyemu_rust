@@ -4,6 +4,7 @@ use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
+use sdl2::sys::rand;
 
 use crate::console::mmu::{Endianness, Mmu};
 use crate::console::ppu::{Lcd, LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
@@ -26,6 +27,7 @@ pub(crate) struct Display {
     gbpixel_height: u32,
     gbpixel_size: u32,
     canvas: WindowCanvas,
+    pixels: [[Rect; LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT],
 }
 
 impl Display {
@@ -36,6 +38,17 @@ impl Display {
             window_title: &str,
             sdl_context: &Sdl,
             enabled: bool) -> Display {
+        let mut pixels = [[Rect::new(0,0,0,0); LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT];
+        for y in 0..LCD_PIXEL_HEIGHT as u32 {
+            for x in 0..LCD_PIXEL_WIDTH as u32 {
+                pixels[y as usize][x as usize] = Rect::new(
+                    (x * window_scale) as i32,
+                    (y * window_scale) as i32,
+                    window_scale,
+                    window_scale);
+            }
+        }
+
         Display {
             enabled: enabled,
             gbpixel_width: pixel_width,
@@ -48,6 +61,7 @@ impl Display {
                     pixel_height * window_scale,
                     window_title
                 ),
+            pixels,
         }
     }
 
@@ -85,14 +99,7 @@ impl Display {
         for x in 0..LCD_PIXEL_WIDTH as u32 {
             let color = scanline[x as usize];
             self.canvas.set_draw_color(color);
-
-            let pixel_rect = Rect::new(
-                (x * self.gbpixel_size) as i32,
-                (y * self.gbpixel_size) as i32,
-                self.gbpixel_size,
-                self.gbpixel_size);
-
-            self.canvas.fill_rect(pixel_rect).unwrap();
+            self.canvas.fill_rect(self.pixels[y as usize][x as usize]).unwrap();
         }
     }
 
@@ -111,7 +118,7 @@ fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, w
     let window = video_subsystem
         .window(window_title, window_width, window_height)
         .position_centered()
-        // .opengl()
+        .opengl()
         .build()
         .unwrap();
 
