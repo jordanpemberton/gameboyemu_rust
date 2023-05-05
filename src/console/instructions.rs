@@ -4,7 +4,6 @@ use sdl2::keyboard::Keycode::Insert;
 use sdl2::log::set_output_function;
 use crate::console::alu;
 use crate::console::cpu::{Cpu, PREFIX_BYTE};
-use crate::console::input::CallbackAction::DEBUG;
 use crate::console::mmu::{Endianness, Mmu};
 use crate::console::cpu_registers::{Flags, CpuRegIndex};
 

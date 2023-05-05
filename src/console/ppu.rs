@@ -11,20 +11,27 @@ use crate::console::display::Display;
 use crate::console::interrupts::{InterruptRegBit, Interrupts};
 use crate::console::mmu::{Endianness, Mmu};
 
-pub(crate) const LCD_PIXEL_WIDTH: u32 = 160;
-pub(crate) const LCD_PIXEL_HEIGHT: u32 = 144;
+pub(crate) const LCD_PIXEL_WIDTH: usize = 160;
+pub(crate) const LCD_PIXEL_HEIGHT: usize = 144;
+const TILE_PIXEL_WIDTH: usize = 8;
+const TILE_PIXEL_HEIGHT: usize = 8;
+const MAP_TILE_WIDTH: usize = 32;
+const MAP_TILE_HEIGHT: usize = 32;
+const MAP_PIXEL_WIDTH: usize = 256;
+const MAP_PIXEL_HEIGHT: usize = 256;
 
-const TILE_PIXEL_WIDTH: u16 = 8;
-const TILE_PIXEL_HEIGHT: u16 = 8;
-const MAP_TILE_WIDTH: u16 = 32;
-const MAP_TILE_HEIGHT: u16 = 32;
-const MAP_PIXEL_WIDTH: u16 = 256;
-const MAP_PIXEL_HEIGHT: u16 = 256;
-
+const SCY_REG_ADDRESS: u16 = 0xFF42;
+const SCX_REG_ADDRESS: u16 = 0xFF43;
 const LY_REG_ADDRESS: u16 = 0xFF44;
 const LYC_REG_ADDRESS: u16 = 0xFF45;
+const DMA_REG_ADDRESS: u16 = 0xFF46;
+const BGP_REG_ADDRESS: u16 = 0xFF47;
+const OBP0_REG_ADDRESS: u16 = 0xFF48;
+const OBP1_REG_ADDRESS: u16 = 0xFF49;
+const WY_REG_ADDRESS: u16 = 0xFF4A;
+const WX_REG_ADDRESS: u16 = 0xFF4B;
 
-const MODE_CLOCKS: [u16; 4] = [
+const MODE_CLOCKS: [usize; 4] = [
     204,        // HBlank[0]
     456,        // VBlank [1]
     80,         // OAM [2]
@@ -39,13 +46,13 @@ const MODE_LINE_RANGE: [(u8, u8); 4] = [
 ];
 
 pub(crate) struct Lcd {
-    pub(crate) data: [[u8; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize],
+    pub(crate) data: [[u8; LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT],
 }
 
 impl Lcd {
     fn new() -> Lcd {
         Lcd {
-            data: [[0; LCD_PIXEL_WIDTH as usize]; LCD_PIXEL_HEIGHT as usize]
+            data: [[0; LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT]
         }
     }
 }
@@ -79,27 +86,30 @@ impl SpriteAttribute {
     }
 }
 
-#[derive(Clone,Copy)]
-struct Tile {
-    data: [[u8; TILE_PIXEL_WIDTH as usize]; TILE_PIXEL_HEIGHT as usize],
+type Tile = [[u8; TILE_PIXEL_WIDTH]; TILE_PIXEL_HEIGHT];
+
+struct TileMap {
+    tiles: [[Tile; MAP_TILE_WIDTH]; MAP_TILE_HEIGHT],
 }
 
-impl Tile {
-    fn new() -> Tile {
-        Tile {
-            data: [[0; TILE_PIXEL_WIDTH as usize]; TILE_PIXEL_HEIGHT as usize],
-        }
+impl TileMap {
+    fn new(mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) -> TileMap {
+        let mut tilemap = TileMap {
+            tiles: [[[[0; TILE_PIXEL_WIDTH]; TILE_PIXEL_HEIGHT]; MAP_TILE_WIDTH]; MAP_TILE_HEIGHT]
+        };
+        tilemap.fetch_tiles(mmu, tilemap_address, index_mode_8000);
+        tilemap
     }
 
     fn read_tile(tile_bytes: [u8; 16]) -> Tile {
-        let mut tile = Tile::new();
+        let mut tile: Tile = [[0; TILE_PIXEL_WIDTH]; TILE_PIXEL_HEIGHT];
 
-        for row in 0..8 {
-            for col in 0..8 {
+        for row in 0..TILE_PIXEL_HEIGHT {
+            for col in 0..TILE_PIXEL_WIDTH {
                 // Possible values = 0,1,2,3 (0b00,0b01,0b10,0b11)
                 let low = ((tile_bytes[row * 2] << col) >> 7) << 1;
                 let high = (tile_bytes[row * 2 + 1] << col) >> 7;
-                tile.data[row][col] = high + low;
+                tile[row][col] = high + low;
             }
         }
 
@@ -116,49 +126,13 @@ impl Tile {
             tile_bytes = [0; 16];
             tile_bytes.clone_from_slice(&tile_data_buffer[i..i+16]);
 
-            let tile = Tile::read_tile(tile_bytes);
+            let tile = TileMap::read_tile(tile_bytes);
             tiles.push(tile);
 
             i += 16;
         }
 
         tiles
-    }
-}
-
-struct TileMap {
-    tiles: [[Tile; 32]; 32],
-}
-
-impl TileMap {
-    fn new(mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) -> TileMap {
-        let mut tilemap = TileMap {
-            tiles: [[Tile::new(); 32]; 32]
-        };
-        tilemap.fetch_tiles(mmu, tilemap_address, index_mode_8000);
-        tilemap
-    }
-
-    fn to_lcd(&self, palette: &[u8; 4]) -> Lcd {
-        let mut lcd = Lcd::new();
-
-        for row in 0..32 {
-            for col in 0..32 {
-                let tile = self.tiles[row][col];
-                for i in 0..TILE_PIXEL_HEIGHT as usize {
-                    let lcd_row = row * TILE_PIXEL_HEIGHT as usize + i;
-                    if lcd_row >= LCD_PIXEL_HEIGHT as usize { break }
-                    for j in 0..TILE_PIXEL_WIDTH as usize {
-                        let lcd_col = col * TILE_PIXEL_WIDTH as usize + j;
-                        if lcd_col >= LCD_PIXEL_WIDTH as usize { break }
-                        let pixel = tile.data[i][j];
-                        lcd.data[row * TILE_PIXEL_HEIGHT as usize + i][col * TILE_PIXEL_WIDTH as usize + j] = palette[pixel as usize];
-                    }
-                }
-            }
-        }
-
-        lcd
     }
 
     fn fetch_tiles(&mut self, mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) {
@@ -186,9 +160,31 @@ impl TileMap {
                 let tile_bytes: [u8; 16] = mmu.read_buffer(address, address + 16, Endianness::LITTLE)
                     .try_into().unwrap();
 
-                self.tiles[row][col] = Tile::read_tile(tile_bytes);
+                self.tiles[row][col] = TileMap::read_tile(tile_bytes);
             }
         }
+    }
+
+    fn to_lcd(&self, scy: usize, scx: usize, palette: &[u8; 4]) -> Lcd {
+        let mut lcd = Lcd::new();
+
+        for row in 0..MAP_TILE_HEIGHT {
+            for col in 0..MAP_TILE_WIDTH {
+                let tile = self.tiles[row][col];
+                for i in 0..TILE_PIXEL_HEIGHT {
+                    let lcd_row = row * TILE_PIXEL_HEIGHT + scy + i;
+                    if lcd_row >= LCD_PIXEL_HEIGHT { break }
+                    for j in 0..TILE_PIXEL_WIDTH {
+                        let lcd_col = col * TILE_PIXEL_WIDTH + scx + j;
+                        if lcd_col >= LCD_PIXEL_WIDTH { break }
+                        let pixel = tile[i][j];
+                        lcd.data[lcd_row][lcd_col] = palette[pixel as usize];
+                    }
+                }
+            }
+        }
+
+        lcd
     }
 }
 
@@ -344,22 +340,19 @@ pub(crate) struct Ppu {
     pub(crate) lcd_updated: bool,
 
     // Registers -- in IO RAM
-    bgp: u8,        // palette
-    // Bit 7-6 - Color for index 3
-    // Bit 5-4 - Color for index 2
-    // Bit 3-2 - Color for index 1
-    // Bit 1-0 - Color for index 0
-
-    ly: u8,    // scanline,     0xFF44
-    lyc: u8,   // LY compare,   0xFF45
-    scx: u8,
-    scy: u8,
+    scy: u8,    // 0xFF42
+    scx: u8,    // 0xFF43
+    ly: u8,     // 0xFF44
+    lyc: u8,    // 0xFF45
+    dma: u8,    // 0xFF46 — DMA: OAM DMA source address & start
+    bgp: u8,    // 0xFF47
+    obp0: u8,   // 0xFF48 (Non-CGB Mode only)
+    obp1: u8,   // 0xFF49 (Non-CGB Mode only)
+    wy: u8,     // 0xFF4A
+    wx: u8,     // 0xFF4B
 
     lcd_control: LcdControlRegister,
     lcd_status: LcdStatusRegister,
-
-    pub(crate) palette: u8,
-    palettes: [[u8; 4]; 4],
 
     sprite_attributes: [SpriteAttribute; 40],
     pub(crate) lcd: Lcd,
@@ -367,26 +360,21 @@ pub(crate) struct Ppu {
 
 impl Ppu {
     pub(crate) fn new(mmu: &mut Mmu) -> Ppu {
-        // TODO palettes
-        let palettes = [
-            [0,1,2,3],
-            [0,1,2,3],
-            [0,1,2,3],
-            [0,1,2,3],
-        ];
-
         Ppu {
             clocks: 0,
             lcd_updated: false,
-            bgp: 0,
-            ly: 0,
-            lyc: 0,
             scy: 0,
             scx: 0,
+            ly: 0,
+            lyc: 0,
+            dma: 0,
+            bgp: 0,
+            obp0: 0,
+            obp1: 0,
+            wy: 0,
+            wx: 0,
             lcd_control: LcdControlRegister::new(),
             lcd_status: LcdStatusRegister::new(mmu),
-            palette: 0,
-            palettes,
             sprite_attributes: [SpriteAttribute::new(&[0; 4]); 40],
             lcd: Lcd::new(),
         }
@@ -395,11 +383,7 @@ impl Ppu {
     pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
         self.clocks += cycles as usize;
 
-        // Read current data in mem
-        self.ly = mmu.read_byte(LY_REG_ADDRESS);
-        self.lyc = mmu.read_byte(LYC_REG_ADDRESS);
-        self.lcd_control.read_from_mem(mmu);
-        self.lcd_status.read_from_mem(mmu);
+        self.refresh_from_mem(mmu);
 
         // TODO check incoming interrupt requests /enables
 
@@ -410,7 +394,7 @@ impl Ppu {
             self.ly = y0;
         }
 
-        let t = MODE_CLOCKS[self.lcd_status.mode as usize] as usize;
+        let t = MODE_CLOCKS[self.lcd_status.mode as usize];
 
         match self.lcd_status.mode {
             StatMode::OamSearch => {
@@ -473,6 +457,22 @@ impl Ppu {
         }
     }
 
+    fn refresh_from_mem(&mut self, mmu: &mut Mmu) {
+        self.scy = mmu.read_byte(SCY_REG_ADDRESS);
+        self.scx = mmu.read_byte(SCX_REG_ADDRESS);
+        self.ly = mmu.read_byte(LY_REG_ADDRESS);
+        self.lyc = mmu.read_byte(LYC_REG_ADDRESS);
+        self.dma = mmu.read_byte(DMA_REG_ADDRESS);
+        self.bgp = mmu.read_byte(BGP_REG_ADDRESS);
+        self.obp0 = mmu.read_byte(OBP0_REG_ADDRESS);
+        self.obp1 = mmu.read_byte(OBP1_REG_ADDRESS);
+        self.wy = mmu.read_byte(WY_REG_ADDRESS);
+        self.wx = mmu.read_byte(WX_REG_ADDRESS);
+
+        self.lcd_control.read_from_mem(mmu);
+        self.lcd_status.read_from_mem(mmu);
+    }
+
     fn increment_ly(&mut self, mmu: &mut Mmu) {
         self.ly += 1;
         self.clocks = 0;
@@ -516,18 +516,18 @@ impl Ppu {
 
                 let background_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::BackgroundTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
                 let background_tilemap = TileMap::new(mmu, background_tilemap_address, index_mode_8000);
-                self.lcd = background_tilemap.to_lcd(&self.palettes[0]); // TODO palettes
+                self.lcd = background_tilemap.to_lcd(self.scy as usize, self.scx as usize, &[0,1,2,3]); // TODO palettes
 
-                let window_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::WindowTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
-                let window_tilemap = TileMap::new(mmu, window_tilemap_address, index_mode_8000);
-                // self.lcd = window_tilemap.to_lcd(&self.palettes[0]); // ?
+                // let window_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::WindowTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
+                // let window_tilemap = TileMap::new(mmu, window_tilemap_address, index_mode_8000);
+                // self.lcd = window_tilemap.to_lcd(self.scy as usize, self.scx as usize, &[0,1,2,3]); // TODO palettes
 
                 self.lcd_updated = true;
             }
 
             if self.lcd_control.check_bit(LcdControlRegBit::ObjEnabled) {
-                self.draw_sprites(mmu);
-                self.lcd_updated = true;
+                // self.draw_sprites(mmu);
+                // self.lcd_updated = true;
             }
         }
     }
@@ -539,22 +539,26 @@ impl Ppu {
             let tile_index = attr.tile_index as usize;
             let tile_address = tiledata_address + tile_index * 16;
             let tile_data = mmu.read_buffer(tile_address, tile_address + 16, Endianness::LITTLE);
-            let tile = Tile::read_tile(tile_data.try_into().unwrap());
+            let tile = TileMap::read_tile(tile_data.try_into().unwrap());
 
             let sprite_height = if self.lcd_control.check_bit(LcdControlRegBit::SpriteSizeIs16) { 16 } else { 8 };
             let palette = if attr.palette_is_obp1 { 1 } else { 0 };
+            let palettes = &[
+                [0,1,2,3],
+                [0,1,2,3],
+            ];
 
             for row in 0..8 {
-                let y = attr.y as i16 - sprite_height + row;
+                let y = attr.y as i16 - sprite_height + row as i16;
                 if y < 0 { continue };
-                let tile_row = if attr.flip_x { 7 - row } else { row } as usize;
+                let tile_row = if attr.flip_x { 7 - row } else { row };
                 for col in 0..8 {
                     let x = attr.x as i16 - 16 + col;
                     if x < 0 { continue };
-                    let tile_col = if attr.flip_x { 7 - col } else { col } as usize;
-                    let color_i = tile.data[tile_row][tile_col] as usize;
+                    let tile_col = if attr.flip_x { 7 - col } else { col };
+                    let color_i = tile[tile_row as usize][tile_col as usize];
                     if color_i > 0 {
-                        let color = self.palettes[palette][color_i];
+                        let color = palettes[palette][color_i as usize];
                         // TODO selection priority and drawing priority
                         let has_priority = true;
                         let bg_color = self.lcd.data[y as usize][x as usize];

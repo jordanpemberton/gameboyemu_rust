@@ -76,8 +76,8 @@ const MEALY_TEST_ROMS: [&str; 31] = [
     "m3_wx_6_change.gb",
 ];
 
-const TEST_IS_BLARGG: bool = false;
-const TEST_ROM: usize = 20;
+const TEST_IS_BLARGG: bool = true;
+const TEST_ROM: usize = 0;
 
 fn disassemble_roms() {
     let bootrom_cartridge = Cartridge::new(BOOTROM_FILEPATH.as_ref());
@@ -114,14 +114,15 @@ fn main() {
 
     CpuRegisters::test();
 
-    let mut gamboy = Console::new("GAMBOY",5, true, true);
+    let mut gamboy = Console::new("GAMBOY",5, true, false);
 
     // gamboy.run(CartridgeOption::NONE, false);
 
-    gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), true);
+    gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), false);
 
-    let test_roms_dir = if TEST_IS_BLARGG { BLARGG_TEST_ROM_DIR } else { MEALY_TEST_ROM_DIR };
-    let test_roms = if TEST_IS_BLARGG { BLARGG_TEST_ROMS.to_vec() } else { MEALY_TEST_ROMS.to_vec() };
-    let test_filepath = format!("{}{}", test_roms_dir, test_roms[TEST_ROM]);
-    // gamboy.run(CartridgeOption::SOME(Cartridge::new(test_filepath.as_str().as_ref())), true);
+    // let test_roms_dir = if TEST_IS_BLARGG { BLARGG_TEST_ROM_DIR } else { MEALY_TEST_ROM_DIR };
+    // let test_roms = if TEST_IS_BLARGG { BLARGG_TEST_ROMS.to_vec() } else { MEALY_TEST_ROMS.to_vec() };
+    // let test_filepath = format!("{}{}", test_roms_dir, test_roms[TEST_ROM]);
+    // let test_filepath = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/jsGB/opus5.gb";
+    // gamboy.run(CartridgeOption::SOME(Cartridge::new(test_filepath.as_ref())), true);
 }

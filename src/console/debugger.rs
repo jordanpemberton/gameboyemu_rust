@@ -29,7 +29,7 @@ impl Debugger {
         self.enabled && self.active
     }
 
-    pub(crate) fn break_or_cont(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn break_or_cont(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         if self.enabled {
             self.active = !self.active;
             if self.active {
@@ -38,17 +38,17 @@ impl Debugger {
         }
     }
 
-    pub(crate) fn peek(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn peek(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         if self.enabled {
             self.dump(cpu, mmu, ppu, locals);
         }
     }
 
-    pub(crate) fn step(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn step(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         // todo
     }
 
-    fn dump(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
+    fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         if let Some(_cpu) = cpu {
             self.dump_cpu_state(_cpu);
         }

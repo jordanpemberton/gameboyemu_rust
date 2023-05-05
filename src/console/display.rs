@@ -82,7 +82,7 @@ impl Display {
     }
 
     fn draw_scanline(&mut self, y: u32, scanline: [Color; LCD_PIXEL_WIDTH as usize]) {
-        for x in 0..LCD_PIXEL_WIDTH {
+        for x in 0..LCD_PIXEL_WIDTH as u32 {
             let color = scanline[x as usize];
             self.canvas.set_draw_color(color);
 
@@ -99,8 +99,8 @@ impl Display {
     fn draw_screen(&mut self, lcd: &Lcd) {
         for y in 0..LCD_PIXEL_HEIGHT {
             let row = lcd.data[y as usize];
-            let colors: [Color; LCD_PIXEL_WIDTH as usize] = row.map(|pixel| COLORS[pixel as usize]);
-            self.draw_scanline(y, colors);
+            let colors: [Color; LCD_PIXEL_WIDTH] = row.map(|pixel| COLORS[pixel as usize]);
+            self.draw_scanline(y as u32, colors);
         }
     }
 }
@@ -111,7 +111,7 @@ fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, w
     let window = video_subsystem
         .window(window_title, window_width, window_height)
         .position_centered()
-        .opengl()
+        // .opengl()
         .build()
         .unwrap();
 
