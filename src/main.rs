@@ -18,10 +18,10 @@ use crate::console::cpu_registers::{CpuRegIndex, CpuRegisters};
 const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/dmg.bin";
 
 const GAME_FILEPATH: &str =
-    // "/home/jordan/Games/GameBoy/GB/Tetris.gb"
+    "/home/jordan/Games/GameBoy/GB/Tetris.gb"
     // "/home/jordan/Games/GameBoy/GB/Dr. Mario (Game Boy Prototype)/Dr. Mario (Prototype).gb"
     // "/home/jordan/Games/GameBoy/GB/Kirby's Dream Land (USA, Europe).gb" // hits Invalid opcode F4 at 0x4C4A?
-    "/home/jordan/Games/GameBoy/GB/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb"
+    // "/home/jordan/Games/GameBoy/GB/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb"
     // "/home/jordan/Games/GameBoy/GB/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb"
 ;
 

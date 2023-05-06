@@ -154,7 +154,7 @@ impl TileMap {
 
         let mut addresses = [0; 32 * 32];
 
-        for i in 0..32 {
+        for i in 0..32 * 32 {
             let tile_index = tile_indices[i] as i32;
             addresses[i] = if !index_mode_8000 && tile_index < 128 {
                 0x9000 + tile_index * 16
