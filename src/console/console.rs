@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs::read;
 use std::env::current_dir;
 use std::path::Path;
+use std::time::{Duration, SystemTime};
 
 use sdl2::{EventPump, Sdl};
 use sdl2::event::Event;
@@ -17,10 +18,14 @@ use crate::console::mmu::{Mmu};
 use crate::console::ppu::{LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT, Ppu};
 use crate::console::cpu_registers::{CpuRegIndex};
 
+const TICKS_PER_FRAME: u16 = 0xFF;
+const TICKS_PER_POLL: u16 = 0x0F;
+
 pub(crate) struct Console {
     is_paused: bool,
-    clocks: u16,
-    polling_speed: u16,
+    tick: u16,
+    ticks_per_frame: u16,
+    ticks_per_poll: u16,
     cpu: Cpu,
     mmu: Mmu,
     ppu: Ppu,
@@ -52,8 +57,9 @@ impl Console {
 
         Console {
             is_paused: false,
-            clocks: 0,
-            polling_speed: 1000,
+            tick: 0,
+            ticks_per_frame: TICKS_PER_FRAME,
+            ticks_per_poll: TICKS_PER_POLL,
             cpu: cpu,
             mmu: mmu,
             ppu: ppu,
@@ -88,11 +94,10 @@ impl Console {
     }
 
     fn run_game(&mut self, game: &Cartridge, skip_boot: bool) {
+        self.mmu.load_rom(&game.data[0..], 0, 0x8000);
         if !skip_boot {
             self.load_bootrom();
-            self.mmu.load_rom(&game.data[0x0100..], 0x0100, 0x8000 - 0x100);
         } else {
-            self.mmu.load_rom(&game.data[0..], 0, 0x8000);
             self.cpu.registers.set_word(CpuRegIndex::PC, 0x0100);
         }
 
@@ -113,41 +118,38 @@ impl Console {
     }
 
     fn poll(&mut self) -> bool {
-        if self.clocks >= self.polling_speed {
-            self.clocks = 0;
-
-            for event in self.event_pump.poll_iter() {
-                match event {
-                    Event::Quit { .. }
-                    | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                        return false;
-                    }
-                    Event::KeyDown { keycode: Some(Keycode::B), .. } => {
-                        match self.debugger {
-                            Some(ref mut debugger) => {
-                                debugger.break_or_cont(
-                                    Option::from(&self.cpu),
-                                    Option::from(&self.mmu),
-                                    Option::from(&self.ppu),
-                                    Option::from(HashMap::from([])));
-                            }
-                            None => {}
-                        }
-                    }
-                    Event::KeyDown { keycode: Some(Keycode::P), .. } => {
-                        match self.debugger {
-                            Some(ref mut debugger) => {
-                                debugger.peek(
-                                    Option::from(&self.cpu),
-                                    Option::from(&self.mmu),
-                                    Option::from(&self.ppu),
-                                    Option::from(HashMap::from([])));
-                            }
-                            None => {}
-                        }
-                    }
-                    _ => {}
+        for event in self.event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    return false;
                 }
+                Event::KeyDown { keycode: Some(Keycode::B), .. } => {
+                    match self.debugger {
+                        Some(ref mut debugger) => {
+                            debugger.break_or_cont(
+                                Option::from(&self.cpu),
+                                Option::from(&self.mmu),
+                                Option::from(&self.ppu),
+                                Option::from(HashMap::from([])));
+                            self.is_paused = debugger.is_active();
+                        }
+                        None => {}
+                    }
+                }
+                Event::KeyDown { keycode: Some(Keycode::P), .. } => {
+                    match self.debugger {
+                        Some(ref mut debugger) => {
+                            debugger.peek(
+                                Option::from(&self.cpu),
+                                Option::from(&self.mmu),
+                                Option::from(&self.ppu),
+                                Option::from(HashMap::from([])));
+                        }
+                        None => {}
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -156,28 +158,25 @@ impl Console {
 
     fn step(&mut self) -> i16 {
         let mut cycles = self.cpu.step(&mut self.mmu);
-        if cycles >= 0 {
-            cycles += self.cpu.check_interrupts();
-            self.clocks += cycles as u16;
-
-            self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
-            if self.ppu.lcd_updated {
-                self.display.draw(&mut self.mmu, &mut self.ppu);
-            }
+        cycles += self.cpu.check_interrupts();
+        self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
+        if self.ppu.lcd_updated && self.tick % self.ticks_per_frame == 0 {
+            self.display.draw(&mut self.mmu, &mut self.ppu);
         }
-
         cycles
     }
 
     fn main_loop(&mut self) {
         loop {
-            if !self.is_paused {
+            if self.tick % self.ticks_per_poll == 0 {
                 let exit = !self.poll();
                 if exit {
                     self.debug_peek();
                     break;
                 }
+            }
 
+            if !self.is_paused {
                 let status = self.step();
                 if status < 0 {
                     self.debug_peek();
@@ -185,6 +184,8 @@ impl Console {
                         status, self.cpu.registers.get_word(CpuRegIndex::PC));
                 }
             }
+
+            self.tick = self.tick.wrapping_add(1);
         }
     }
 }

@@ -499,10 +499,10 @@ impl Ppu {
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
         // TEMP debugging perf problems
-        self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] += 1;
-        self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] %= 8;
-        self.lcd_updated = true;
-        return;
+        // self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] += 1;
+        // self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] %= 8;
+        // self.lcd_updated = true;
+        // return;
 
         // TODO implement pixel FIFO correctly
         let is_first_line = self.ly <= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].0;
@@ -520,16 +520,24 @@ impl Ppu {
                 let background_tilemap = TileMap::new(mmu, background_tilemap_address, index_mode_8000);
                 self.lcd = background_tilemap.to_lcd(self.scy as usize, self.scx as usize, &[0,1,2,3]); // TODO palettes
 
-                // let window_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::WindowTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
-                // let window_tilemap = TileMap::new(mmu, window_tilemap_address, index_mode_8000);
-                // self.lcd = window_tilemap.to_lcd(self.scy as usize, self.scx as usize, &[0,1,2,3]); // TODO palettes
+                // TODO how does window get read?
+                let window_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::WindowTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
+                let window_tilemap = TileMap::new(mmu, window_tilemap_address, index_mode_8000);
+                let window_lcd = window_tilemap.to_lcd(self.wy as usize, self.wx as usize, &[0,1,2,3]); // TODO palettes
+                for row in 0..LCD_PIXEL_HEIGHT {
+                    for col in 0..LCD_PIXEL_WIDTH {
+                        if window_lcd.data[row][col] > 0 { // TODO priority, transparency
+                            self.lcd.data[row][col] = window_lcd.data[row][col] + 8; // TEMP colors to distinguish window
+                        }
+                    }
+                }
 
                 self.lcd_updated = true;
             }
 
             if self.lcd_control.check_bit(LcdControlRegBit::ObjEnabled) {
-                // self.draw_sprites(mmu);
-                // self.lcd_updated = true;
+                self.draw_sprites(mmu);
+                self.lcd_updated = true;
             }
         }
     }
@@ -555,7 +563,7 @@ impl Ppu {
                 if y < 0 { continue };
                 let tile_row = if attr.flip_x { 7 - row } else { row };
                 for col in 0..8 {
-                    let x = attr.x as i16 - 16 + col; // ?
+                    let x = attr.x as i16 - 8 + col;
                     if x < 0 { continue };
                     let tile_col = if attr.flip_x { 7 - col } else { col };
                     let color_i = tile[tile_row as usize][tile_col as usize];

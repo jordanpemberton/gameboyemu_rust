@@ -53,7 +53,7 @@ const MEALY_TEST_ROMS: [&str; 31] = [
     "m3_lcdc_obj_en_change.gb",
     "m3_lcdc_obj_en_change_variant.gb",
     "m3_lcdc_obj_size_change.gb",
-    "m3_lcdc_obj_size_change_scx.gb",
+    "m3_lcdc_obj_size_change_scx.gb", // 10
     "m3_lcdc_tile_sel_change.gb",
     "m3_lcdc_tile_sel_change2.gb",
     "m3_lcdc_tile_sel_win_change.gb",
@@ -63,7 +63,7 @@ const MEALY_TEST_ROMS: [&str; 31] = [
     "m3_lcdc_win_map_change.gb",
     "m3_lcdc_win_map_change2.gb",
     "m3_obp0_change.gb",
-    "m3_scx_high_5_bits.gb",
+    "m3_scx_high_5_bits.gb", // 20
     "m3_scx_high_5_bits_change2.gb",
     "m3_scx_low_3_bits.gb",
     "m3_scy_change.gb",
@@ -73,11 +73,11 @@ const MEALY_TEST_ROMS: [&str; 31] = [
     "m3_wx_4_change.gb",
     "m3_wx_4_change_sprites.gb",
     "m3_wx_5_change.gb",
-    "m3_wx_6_change.gb",
+    "m3_wx_6_change.gb", // 30
 ];
 
-const TEST_IS_BLARGG: bool = true;
-const TEST_ROM: usize = 0;
+const TEST_IS_BLARGG: bool = false;
+const TEST_ROM: usize = 29;
 
 fn disassemble_roms() {
     let bootrom_cartridge = Cartridge::new(BOOTROM_FILEPATH.as_ref());
@@ -118,11 +118,11 @@ fn main() {
 
     // gamboy.run(CartridgeOption::NONE, false);
 
-    gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), false);
+    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), true);
 
-    // let test_roms_dir = if TEST_IS_BLARGG { BLARGG_TEST_ROM_DIR } else { MEALY_TEST_ROM_DIR };
-    // let test_roms = if TEST_IS_BLARGG { BLARGG_TEST_ROMS.to_vec() } else { MEALY_TEST_ROMS.to_vec() };
-    // let test_filepath = format!("{}{}", test_roms_dir, test_roms[TEST_ROM]);
+    let test_roms_dir = if TEST_IS_BLARGG { BLARGG_TEST_ROM_DIR } else { MEALY_TEST_ROM_DIR };
+    let test_roms = if TEST_IS_BLARGG { BLARGG_TEST_ROMS.to_vec() } else { MEALY_TEST_ROMS.to_vec() };
+    let test_filepath = format!("{}{}", test_roms_dir, test_roms[TEST_ROM]);
     // let test_filepath = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/jsGB/opus5.gb";
-    // gamboy.run(CartridgeOption::SOME(Cartridge::new(test_filepath.as_ref())), true);
+    gamboy.run(CartridgeOption::SOME(Cartridge::new(test_filepath.as_ref())), true);
 }

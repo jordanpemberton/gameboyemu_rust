@@ -9,16 +9,21 @@ use sdl2::sys::rand;
 use crate::console::mmu::{Endianness, Mmu};
 use crate::console::ppu::{Lcd, LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
 
-const COLORS: [Color; 8] = [
+const COLORS: [Color; 12] = [
     Color::RGB(0, 0, 0),
     Color::RGB(255, 255, 0),
     Color::RGB(255, 0, 255),
     Color::RGB(0, 255, 255),
 
     Color::RGB(0, 0, 0),
-    Color::RGB(122, 255, 0),
-    Color::RGB(122, 0, 255),
-    Color::RGB(0, 122, 255),
+    Color::RGB(128, 255, 0),
+    Color::RGB(128, 0, 255),
+    Color::RGB(0, 128, 255),
+
+    Color::RGB(0, 0, 0),
+    Color::RGB(64, 122, 0),
+    Color::RGB(64, 0, 128),
+    Color::RGB(0, 64, 128),
 ];
 
 pub(crate) struct Display {
