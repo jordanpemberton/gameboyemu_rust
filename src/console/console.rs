@@ -180,7 +180,7 @@ impl Console {
                 let status = self.step();
                 if status < 0 {
                     self.debug_peek();
-                    panic!("Console step attempt failed with status {} at address {:#06X}.",
+                    print!("Console step attempt failed with status {} at address {:#06X}.",
                         status, self.cpu.registers.get_word(CpuRegIndex::PC));
                 }
             }

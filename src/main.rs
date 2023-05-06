@@ -19,9 +19,9 @@ const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/d
 
 const GAME_FILEPATH: &str =
     // "/home/jordan/Games/GameBoy/GB/Tetris.gb"
-    "/home/jordan/Games/GameBoy/GB/Dr. Mario (Game Boy Prototype)/Dr. Mario (Prototype).gb"
+    // "/home/jordan/Games/GameBoy/GB/Dr. Mario (Game Boy Prototype)/Dr. Mario (Prototype).gb"
     // "/home/jordan/Games/GameBoy/GB/Kirby's Dream Land (USA, Europe).gb" // hits Invalid opcode F4 at 0x4C4A?
-    // "/home/jordan/Games/GameBoy/GB/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb"
+    "/home/jordan/Games/GameBoy/GB/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb"
     // "/home/jordan/Games/GameBoy/GB/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb"
 ;
 
@@ -118,11 +118,11 @@ fn main() {
 
     // gamboy.run(CartridgeOption::NONE, false);
 
-    // gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), true);
+    gamboy.run(CartridgeOption::SOME(Cartridge::new(GAME_FILEPATH.as_ref())), true);
 
     let test_roms_dir = if TEST_IS_BLARGG { BLARGG_TEST_ROM_DIR } else { MEALY_TEST_ROM_DIR };
     let test_roms = if TEST_IS_BLARGG { BLARGG_TEST_ROMS.to_vec() } else { MEALY_TEST_ROMS.to_vec() };
     let test_filepath = format!("{}{}", test_roms_dir, test_roms[TEST_ROM]);
-    // let test_filepath = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/jsGB/opus5.gb";
-    gamboy.run(CartridgeOption::SOME(Cartridge::new(test_filepath.as_ref())), true);
+    let test_filepath = "/home/jordan/RustProjs/GameBoyEmu/roms/test_roms/jsGB/opus5.gb";
+    // gamboy.run(CartridgeOption::SOME(Cartridge::new(test_filepath.as_ref())), true);
 }

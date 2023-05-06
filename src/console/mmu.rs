@@ -72,17 +72,17 @@ impl Mmu {
 
     pub(crate) fn read_buffer(&self, begin: usize, end: usize, endian: Endianness) -> Vec<u8> {
         if begin >= end {
-            panic!("invalid range of {}..{}", begin, end);
+            panic!("invalid range of {:#06X}..{:#06X}", begin, end);
         }
 
         if begin < 0x8000 {
-            if end >= 0x8000 {
-                panic!("invalid range of {}..{}", begin, end);
+            if end > 0x8000 {
+                panic!("invalid range of {:#06X}..{:#06X}", begin, end);
             }
             Mmu::_read_buffer(&self.rom, begin, end, endian)
         } else {
-            if end - 0x8000 >= 0x8000 {
-                panic!("invalid range of {}..{}", begin, end);
+            if end - 0x8000 > 0x8000 {
+                panic!("invalid range of {:#06X}..{:#06X}", begin, end);
             }
             Mmu::_read_buffer(&self.ram, begin - 0x8000, end - 0x8000, endian)
         }

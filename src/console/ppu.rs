@@ -87,11 +87,17 @@ struct TileMap {
 }
 
 impl TileMap {
-    fn new(mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) -> TileMap {
-        let mut tilemap = TileMap {
-            tiles: [[[[0; 8]; 8]; 32]; 32]
-        };
-        tilemap.fetch_tiles(mmu, tilemap_address, index_mode_8000);
+    fn new() -> TileMap {
+        TileMap {
+            tiles: [[[[0; 8]; 8]; 32]; 32],
+        }
+    }
+
+    fn create(mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) -> TileMap {
+        let mut tilemap = TileMap::new();
+        let tile_indices = tilemap.fetch_tile_indices(mmu, tilemap_address);
+        let tile_addresses = tilemap.fetch_tile_addresses(mmu, &tile_indices, index_mode_8000);
+        tilemap.fetch_tiles(mmu, &tile_addresses);
         tilemap
     }
 
@@ -129,26 +135,41 @@ impl TileMap {
         tiles
     }
 
-    fn fetch_tiles(&mut self, mmu: &mut Mmu, tilemap_address: usize, index_mode_8000: bool) {
-        let indices: [u8; 32 * 32] = mmu.read_buffer(
-                tilemap_address,
-                tilemap_address + 32 * 32,
-                Endianness::LITTLE)
+    fn fetch_tile_indices(&mut self, mmu: &mut Mmu, tilemap_address: usize) -> [usize; 32 * 32]{
+        let indices: [usize; 32 * 32] = mmu.read_buffer(
+            tilemap_address,
+            tilemap_address + 32 * 32,
+            Endianness::LITTLE)
+            .iter().map(|x| *x as usize)
+            .collect::<Vec<usize>>()
             .try_into().unwrap();
+        indices
+    }
 
+    fn fetch_tile_addresses(&mut self, mmu: &mut Mmu, tile_indices: &[usize; 32 * 32], index_mode_8000: bool) -> [usize; 32 * 32] {
+        // The “$8000 method” uses $8000 as its base pointer and uses an unsigned addressing,
+        // meaning that tiles 0-127 are in block 0, and tiles 128-255 are in block 1.
+        // The “$8800 method” uses $9000 as its base pointer and uses a signed addressing,
+        // meaning that tiles 0-127 are in block 2, and tiles 128-255 are in block 1.
+
+        let mut addresses = [0; 32 * 32];
+
+        for i in 0..32 {
+            let tile_index = tile_indices[i] as i32;
+            addresses[i] = if !index_mode_8000 && tile_index < 128 {
+                0x9000 + tile_index * 16
+            } else {
+                0x8000 + tile_index * 16
+            } as usize;
+        }
+
+        addresses
+    }
+
+    fn fetch_tiles(&mut self, mmu: &mut Mmu, tile_addresses: &[usize; 32 * 32]) {
         for row in 0..32 {
             for col in 0..32 {
-                let tile_index = indices[row * 32 + col] as i32;
-
-                // The “$8000 method” uses $8000 as its base pointer and uses an unsigned addressing,
-                // meaning that tiles 0-127 are in block 0, and tiles 128-255 are in block 1.
-                // The “$8800 method” uses $9000 as its base pointer and uses a signed addressing,
-                // meaning that tiles 0-127 are in block 2, and tiles 128-255 are in block 1.
-                let address = if !index_mode_8000 && tile_index < 128 {
-                    0x9000 + tile_index * 16
-                } else {
-                    0x8000 + tile_index * 16
-                } as usize;
+                let address = tile_addresses[row * 32 + col];
 
                 let tile_bytes: [u8; 16] = mmu.read_buffer(
                         address, 
@@ -453,6 +474,16 @@ impl Ppu {
         }
     }
 
+    pub(crate) fn display_tiles_at(&mut self, mmu: &mut Mmu, tilemap_address: usize, scy: usize, scx: usize) {
+        let mut background_tilemap = TileMap::new();
+        let mut addresses = [0; 32 * 32];
+        for i in 0..32 * 32 {
+            addresses[i] = tilemap_address + 16 * i;
+        }
+        background_tilemap.fetch_tiles(mmu, &addresses);
+        self.lcd = background_tilemap.to_lcd(scy, scx, &[0,1,2,3]);
+    }
+
     fn refresh_from_mem(&mut self, mmu: &mut Mmu) {
         self.scy = mmu.read_byte(SCY_REG_ADDRESS);
         self.scx = mmu.read_byte(SCX_REG_ADDRESS);
@@ -511,18 +542,23 @@ impl Ppu {
             self.lcd_updated = false;
         }
         if is_last_line && !self.lcd_updated {
+            // TEMP DEBUG
+            // self.display_tiles_at(mmu, 0x2000, 0, 0);
+            // self.lcd_updated = true;
+            // return;
+
             self.lcd_control.read_from_mem(mmu);
 
             if self.lcd_control.check_bit(LcdControlRegBit::BackgroundAndWindowEnabled) {
                 let index_mode_8000 = self.lcd_control.check_bit(LcdControlRegBit::AddressingMode8000);
 
                 let background_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::BackgroundTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
-                let background_tilemap = TileMap::new(mmu, background_tilemap_address, index_mode_8000);
+                let background_tilemap = TileMap::create(mmu, background_tilemap_address, index_mode_8000);
                 self.lcd = background_tilemap.to_lcd(self.scy as usize, self.scx as usize, &[0,1,2,3]); // TODO palettes
 
                 // TODO how does window get read?
                 let window_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::WindowTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
-                let window_tilemap = TileMap::new(mmu, window_tilemap_address, index_mode_8000);
+                let window_tilemap = TileMap::create(mmu, window_tilemap_address, index_mode_8000);
                 let window_lcd = window_tilemap.to_lcd(self.wy as usize, self.wx as usize, &[0,1,2,3]); // TODO palettes
                 for row in 0..LCD_PIXEL_HEIGHT {
                     for col in 0..LCD_PIXEL_WIDTH {
