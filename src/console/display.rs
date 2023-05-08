@@ -1,12 +1,11 @@
-use std::collections::HashMap;
+#![allow(unused_variables)]
 
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
-use sdl2::sys::rand;
 
-use crate::console::mmu::{Endianness, Mmu};
+use crate::console::mmu::Mmu;
 use crate::console::ppu::{Lcd, LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
 
 const COLORS: [Color; 12] = [
@@ -28,8 +27,6 @@ const COLORS: [Color; 12] = [
 
 pub(crate) struct Display {
     enabled: bool,
-    gbpixel_width: u32,
-    gbpixel_height: u32,
     gbpixel_size: u32,
     canvas: WindowCanvas,
     pixels: [[Rect; LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT],
@@ -37,8 +34,6 @@ pub(crate) struct Display {
 
 impl Display {
     pub(crate) fn new(
-            pixel_width: u32,
-            pixel_height: u32,
             window_scale: u32,
             window_title: &str,
             sdl_context: &Sdl,
@@ -56,14 +51,12 @@ impl Display {
 
         Display {
             enabled: enabled,
-            gbpixel_width: pixel_width,
-            gbpixel_height: pixel_height,
             gbpixel_size: window_scale,
             canvas:
                 create_sdl_canvas(
                     sdl_context,
-                    pixel_width * window_scale,
-                    pixel_height * window_scale,
+                    LCD_PIXEL_WIDTH as u32 * window_scale,
+                    LCD_PIXEL_HEIGHT as u32 * window_scale,
                     window_title
                 ),
             pixels,
@@ -83,6 +76,7 @@ impl Display {
         self.canvas.set_draw_color(COLORS[0]);
     }
 
+    #[allow(unused)]
     fn draw_tile(&mut self, x: usize, y: usize, tile: [[u8; 8]; 8]) {
         for i in 0..8 {
             for j in 0..8 {

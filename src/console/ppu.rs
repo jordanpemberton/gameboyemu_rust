@@ -1,13 +1,7 @@
+#![allow(dead_code)]
 #![allow(unused_assignments)]
+#![allow(unused_variables)]
 
-use std::collections::HashMap;
-use std::num;
-use sdl2::event::Event::Window;
-use sdl2::pixels::Color;
-use sdl2::render::BlendMode::Add;
-use sdl2::render::TextureAccess::Static;
-
-use crate::console::display::Display;
 use crate::console::interrupts::{InterruptRegBit, Interrupts};
 use crate::console::mmu::{Endianness, Mmu};
 
@@ -463,9 +457,6 @@ impl Ppu {
                         interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                     }
                 }
-            }
-            _ => {
-                panic!("Unrecognized mode {:?}.", self.lcd_status.mode);
             }
         }
 

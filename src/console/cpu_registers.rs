@@ -1,6 +1,7 @@
+#![allow(unused_variables)]
+
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use sdl2::keyboard::Keycode::Hash;
 
 const FLAG_ZERO_BYTE: u8 = 7;
 const FLAG_SUBTRACT_BYTE: u8 = 6;
@@ -183,7 +184,6 @@ impl CpuRegisters {
             CpuRegIndex::SP => {
                 self.sp = self.sp.wrapping_add(increment_by);
             }
-            _ => panic!("Invalid RegIndex"),
         }
     }
 
@@ -235,7 +235,6 @@ impl CpuRegisters {
             CpuRegIndex::SP => {
                 self.sp = self.sp.wrapping_sub(decrement_by);
             }
-            _ => panic!("Invalid RegIndex"),
         }
     }
 

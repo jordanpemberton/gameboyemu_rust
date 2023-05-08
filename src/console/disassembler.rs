@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::Write;
-use crate::cartridge::cartridge::Cartridge;
 use crate::console::instructions::Instruction;
 
 const PREFIX_BYTE: u8 = 0xCB;

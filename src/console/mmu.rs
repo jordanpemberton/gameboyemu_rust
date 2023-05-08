@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::hash::Hash;
-
 /*
     BOOT_ROM        0x0000..=0x0100
     CARTRIDGE_ROM   0x0000..=0x7FFF
@@ -66,7 +63,7 @@ impl Mmu {
 
         match endian {
             Endianness::BIG => (msb as u16) << 8 | lsb as u16,
-            Endianness::LITTLE | _ => (lsb as u16) << 8 | msb as u16,
+            Endianness::LITTLE => (lsb as u16) << 8 | msb as u16,
         }
     }
 
@@ -123,7 +120,7 @@ impl Mmu {
                     i += 2;
                 }
             },
-            Endianness::LITTLE | _ => {
+            Endianness::LITTLE => {
                 let mut i = 0;
                 while i < slice.len() - 1 {
                     buffer.push(slice[i]);

@@ -1,33 +1,31 @@
-#![allow(dead_code)]
-#![allow(non_snake_case)]
-#![allow(unreachable_patterns)]
-#![allow(unused_variables)]
+// #![allow(dead_code)]
+// #![allow(non_snake_case)]
+// #![allow(unreachable_patterns)]
+// #![allow(unused_variables)]
 
-use std::collections::HashMap;
-use sdl2::keyboard::Keycode::Hash;
 use crate::console::instructions::{Instruction};
-use crate::console::mmu::{Endianness, Mmu};
+use crate::console::mmu::Mmu;
 use crate::console::cpu_registers::{CpuRegIndex, CpuRegisters};
 use crate::console::interrupts::Interrupts;
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
-
-const DEBUG_PRINT: bool = true;
 
 pub(crate) struct Cpu {
     is_halted: bool,
     pub(crate) registers: CpuRegisters,
     pub(crate) interrupts: Interrupts,
     visited: Vec<u16>,
+    debug_print: bool,
 }
 
 impl Cpu {
-    pub(crate) fn new(mmu: &mut Mmu) -> Cpu {
+    pub(crate) fn new(mmu: &mut Mmu, debug_print: bool) -> Cpu {
         Cpu {
             is_halted: false,
             registers: CpuRegisters::new(),
             interrupts: Interrupts::new(mmu),
             visited: vec![],
+            debug_print,
         }
     }
 
@@ -56,7 +54,7 @@ impl Cpu {
             let mut instruction = Instruction::get_instruction(opcode);
             let args = self.fetch_args(&instruction, mmu);
 
-            if DEBUG_PRINT {
+            if self.debug_print {
                 if !self.visited.contains(&start_pc)
                 {
                     print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, instruction.mnemonic);

@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
-use crate::console::{
-    cpu::Cpu
-};
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
+use std::collections::HashMap;
+use crate::console::cpu::Cpu;
 use crate::console::mmu::{Endianness, Mmu};
 use crate::console::ppu::{LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
 

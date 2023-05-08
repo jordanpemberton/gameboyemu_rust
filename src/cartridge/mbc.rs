@@ -5,8 +5,3 @@ switching. These MBC chips are located in the game cartridge (that is, not in th
 In each cartridge, the required (or preferred) MBC type should be specified in the byte at $0147 of
 the ROM, as described in the cartridge header.
  */
-
-struct Mbc01 {
-
-}
-

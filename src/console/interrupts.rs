@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /*
 FFFF — IE: Interrupt enable
 Bit 0: VBlank   Interrupt Enable  (INT $40)  (1=Enable)

@@ -1,7 +1,6 @@
+#![allow(dead_code)]
 #![allow(unused_variables)]
 
-use sdl2::keyboard::Keycode::Insert;
-use sdl2::log::set_output_function;
 use crate::console::alu;
 use crate::console::cpu::{Cpu, PREFIX_BYTE};
 use crate::console::mmu::{Endianness, Mmu};
@@ -45,7 +44,7 @@ impl Instruction {
             0x000E => Instruction { opcode, mnemonic: "LD C,d8", size: 2, cycles: 8, _fn: Instruction::op_000e },
             0x000F => Instruction { opcode, mnemonic: "RRCA", size: 1, cycles: 4, _fn: Instruction::op_000f },
 
-            0x0000 => Instruction { opcode, mnemonic: "STOP", size: 2, cycles: 4, _fn: Instruction::op_0010 },
+            0x0010 => Instruction { opcode, mnemonic: "STOP", size: 2, cycles: 4, _fn: Instruction::op_0010 },
             0x0011 => Instruction { opcode, mnemonic: "LD DE,d16", size: 3, cycles: 12, _fn: Instruction::op_0011 },
             0x0012 => Instruction { opcode, mnemonic: "LD (DE),A", size: 1, cycles: 8, _fn: Instruction::op_0012 },
             0x0013 => Instruction { opcode, mnemonic: "INC DE", size: 1, cycles: 8, _fn: Instruction::op_0013 },
@@ -71,6 +70,7 @@ impl Instruction {
             0x0026 => Instruction { opcode, mnemonic: "LD H,d8", size: 2, cycles: 8, _fn: Instruction::op_0026 },
             0x0027 => Instruction { opcode, mnemonic: "DAA", size: 1, cycles: 4, _fn: Instruction::op_0027 },
             0x0028 => Instruction { opcode, mnemonic: "JR Z,r8", size: 2, cycles: 8, _fn: Instruction::op_0028 },
+            0x0029 => Instruction { opcode, mnemonic: "ADD HL,HL", size: 1, cycles: 8, _fn: Instruction::op_0029 },
             0x002A => Instruction { opcode, mnemonic: "LDI A,(HL)", size: 1, cycles: 8, _fn: Instruction::op_002a },
             0x002B => Instruction { opcode, mnemonic: "DEC HL", size: 1, cycles: 8, _fn: Instruction::op_002b },
             0x002C => Instruction { opcode, mnemonic: "INC L", size: 1, cycles: 4, _fn: Instruction::op_002c },
@@ -587,7 +587,6 @@ impl Instruction {
 
     fn unimplemented(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         panic!("Opcode {:#06X} (\"{}\") is unimplemented.", self.opcode, self.mnemonic);
-        self.cycles
     }
 
     fn invalid(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
