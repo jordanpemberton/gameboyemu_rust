@@ -7,17 +7,16 @@ use crate::console::console::Console;
 use crate::console::disassembler;
 use crate::console::cpu_registers::CpuRegisters;
 
-const CONTAIN: bool = false;
 const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/dmg.bin";
 const ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/";
 
-fn select_rom() -> String {
+fn select_rom(is_contained: bool) -> String {
     let root_path = PathBuf::from(ROM_DIR);
     let mut curr_path = PathBuf::from(ROM_DIR);
     let mut selection = -1;
 
     while curr_path.is_dir() {
-        println!("0: {:}", if CONTAIN && curr_path == root_path {
+        println!("0: {:}", if is_contained && curr_path == root_path {
                 String::from("N/A")
             } else {
                 format!("↑ {}/", curr_path.parent().unwrap().file_name().unwrap().to_string_lossy())
@@ -52,10 +51,12 @@ fn select_rom() -> String {
             selection = buffer.trim().parse::<i32>().expect("Please input the number of the path you'd like to select.");
         }
 
-        if selection == 0
-            // && curr_path != root_path
-        {
-            curr_path = curr_path.parent().unwrap().to_path_buf();
+        if selection == 0 {
+            if is_contained && curr_path == root_path {
+                println!("Nope, not allowed.");
+            } else {
+                curr_path = curr_path.parent().unwrap().to_path_buf();
+            }
         } else if 0 < selection && selection <= child_paths.len() as i32 {
             curr_path = PathBuf::from(child_paths.get(selection as usize - 1).unwrap().path());
         }
@@ -87,7 +88,7 @@ fn run_rom(rom_filepath: &str, display_enabled: bool, debug_enabled: bool, skip_
     }
 }
 
-pub(crate) fn run(args: Vec<String>) {
+pub(crate) fn run(args: Vec<String>, is_contained: bool) {
     let display_enabled = if args.len() > 1 { args[1].clone().parse().unwrap() } else { 1 } > 0;
     let debug_enabled = if args.len() > 2 { args[2].clone().parse().unwrap() } else { 1 } > 0;
     let skip_boot = if args.len() > 3 { args[3].clone().parse().unwrap() } else { 0 } > 0;
@@ -95,7 +96,7 @@ pub(crate) fn run(args: Vec<String>) {
 
     CpuRegisters::test();
 
-    let selection = select_rom();
+    let selection = select_rom(is_contained);
     println!("SELECTED ROM: {}", selection);
 
     run_rom(selection.as_str(), display_enabled, debug_enabled, skip_boot, cpu_debug_print);

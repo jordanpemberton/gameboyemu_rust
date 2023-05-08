@@ -9,5 +9,5 @@ use crate::cli::cli::run;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    run(args);
+    run(args, false);
 }
