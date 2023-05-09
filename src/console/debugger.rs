@@ -44,6 +44,31 @@ impl Debugger {
         }
     }
 
+    pub(crate) fn print_screen_to_stdout(&mut self, ppu: &Ppu) {
+        for x in 0..LCD_PIXEL_WIDTH + 2 {
+            print!("_");
+        }
+        println!();
+        for y in 0..LCD_PIXEL_HEIGHT {
+            print!("|");
+            for x in 0..LCD_PIXEL_WIDTH {
+                let color = ppu.lcd.data[y as usize][x as usize];
+                match color % 4 {
+                    3 => print!("@"),
+                    2 => print!("+"),
+                    1 => print!("."),
+                    _ => print!(" "),
+                }
+            }
+            print!("|");
+            println!();
+        }
+        for x in 0..LCD_PIXEL_WIDTH + 2 {
+            print!("_");
+        }
+        println!();
+    }
+
     pub(crate) fn step(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         // todo
     }
@@ -54,9 +79,6 @@ impl Debugger {
         }
         if let Some(_mmu) = mmu {
             self.dump_mmu_state(_mmu);
-        }
-        if let Some(_ppu) = ppu {
-            self.draw_screen_stdout(_ppu);
         }
         if let Some(_locals) = locals {
             self.dump_key_value_pairs(_locals);
@@ -103,30 +125,5 @@ impl Debugger {
                 format!("\n{}\n", vram_values_str).as_str()
             )
         ]));
-    }
-
-    fn draw_screen_stdout(&mut self, ppu: &Ppu) {
-        for x in 0..LCD_PIXEL_WIDTH + 2 {
-            print!("_");
-        }
-        println!();
-        for y in 0..LCD_PIXEL_HEIGHT {
-            print!("|");
-            for x in 0..LCD_PIXEL_WIDTH {
-                let color = ppu.lcd.data[y as usize][x as usize];
-                match color % 4 {
-                    3 => print!("@"),
-                    2 => print!("+"),
-                    1 => print!("."),
-                    _ => print!(" "),
-                }
-            }
-            print!("|");
-            println!();
-        }
-        for x in 0..LCD_PIXEL_WIDTH + 2 {
-            print!("_");
-        }
-        println!();
     }
 }

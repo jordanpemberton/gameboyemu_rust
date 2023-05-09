@@ -12,8 +12,8 @@ use crate::console::mmu::Mmu;
 use crate::console::ppu::Ppu;
 use crate::console::cpu_registers::{CpuRegIndex};
 
-const TICKS_PER_FRAME: u16 = 0xFF;
-const TICKS_PER_POLL: u16 = 0x0F;
+const TICKS_PER_FRAME: u16 = 500;
+const TICKS_PER_POLL: u16 = 100;
 
 pub(crate) struct Console {
     is_paused: bool,
@@ -109,6 +109,13 @@ impl Console {
         }
     }
 
+    fn debug_print(&mut self) {
+        match self.debugger {
+            Some(ref mut debugger) => debugger.print_screen_to_stdout(&self.ppu),
+            None => {}
+        }
+    }
+
     fn poll(&mut self) -> bool {
         for event in self.event_pump.poll_iter() {
             match event {
@@ -138,7 +145,13 @@ impl Console {
                                 Option::from(&self.ppu),
                                 Option::from(HashMap::from([])));
                         }
-                        None => {}
+                        None => { }
+                    }
+                }
+                Event::KeyDown { keycode: Some(Keycode::O), .. } => {
+                    match self.debugger {
+                        Some(ref mut debugger) => debugger.print_screen_to_stdout(&self.ppu),
+                        None => { }
                     }
                 }
                 _ => {}
@@ -163,6 +176,7 @@ impl Console {
             if self.tick % self.ticks_per_poll == 0 {
                 let exit = !self.poll();
                 if exit {
+                    self.debug_print();
                     self.debug_peek();
                     break;
                 }
@@ -171,6 +185,7 @@ impl Console {
             if !self.is_paused {
                 let status = self.step();
                 if status < 0 {
+                    self.debug_print();
                     self.debug_peek();
                     panic!("Console step attempt failed with status {} at address {:#06X}.",
                         status, self.cpu.registers.get_word(CpuRegIndex::PC));

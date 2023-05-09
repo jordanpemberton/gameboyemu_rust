@@ -520,12 +520,6 @@ impl Ppu {
     }
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
-        // TEMP debugging perf problems
-        // self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] += 1;
-        // self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] %= 8;
-        // self.lcd_updated = true;
-        // return;
-
         // TODO implement pixel FIFO correctly
         let is_first_line = self.ly <= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].0;
         let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
@@ -533,11 +527,6 @@ impl Ppu {
             self.lcd_updated = false;
         }
         if is_last_line && !self.lcd_updated {
-            // TEMP DEBUG
-            // self.display_tiles_at(mmu, 0x2000, 0, 0);
-            // self.lcd_updated = true;
-            // return;
-
             self.lcd_control.read_from_mem(mmu);
 
             if self.lcd_control.check_bit(LcdControlRegBit::BackgroundAndWindowEnabled) {
@@ -606,5 +595,16 @@ impl Ppu {
                 }
             }
         }
+    }
+
+    fn speed_check_pixel_transfer(&mut self) {
+        self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] += 1;
+        self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] %= 8;
+        self.lcd_updated = true;
+    }
+
+    fn display_tiles_at_pixel_transfer(&mut self, mmu: &mut Mmu) {
+        self.display_tiles_at(mmu, 0x2000, 0, 0);
+        self.lcd_updated = true;
     }
 }

@@ -586,7 +586,8 @@ impl Instruction {
     }
 
     fn unimplemented(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        panic!("Opcode {:#06X} (\"{}\") is unimplemented.", self.opcode, self.mnemonic);
+        println!("Opcode {:#06X} (\"{}\") is unimplemented.", self.opcode, self.mnemonic);
+        self.cycles
     }
 
     fn invalid(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
@@ -609,6 +610,8 @@ impl Instruction {
             Src::F => cpu.registers.get_byte(CpuRegIndex::F),
             Src::H => cpu.registers.get_byte(CpuRegIndex::H),
             Src::L => cpu.registers.get_byte(CpuRegIndex::L),
+
+            Src::Ca => mmu.read_byte(0xFF00 | cpu.registers.get_byte(CpuRegIndex::C) as u16),
 
             Src::AFa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::AF)),
             Src::BCa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::BC)),
