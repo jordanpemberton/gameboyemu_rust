@@ -170,7 +170,7 @@ impl Instruction {
             0x0084 => Instruction { opcode, mnemonic: "ADD A,H", size: 1, cycles: 4, _fn: Instruction::op_0084 },
             0x0085 => Instruction { opcode, mnemonic: "ADD A,L", size: 1, cycles: 4, _fn: Instruction::op_0085 },
             0x0086 => Instruction { opcode, mnemonic: "ADD A,(HL)", size: 1, cycles: 8, _fn: Instruction::op_0086 },
-            0x0087 => Instruction { opcode, mnemonic: "ADC A,B", size: 1, cycles: 4, _fn: Instruction::op_0087 },
+            0x0087 => Instruction { opcode, mnemonic: "ADD A,A", size: 1, cycles: 4, _fn: Instruction::op_0087 },
             0x0088 => Instruction { opcode, mnemonic: "ADC A,B", size: 1, cycles: 4, _fn: Instruction::op_0088 },
             0x0089 => Instruction { opcode, mnemonic: "ADC A,C", size: 1, cycles: 4, _fn: Instruction::op_0089 },
             0x008A => Instruction { opcode, mnemonic: "ADC A,D", size: 1, cycles: 4, _fn: Instruction::op_008a },
@@ -594,52 +594,74 @@ impl Instruction {
         self.cycles
     }
 
-    fn get_source_value(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> u16 {
+    fn get_source_value_8(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> u8 {
         match source {
-            Src::D8 => args[0] as u16,
-            Src::D16 => ((args[1] as u16) << 8) | (args[0] as u16),
+            Src::D8 => args[0],
 
-            Src::A8 => mmu.read_byte(0xFF00 | args[0] as u16) as u16,
-            Src::A16 => mmu.read_byte(((args[1] as u16) << 8) | (args[0] as u16)) as u16,
+            Src::A8 => mmu.read_byte(0xFF00 | args[0] as u16),
+            Src::A16 => mmu.read_byte(((args[1] as u16) << 8) | (args[0] as u16)),
 
-            Src::A => cpu.registers.get_byte(CpuRegIndex::A) as u16,
-            Src::B => cpu.registers.get_byte(CpuRegIndex::B) as u16,
-            Src::C => cpu.registers.get_byte(CpuRegIndex::C) as u16,
-            Src::D => cpu.registers.get_byte(CpuRegIndex::D) as u16,
-            Src::E => cpu.registers.get_byte(CpuRegIndex::E) as u16,
-            Src::F => cpu.registers.get_byte(CpuRegIndex::F) as u16,
-            Src::H => cpu.registers.get_byte(CpuRegIndex::H) as u16,
-            Src::L => cpu.registers.get_byte(CpuRegIndex::L) as u16,
+            Src::A => cpu.registers.get_byte(CpuRegIndex::A),
+            Src::B => cpu.registers.get_byte(CpuRegIndex::B),
+            Src::C => cpu.registers.get_byte(CpuRegIndex::C),
+            Src::D => cpu.registers.get_byte(CpuRegIndex::D),
+            Src::E => cpu.registers.get_byte(CpuRegIndex::E),
+            Src::F => cpu.registers.get_byte(CpuRegIndex::F),
+            Src::H => cpu.registers.get_byte(CpuRegIndex::H),
+            Src::L => cpu.registers.get_byte(CpuRegIndex::L),
 
-            Src::AF => cpu.registers.get_word(CpuRegIndex::AF) as u16,
-            Src::BC => cpu.registers.get_word(CpuRegIndex::BC) as u16,
-            Src::DE => cpu.registers.get_word(CpuRegIndex::DE) as u16,
-            Src::HL => cpu.registers.get_word(CpuRegIndex::HL) as u16,
-            Src::PC => cpu.registers.get_word(CpuRegIndex::PC) as u16,
-            Src::SP => cpu.registers.get_word(CpuRegIndex::SP) as u16,
+            Src::AFa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::AF)),
+            Src::BCa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::BC)),
+            Src::DEa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::DE)),
+            Src::HLa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::HL)),
 
-            Src::AFa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::AF)) as u16,
-            Src::BCa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::BC)) as u16,
-            Src::DEa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::DE)) as u16,
-            Src::HLa => mmu.read_byte(cpu.registers.get_word(CpuRegIndex::HL)) as u16,
-
-            _ => panic!("Unsupported source {:?}", source),
+            _ => panic!("Unsupported 8-bit source: {:?}", source),
         }
     }
 
-    fn set_target_value(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, value: u16) {
-        match target {
-            Src::A8 => mmu.load_byte(0xFF00 | args[0] as u16, value as u8),
-            Src::A16 => mmu.load_word(((args[1] as u16) << 8) | (args[0] as u16), value, Endianness::BIG),
+    fn get_source_value_16(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> u16 {
+        match source {
+            Src::D16 => ((args[1] as u16) << 8) | (args[0] as u16),
 
-            Src::A => cpu.registers.set_byte(CpuRegIndex::A, value as u8),
-            Src::B => cpu.registers.set_byte(CpuRegIndex::B, value as u8),
-            Src::C => cpu.registers.set_byte(CpuRegIndex::C, value as u8),
-            Src::D => cpu.registers.set_byte(CpuRegIndex::D, value as u8),
-            Src::E => cpu.registers.set_byte(CpuRegIndex::E, value as u8),
-            Src::F => cpu.registers.set_byte(CpuRegIndex::F, value as u8),
-            Src::H => cpu.registers.set_byte(CpuRegIndex::H, value as u8),
-            Src::L => cpu.registers.set_byte(CpuRegIndex::L, value as u8),
+            Src::AF => cpu.registers.get_word(CpuRegIndex::AF),
+            Src::BC => cpu.registers.get_word(CpuRegIndex::BC),
+            Src::DE => cpu.registers.get_word(CpuRegIndex::DE),
+            Src::HL => cpu.registers.get_word(CpuRegIndex::HL),
+            Src::PC => cpu.registers.get_word(CpuRegIndex::PC),
+            Src::SP => cpu.registers.get_word(CpuRegIndex::SP),
+
+            _ => panic!("Unsupported 16-bit source: {:?}", source),
+        }
+    }
+
+    fn set_target_value_8(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, value: u8) {
+        match target {
+            Src::A8 => mmu.load_byte(0xFF00 | args[0] as u16, value),
+            Src::A16 => mmu.load_byte(((args[1] as u16) << 8) | (args[0] as u16), value),
+
+            Src::A => cpu.registers.set_byte(CpuRegIndex::A, value),
+            Src::B => cpu.registers.set_byte(CpuRegIndex::B, value),
+            Src::C => cpu.registers.set_byte(CpuRegIndex::C, value),
+            Src::D => cpu.registers.set_byte(CpuRegIndex::D, value),
+            Src::E => cpu.registers.set_byte(CpuRegIndex::E, value),
+            Src::F => cpu.registers.set_byte(CpuRegIndex::F, value),
+            Src::H => cpu.registers.set_byte(CpuRegIndex::H, value),
+            Src::L => cpu.registers.set_byte(CpuRegIndex::L, value),
+
+            Src::Ca => mmu.load_byte(0xFF00 | cpu.registers.get_byte(CpuRegIndex::C) as u16, value),
+
+            Src::AFa => mmu.load_byte(cpu.registers.get_word(CpuRegIndex::AF), value),
+            Src::BCa => mmu.load_byte(cpu.registers.get_word(CpuRegIndex::BC), value),
+            Src::DEa => mmu.load_byte(cpu.registers.get_word(CpuRegIndex::DE), value),
+            Src::HLa => mmu.load_byte(cpu.registers.get_word(CpuRegIndex::HL), value),
+
+            _ => panic!("Unsupported 8-bit target: {:?}", target),
+        }
+    }
+
+    fn set_target_value_16(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, value: u16) {
+        match target {
+            Src::A16 => mmu.load_word(((args[1] as u16) << 8) | (args[0] as u16), value, Endianness::BIG),
 
             Src::AF => cpu.registers.set_word(CpuRegIndex::AF, value),
             Src::BC => cpu.registers.set_word(CpuRegIndex::BC, value),
@@ -648,14 +670,7 @@ impl Instruction {
             Src::PC => cpu.registers.set_word(CpuRegIndex::PC, value),
             Src::SP => cpu.registers.set_word(CpuRegIndex::SP, value),
 
-            Src::Ca => mmu.load_byte(0xFF | cpu.registers.get_byte(CpuRegIndex::C) as u16, value as u8),
-
-            Src::AFa => mmu.load_byte(cpu.registers.get_word(CpuRegIndex::AF), value as u8),
-            Src::BCa => mmu.load_byte(cpu.registers.get_word(CpuRegIndex::BC), value as u8),
-            Src::DEa => mmu.load_byte(cpu.registers.get_word(CpuRegIndex::DE), value as u8),
-            Src::HLa => mmu.load_byte(cpu.registers.get_word(CpuRegIndex::HL), value as u8),
-
-            _ => panic!("Unsupported target {:?}", target),
+            _ => panic!("Unsupported 16-bit target: {:?}", target),
         }
     }
 
@@ -706,101 +721,107 @@ impl Instruction {
     }
 
     /// LD
-    fn ld(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, source: Src) -> i16 {
-        let value = Instruction::get_source_value(cpu, mmu, args, source);
-        Instruction::set_target_value(cpu, mmu, args, target, value);
+    fn ld_8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, source: Src) -> i16 {
+        let value = Instruction::get_source_value_8(cpu, mmu, args, source);
+        Instruction::set_target_value_8(cpu, mmu, args, target, value);
+        self.cycles
+    }
+
+    fn ld_16(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, source: Src) -> i16 {
+        let value = Instruction::get_source_value_16(cpu, mmu, args, source);
+        Instruction::set_target_value_16(cpu, mmu, args, target, value);
         self.cycles
     }
 
     /// ADD
     fn add_8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, source: Src) -> i16 {
-        let a = Instruction::get_source_value(cpu, mmu, args, target) as u8;
-        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let a = Instruction::get_source_value_8(cpu, mmu, args, target);
+        let b = Instruction::get_source_value_8(cpu, mmu, args, source);
         let (result, flags) = alu::add_8(a, b);
-        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
     fn add_hl(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
-        let a = Instruction::get_source_value(cpu, mmu, args, Src::HL);
-        let b = Instruction::get_source_value(cpu, mmu, args, source);
+        let a = Instruction::get_source_value_16(cpu, mmu, args, Src::HL);
+        let b = Instruction::get_source_value_16(cpu, mmu, args, source);
         let original_zero = cpu.registers.get_flags().zero;
         let (result, mut flags) = alu::add_16(a, b);
         flags.zero = original_zero;
-        Instruction::set_target_value(cpu, mmu, args, Src::HL, result);
+        Instruction::set_target_value_16(cpu, mmu, args, Src::HL, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
     fn adc_8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, source: Src) -> i16 {
-        let a = Instruction::get_source_value(cpu, mmu, args, target) as u8;
-        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let a = Instruction::get_source_value_8(cpu, mmu, args, target);
+        let b = Instruction::get_source_value_8(cpu, mmu, args, source);
         let original_flags = cpu.registers.get_flags();
         let (result, flags) = alu::adc_8(a, b, original_flags);
-        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
     /// SUB
     fn sub_8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, source: Src) -> i16 {
-        let a = Instruction::get_source_value(cpu, mmu, args, target) as u8;
-        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let a = Instruction::get_source_value_8(cpu, mmu, args, target);
+        let b = Instruction::get_source_value_8(cpu, mmu, args, source);
         let (result, flags) = alu::subtract_8(a, b);
-        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
     fn sbc_8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, source: Src) -> i16 {
-        let a = Instruction::get_source_value(cpu, mmu, args, target) as u8;
-        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let a = Instruction::get_source_value_8(cpu, mmu, args, target);
+        let b = Instruction::get_source_value_8(cpu, mmu, args, source);
         let original_flags = cpu.registers.get_flags();
         let (result, flags) = alu::sbc_8(a, b, original_flags);
-        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
     /// INC/DEC 8 bit -- Affects all flags except carry flag
     fn increment_8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src) -> i16 {
-        let value = Instruction::get_source_value(cpu, mmu, args, target) as u8;
+        let value = Instruction::get_source_value_8(cpu, mmu, args, target);
         let original_carry = cpu.registers.get_flags().carry;
         let (result, flags) = alu::increment_8(value, original_carry);
-        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
     fn decrement_8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src) -> i16 {
-        let value = Instruction::get_source_value(cpu, mmu, args, target) as u8;
+        let value = Instruction::get_source_value_8(cpu, mmu, args, target);
         let original_carry = cpu.registers.get_flags().carry;
         let (result, flags) = alu::decrement_8(value, original_carry);
-        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
     /// INC/DEC 16 bit -- Does not affect flags
     fn increment_16(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src) -> i16 {
-        let value = Instruction::get_source_value(cpu, mmu, args, target);
+        let value = Instruction::get_source_value_16(cpu, mmu, args, target);
         let result = alu::increment_16(value);
-        Instruction::set_target_value(cpu, mmu, args, target, result);
+        Instruction::set_target_value_16(cpu, mmu, args, target, result);
         self.cycles
     }
 
     fn decrement_16(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src) -> i16 {
-        let value = Instruction::get_source_value(cpu, mmu, args, target);
+        let value = Instruction::get_source_value_16(cpu, mmu, args, target);
         let result = alu::decrement_16(value);
-        Instruction::set_target_value(cpu, mmu, args, target, result);
+        Instruction::set_target_value_16(cpu, mmu, args, target, result);
         self.cycles
     }
 
     /// AND
     fn and(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
         let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let b = Instruction::get_source_value_8(cpu, mmu, args, source);
         let (result, flags) = alu::and_8(a, b);
         cpu.registers.set_byte(CpuRegIndex::A, result);
         cpu.registers.set_flags(flags);
@@ -810,7 +831,7 @@ impl Instruction {
     /// OR
     fn or(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
         let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let b = Instruction::get_source_value_8(cpu, mmu, args, source);
         let (result, flags) = alu::or_8(a, b);
         cpu.registers.set_byte(CpuRegIndex::A, result);
         cpu.registers.set_flags(flags);
@@ -820,7 +841,7 @@ impl Instruction {
     /// XOR
     fn xor(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
         let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let b = Instruction::get_source_value_8(cpu, mmu, args, source);
         let (result, flags) = alu::xor_8(a, b);
         cpu.registers.set_byte(CpuRegIndex::A, result);
         cpu.registers.set_flags(flags);
@@ -830,13 +851,13 @@ impl Instruction {
     /// SLA, SRA, SRL
     fn shift(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src,
         is_left: bool, is_arithmetic: bool) -> i16 {
-        let value = Instruction::get_source_value(cpu, mmu, args, target) as u8;
+        let value = Instruction::get_source_value_8(cpu, mmu, args, target);
         let (result, flags) = if is_left {
             alu::shift_left(value, is_arithmetic)
         } else {
             alu::shift_right(value, is_arithmetic)
         };
-        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
@@ -845,7 +866,7 @@ impl Instruction {
     /// RLA, RRA (preserve zero flag)
     fn rotate(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8],
             target: Src, is_left: bool, preserve_zero: bool) -> i16 {
-        let value = Instruction::get_source_value(cpu, mmu, args, target) as u8;
+        let value = Instruction::get_source_value_8(cpu, mmu, args, target);
         let original_flags = cpu.registers.get_flags();
         let (result, mut flags) = if is_left {
             alu::rotate_left(value, original_flags.carry)
@@ -855,7 +876,7 @@ impl Instruction {
         if preserve_zero {
             flags.zero = original_flags.zero;
         }
-        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
@@ -864,7 +885,7 @@ impl Instruction {
     /// RLCA, RRCA (preserve zero flag)
     fn rotate_circular(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8],
             target: Src, is_left: bool, preserve_zero: bool) -> i16 {
-        let value = Instruction::get_source_value(cpu, mmu, args, target) as u8;
+        let value = Instruction::get_source_value_8(cpu, mmu, args, target);
         let original_flags = cpu.registers.get_flags();
         let (result, mut flags) = if is_left {
             alu::rotate_left_circular(value)
@@ -874,14 +895,14 @@ impl Instruction {
         if preserve_zero {
             flags.zero = original_flags.zero;
         }
-        Instruction::set_target_value(cpu, mmu, args, target, result as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
 
     /// BIT
     fn bit(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src, n: u8) -> i16 {
-        let value = Instruction::get_source_value(cpu, mmu, args, source);
+        let value = Instruction::get_source_value_8(cpu, mmu, args, source);
         let mut flags = cpu.registers.get_flags();
         flags.zero = value & (1 << n) == 0;
         flags.subtract = false;
@@ -892,21 +913,21 @@ impl Instruction {
 
     /// SET, RES
     fn set(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src, n: u8, set: bool) -> i16 {
-        let mut value = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let mut value = Instruction::get_source_value_8(cpu, mmu, args, source);
         if set {
             value |= 1 << n;
         } else {
             value &= !(value & (1 << n));
         }
-        Instruction::set_target_value(cpu, mmu, args, source, value as u16);
+        Instruction::set_target_value_8(cpu, mmu, args, source, value);
         self .cycles
     }
 
     /// SWAP
     fn swap(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
-        let mut value = Instruction::get_source_value(cpu, mmu, args, source);
+        let mut value = Instruction::get_source_value_8(cpu, mmu, args, source);
         value = ((value & 0xF0) >> 4) | ((value & 0x0F) << 4);
-        Instruction::set_target_value(cpu, mmu, args, source, value);
+        Instruction::set_target_value_8(cpu, mmu, args, source, value);
         let flags = Flags{
             zero: value == 0,
             subtract: false,
@@ -920,7 +941,7 @@ impl Instruction {
     /// CP
     fn cp(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
         let a = cpu.registers.get_byte(CpuRegIndex::A);
-        let b = Instruction::get_source_value(cpu, mmu, args, source) as u8;
+        let b = Instruction::get_source_value_8(cpu, mmu, args, source);
         let (_, flags) = alu::subtract_8(a, b);
         cpu.registers.set_flags(flags);
         self.cycles
@@ -937,14 +958,14 @@ impl Instruction {
     /// 3 12
     /// - - - -
     fn op_0001(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::BC, Src::D16)
+        self.ld_16(cpu, mmu, args, Src::BC, Src::D16)
     }
 
     /// LD (BC),A
     /// 1 8
     /// - - - -
     fn op_0002(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::BCa, Src::A)
+        self.ld_8(cpu, mmu, args, Src::BCa, Src::A)
     }
 
     /// INC BC
@@ -972,7 +993,7 @@ impl Instruction {
     /// 2 8
     /// - - - -
     fn op_0006(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::B, Src::D8)
+        self.ld_8(cpu, mmu, args, Src::B, Src::D8)
     }
 
     /// RLCA
@@ -986,7 +1007,7 @@ impl Instruction {
     /// 3 20
     /// - - - -
     fn op_0008(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A16, Src::SP)
+        self.ld_16(cpu, mmu, args, Src::A16, Src::SP)
     }
 
     /// ADD HL,BC
@@ -1000,7 +1021,7 @@ impl Instruction {
     /// 1  8
     /// - - - -
     fn op_000a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::BCa)
+        self.ld_8(cpu, mmu, args, Src::A, Src::BCa)
     }
 
     /// DEC BC 
@@ -1028,7 +1049,7 @@ impl Instruction {
     /// 2 8
     /// - - - -
     fn op_000e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::C, Src::D8)
+        self.ld_8(cpu, mmu, args, Src::C, Src::D8)
     }
 
     /// RRCA
@@ -1049,14 +1070,14 @@ impl Instruction {
     /// 3 12
     /// - - - -
     fn op_0011(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::DE, Src::D16)
+        self.ld_16(cpu, mmu, args, Src::DE, Src::D16)
     }
 
     /// LD (DE),A
     /// 1 8
     /// - - - -
     fn op_0012(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::DEa, Src::A)
+        self.ld_8(cpu, mmu, args, Src::DEa, Src::A)
     }
 
     /// INC DE
@@ -1084,7 +1105,7 @@ impl Instruction {
     /// 2 8
     /// - - - -
     fn op_0016(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::D, Src::D8)
+        self.ld_8(cpu, mmu, args, Src::D, Src::D8)
     }
 
     /// RLA
@@ -1113,7 +1134,7 @@ impl Instruction {
     /// 1 8
     /// - - - -
     fn op_001a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::DEa)
+        self.ld_8(cpu, mmu, args, Src::A, Src::DEa)
     }
 
     /// DEC DE
@@ -1141,7 +1162,7 @@ impl Instruction {
     /// 2 8
     /// - - - -
     fn op_001e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::E, Src::D8)
+        self.ld_8(cpu, mmu, args, Src::E, Src::D8)
     }
 
     /// RRA
@@ -1165,7 +1186,7 @@ impl Instruction {
     /// 3 12
     /// - - - -
     fn op_0021(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HL, Src::D16)
+        self.ld_16(cpu, mmu, args, Src::HL, Src::D16)
     }
 
     /// LDI (HL),A
@@ -1173,7 +1194,7 @@ impl Instruction {
     /// 1 8
     /// - - - -
     fn op_0022(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::A);
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::A);
         cpu.registers.increment(CpuRegIndex::HL, 1);
         self.cycles
     }
@@ -1203,7 +1224,7 @@ impl Instruction {
     /// 2 8
     /// - - - -
     fn op_0026(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::H, Src::D8)
+        self.ld_8(cpu, mmu, args, Src::H, Src::D8)
     }
 
     /// DAA
@@ -1236,7 +1257,7 @@ impl Instruction {
     /// 1 8
     /// - - - -
     fn op_002a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::HLa);
+        self.ld_8(cpu, mmu, args, Src::A, Src::HLa);
         cpu.registers.increment(CpuRegIndex::HL, 1);
         self.cycles
     }
@@ -1266,7 +1287,7 @@ impl Instruction {
     /// 2 8
     /// - - - -
     fn op_002e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::L, Src::D8)
+        self.ld_8(cpu, mmu, args, Src::L, Src::D8)
     }
 
     /// CPL
@@ -1300,7 +1321,7 @@ impl Instruction {
     /// 3 12
     /// - - - -
     fn op_0031(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::SP, Src::D16)
+        self.ld_16(cpu, mmu, args, Src::SP, Src::D16)
     }
 
     /// LDD (HL),A
@@ -1308,7 +1329,7 @@ impl Instruction {
     /// 1 8
     /// - - - -
     fn op_0032(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::A);
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::A);
         cpu.registers.decrement(CpuRegIndex::HL, 1);
         self.cycles
     }
@@ -1338,7 +1359,7 @@ impl Instruction {
     /// 2 12
     /// - - - -
     fn op_0036(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::D8)
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::D8)
     }
 
     /// SCF
@@ -1377,7 +1398,7 @@ impl Instruction {
     /// 1 8
     /// - - - -
      fn op_003a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::HLa);
+        self.ld_8(cpu, mmu, args, Src::A, Src::HLa);
         cpu.registers.decrement(CpuRegIndex::HL, 1);
         self.cycles
     }
@@ -1407,7 +1428,7 @@ impl Instruction {
     /// 2 8
     /// - - - -
     fn op_003e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::D8)
+        self.ld_8(cpu, mmu, args, Src::A, Src::D8)
     }
 
     /// CCF
@@ -1429,378 +1450,378 @@ impl Instruction {
     /// 1 4
     /// - - - -
     fn op_0040(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::B, Src::B)
+        self.ld_8(cpu, mmu, args, Src::B, Src::B)
     }
 
     /// LD B,C
     /// 1 4
     /// - - - -
     fn op_0041(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::B, Src::C)
+        self.ld_8(cpu, mmu, args, Src::B, Src::C)
     }
 
     /// LD B,D
     /// 1 4
     /// - - - -
     fn op_0042(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::B, Src::D)
+        self.ld_8(cpu, mmu, args, Src::B, Src::D)
     }
 
     /// LD B,E
     /// 1 4
     /// - - - -
     fn op_0043(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::B, Src::E)
+        self.ld_8(cpu, mmu, args, Src::B, Src::E)
     }
 
     /// LD B,H
     /// 1 4
     /// - - - -
     fn op_0044(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::B, Src::H)
+        self.ld_8(cpu, mmu, args, Src::B, Src::H)
     }
 
     /// LD B,L
     /// 1 4
     /// - - - -
     fn op_0045(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::B, Src::L)
+        self.ld_8(cpu, mmu, args, Src::B, Src::L)
     }
 
     /// LD B,(HL)
     /// 1 8
     /// - - - -
     fn op_0046(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::B, Src::HLa)
+        self.ld_8(cpu, mmu, args, Src::B, Src::HLa)
     }
 
     /// LD B,A
     /// 1 4
     /// - - - -
     fn op_0047(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::B, Src::A)
+        self.ld_8(cpu, mmu, args, Src::B, Src::A)
     }
 
     /// LD C,B
     /// 1 4
     /// - - - -
     fn op_0048(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::C, Src::B)
+        self.ld_8(cpu, mmu, args, Src::C, Src::B)
     }
 
     /// LD C,C
     /// 1 4
     /// - - - -
     fn op_0049(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::C, Src::C)
+        self.ld_8(cpu, mmu, args, Src::C, Src::C)
     }
 
     /// LD C,D
     /// 1 4
     /// - - - -
     fn op_004a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::C, Src::D)
+        self.ld_8(cpu, mmu, args, Src::C, Src::D)
     }
 
     /// LD C,E
     /// 1 4
     /// - - - -
     fn op_004b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::C, Src::E)
+        self.ld_8(cpu, mmu, args, Src::C, Src::E)
     }
 
     /// LD C,H
     /// 1 4
     /// - - - -
     fn op_004c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::C, Src::H)
+        self.ld_8(cpu, mmu, args, Src::C, Src::H)
     }
 
     /// LD C,L
     /// 1 4
     /// - - - -
     fn op_004d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::C, Src::L)
+        self.ld_8(cpu, mmu, args, Src::C, Src::L)
     }
 
     /// LD C,(HL)
     /// 1 8
     /// - - - -
     fn op_004e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::C, Src::HLa)
+        self.ld_8(cpu, mmu, args, Src::C, Src::HLa)
     }
 
     /// LD C,A
     /// 1 4
     /// - - - -
     fn op_004f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::C, Src::A)
+        self.ld_8(cpu, mmu, args, Src::C, Src::A)
     }
 
     /// LD D,B
     /// 1 4
     /// - - - -
     fn op_0050(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::D, Src::B)
+        self.ld_8(cpu, mmu, args, Src::D, Src::B)
     }
 
     /// LD D,C
     /// 1 4
     /// - - - -
     fn op_0051(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::D, Src::C)
+        self.ld_8(cpu, mmu, args, Src::D, Src::C)
     }
 
     /// LD D,D
     /// 1 4
     /// - - - -
     fn op_0052(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::D, Src::D)
+        self.ld_8(cpu, mmu, args, Src::D, Src::D)
     }
 
     /// LD D,E
     /// 1 4
     /// - - - -
     fn op_0053(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::D, Src::E)
+        self.ld_8(cpu, mmu, args, Src::D, Src::E)
     }
 
     /// LD D,H
     /// 1 4
     /// - - - -
     fn op_0054(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::D, Src::H)
+        self.ld_8(cpu, mmu, args, Src::D, Src::H)
     }
 
     /// LD D,L
     /// 1 4
     /// - - - -
     fn op_0055(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::D, Src::L)
+        self.ld_8(cpu, mmu, args, Src::D, Src::L)
     }
 
     /// LD D,(HL)
     /// 1 8
     /// - - - -
     fn op_0056(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::D, Src::HLa)
+        self.ld_8(cpu, mmu, args, Src::D, Src::HLa)
     }
 
     /// LD D,A
     /// 1 4
     /// - - - -
     fn op_0057(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::D, Src::A)
+        self.ld_8(cpu, mmu, args, Src::D, Src::A)
     }
 
     /// LD E,B
     /// 1 4
     /// - - - -
     fn op_0058(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::E, Src::B)
+        self.ld_8(cpu, mmu, args, Src::E, Src::B)
     }
 
     /// LD E,C
     /// 1 4
     /// - - - -
     fn op_0059(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::E, Src::C)
+        self.ld_8(cpu, mmu, args, Src::E, Src::C)
     }
 
     /// LD E,D
     /// 1 4
     /// - - - -
     fn op_005a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::E, Src::D)
+        self.ld_8(cpu, mmu, args, Src::E, Src::D)
     }
 
     /// LD E,E
     /// 1 4
     /// - - - -
     fn op_005b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::E, Src::E)
+        self.ld_8(cpu, mmu, args, Src::E, Src::E)
     }
 
     /// LD E,H
     /// 1 4
     /// - - - -
     fn op_005c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::E, Src::H)
+        self.ld_8(cpu, mmu, args, Src::E, Src::H)
     }
 
     /// LD E,L
     /// 1 4
     /// - - - -
     fn op_005d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::E, Src::L)
+        self.ld_8(cpu, mmu, args, Src::E, Src::L)
     }
 
     /// LD E,(HL)
     /// 1 8
     /// - - - -
     fn op_005e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::E, Src::HLa)
+        self.ld_8(cpu, mmu, args, Src::E, Src::HLa)
     }
 
     /// LD E,A
     /// 1 4
     /// - - - -
     fn op_005f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::E, Src::A)
+        self.ld_8(cpu, mmu, args, Src::E, Src::A)
     }
 
     /// LD H,B
     /// 1 4
     /// - - - -
     fn op_0060(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::H, Src::B)
+        self.ld_8(cpu, mmu, args, Src::H, Src::B)
     }
 
     /// LD H,C
     /// 1 4
     /// - - - -
     fn op_0061(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::H, Src::C)
+        self.ld_8(cpu, mmu, args, Src::H, Src::C)
     }
 
     /// LD H,D
     /// 1 4
     /// - - - -
     fn op_0062(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::H, Src::D)
+        self.ld_8(cpu, mmu, args, Src::H, Src::D)
     }
 
     /// LD H,E
     /// 1 4
     /// - - - -
     fn op_0063(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::H, Src::E)
+        self.ld_8(cpu, mmu, args, Src::H, Src::E)
     }
 
     /// LD H,H
     /// 1 4
     /// - - - -
     fn op_0064(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::H, Src::H)
+        self.ld_8(cpu, mmu, args, Src::H, Src::H)
     }
 
     /// LD H,L
     /// 1 4
     /// - - - -
     fn op_0065(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::H, Src::L)
+        self.ld_8(cpu, mmu, args, Src::H, Src::L)
     }
 
     /// LD H,(HL)
     /// 1 8
     /// - - - -
     fn op_0066(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::H, Src::HLa)
+        self.ld_8(cpu, mmu, args, Src::H, Src::HLa)
     }
 
     /// LD H,A
     /// 1 4
     /// - - - -
     fn op_0067(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::H, Src::A)
+        self.ld_8(cpu, mmu, args, Src::H, Src::A)
     }
 
     /// LD L,B
     /// 1 4
     /// - - - -
     fn op_0068(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::L, Src::B)
+        self.ld_8(cpu, mmu, args, Src::L, Src::B)
     }
 
     /// LD L,C
     /// 1 4
     /// - - - -
     fn op_0069(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::L, Src::C)
+        self.ld_8(cpu, mmu, args, Src::L, Src::C)
     }
 
     /// LD L,D
     /// 1 4
     /// - - - -
     fn op_006a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::L, Src::D)
+        self.ld_8(cpu, mmu, args, Src::L, Src::D)
     }
 
     /// LD L,E
     /// 1 4
     /// - - - -
     fn op_006b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::L, Src::E)
+        self.ld_8(cpu, mmu, args, Src::L, Src::E)
     }
 
     /// LD L,H
     /// 1 4
     /// - - - -
     fn op_006c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::L, Src::H)
+        self.ld_8(cpu, mmu, args, Src::L, Src::H)
     }
 
     /// LD L,L
     /// 1 4
     /// - - - -
     fn op_006d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::L, Src::L)
+        self.ld_8(cpu, mmu, args, Src::L, Src::L)
     }
 
     /// LD L,(HL)
     /// 1 8
     /// - - - -
     fn op_006e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::L, Src::HLa)
+        self.ld_8(cpu, mmu, args, Src::L, Src::HLa)
     }
 
     /// LD L,A
     /// 1 4
     /// - - - -
     fn op_006f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::L, Src::A)
+        self.ld_8(cpu, mmu, args, Src::L, Src::A)
     }
 
     /// LD (HL),B
     /// 1 8
     /// - - - -
     fn op_0070(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::B)
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::B)
     }
 
     /// LD (HL),C
     /// 1 8
     /// - - - -
     fn op_0071(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::C)
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::C)
     }
 
     /// LD (HL),D
     /// 1 8
     /// - - - -
     fn op_0072(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::D)
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::D)
     }
 
     /// LD (HL),E
     /// 1 8
     /// - - - -
     fn op_0073(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::E)
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::E)
     }
 
     /// LD (HL),H
     /// 1 8
     /// - - - -
     fn op_0074(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::H)
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::H)
     }
 
     /// LD (HL),L
     /// 1 8
     /// - - - -
     fn op_0075(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::L)
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::L)
     }
 
     /// HALT
@@ -1815,63 +1836,63 @@ impl Instruction {
     /// 1 8
     /// - - - -
     fn op_0077(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::HLa, Src::A)
+        self.ld_8(cpu, mmu, args, Src::HLa, Src::A)
     }
 
     /// LD A,B
     /// 1 4
     /// - - - -
     fn op_0078(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::B)
+        self.ld_8(cpu, mmu, args, Src::A, Src::B)
     }
 
     /// LD A,C
     /// 1 4
     /// - - - -
     fn op_0079(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::C)
+        self.ld_8(cpu, mmu, args, Src::A, Src::C)
     }
 
     /// LD A,D
     /// 1 4
     /// - - - -
     fn op_007a(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::D)
+        self.ld_8(cpu, mmu, args, Src::A, Src::D)
     }
 
     /// LD A,E
     /// 1 4
     /// - - - -
     fn op_007b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::E)
+        self.ld_8(cpu, mmu, args, Src::A, Src::E)
     }
 
     /// LD A,H
     /// 1 4
     /// - - - -
     fn op_007c(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::H)
+        self.ld_8(cpu, mmu, args, Src::A, Src::H)
     }
 
     /// LD A,L
     /// 1 4
     /// - - - -
     fn op_007d(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::L)
+        self.ld_8(cpu, mmu, args, Src::A, Src::L)
     }
 
     /// LD A,(HL)
     /// 1 8
     /// - - - -
     fn op_007e(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::HLa)
+        self.ld_8(cpu, mmu, args, Src::A, Src::HLa)
     }
 
     /// LD A,A
     /// 1 4
     /// - - - -
     fn op_007f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::A)
+        self.ld_8(cpu, mmu, args, Src::A, Src::A)
     }
 
     /// ADD A,B
@@ -2584,7 +2605,7 @@ impl Instruction {
     /// 2 12
     /// - - - -
     fn op_00e0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A8, Src::A)
+        self.ld_8(cpu, mmu, args, Src::A8, Src::A)
     }
 
     /// POP HL
@@ -2599,7 +2620,7 @@ impl Instruction {
     /// 1 8
     /// - - - -
     fn op_00e2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::Ca, Src::A)
+        self.ld_8(cpu, mmu, args, Src::Ca, Src::A)
     }
 
     /// PUSH HL
@@ -2628,8 +2649,8 @@ impl Instruction {
     /// 0 0 H C
     fn op_00e8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         // SP = SP +/- dd ; dd is 8-bit signed number
-        let sp = Instruction::get_source_value(cpu, mmu, args, Src::SP);
-        let d8 = Instruction::get_source_value(cpu, mmu, args, Src::D8) as u8;
+        let sp = Instruction::get_source_value_16(cpu, mmu, args, Src::SP);
+        let d8 = Instruction::get_source_value_8(cpu, mmu, args, Src::D8);
         let signed = alu::signed_8(d8);
         let (result, mut flags) = if signed < 0 {
             alu::subtract_16(sp, (-signed) as u16)
@@ -2638,7 +2659,7 @@ impl Instruction {
         };
         flags.zero = false;
         flags.subtract = false;
-        Instruction::set_target_value(cpu, mmu, args, Src::SP, result as u16);
+        Instruction::set_target_value_16(cpu, mmu, args, Src::SP, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
@@ -2656,7 +2677,7 @@ impl Instruction {
     /// 3 16 
     /// - - - -
     fn op_00ea(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A16, Src::A)
+        self.ld_8(cpu, mmu, args, Src::A16, Src::A)
     }
 
     /// XOR d8
@@ -2678,7 +2699,7 @@ impl Instruction {
     /// 2 12
     /// - - - -
     fn op_00f0(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::A8)
+        self.ld_8(cpu, mmu, args, Src::A, Src::A8)
     }
 
     /// POP AF
@@ -2702,7 +2723,7 @@ impl Instruction {
     /// 1 8
     /// - - - -
     fn op_00f2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::Ca)
+        self.ld_8(cpu, mmu, args, Src::A, Src::Ca)
     }
 
     /// DI
@@ -2757,14 +2778,14 @@ impl Instruction {
     /// 1 8
     /// - - - -
     fn op_00f9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::SP, Src::HL)
+        self.ld_16(cpu, mmu, args, Src::SP, Src::HL)
     }
 
     /// LD A,(a16)
     /// 3 16
     /// - - - -
     fn op_00fa(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.ld(cpu, mmu, args, Src::A, Src::A16)
+        self.ld_8(cpu, mmu, args, Src::A, Src::A16)
     }
 
     /// EI
