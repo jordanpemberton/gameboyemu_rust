@@ -16,7 +16,7 @@ fn select_rom(is_contained: bool) -> String {
     let mut selection = -1;
 
     while curr_path.is_dir() {
-        println!("0: {:}", if is_contained && curr_path == root_path {
+        println!("\n0: {:}", if is_contained && curr_path == root_path {
                 String::from("N/A")
             } else {
                 format!("↑ {}/", curr_path.parent().unwrap().file_name().unwrap().to_string_lossy())
@@ -97,7 +97,7 @@ pub(crate) fn run(args: Vec<String>, is_contained: bool) {
     CpuRegisters::test();
 
     let selection = select_rom(is_contained);
-    println!("SELECTED ROM: {}", selection);
+    println!("\nSELECTED ROM: {}\n", selection);
 
     run_rom(selection.as_str(), display_enabled, debug_enabled, skip_boot, cpu_debug_print);
 }

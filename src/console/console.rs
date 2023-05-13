@@ -90,6 +90,11 @@ impl Console {
         if !skip_boot {
             self.load_bootrom();
         } else {
+            self.cpu.registers.set_word(CpuRegIndex::AF, 0x01B0);
+            self.cpu.registers.set_word(CpuRegIndex::BC, 0x0013);
+            self.cpu.registers.set_word(CpuRegIndex::DE, 0x00D8);
+            self.cpu.registers.set_word(CpuRegIndex::HL, 0x014D);
+            self.cpu.registers.set_word(CpuRegIndex::SP, 0xFFFE);
             self.cpu.registers.set_word(CpuRegIndex::PC, 0x0100);
         }
 

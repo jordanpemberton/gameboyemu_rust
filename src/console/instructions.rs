@@ -1234,7 +1234,9 @@ impl Instruction {
     /// 1 4
     /// Z - 0 C
     fn op_0027(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        alu::daa(cpu.registers.get_byte(CpuRegIndex::A), cpu.registers.get_flags());
+        let (result, flags) = alu::daa(cpu.registers.get_byte(CpuRegIndex::A), cpu.registers.get_flags());
+        cpu.registers.set_byte(CpuRegIndex::A, result);
+        cpu.registers.set_flags(flags);
         self.cycles
     }
 
@@ -2423,7 +2425,7 @@ impl Instruction {
     /// 1 8/20
     /// - - - -
     fn op_00c8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        if !cpu.registers.get_flags().zero {
+        if cpu.registers.get_flags().zero {
             self.pop(cpu, mmu, CpuRegIndex::PC);
             self.cycles += 12;
         }
@@ -2655,13 +2657,30 @@ impl Instruction {
         let sp = Instruction::get_source_value_16(cpu, mmu, args, Src::SP);
         let d8 = Instruction::get_source_value_8(cpu, mmu, args, Src::D8);
         let signed = alu::signed_8(d8);
-        let (result, mut flags) = if signed < 0 {
-            alu::subtract_16(sp, (-signed) as u16)
+
+        let (result, flags) = if signed < 0 {
+            let b = (-signed) as u16;
+            let half_carry = sp & 0x0F < b & 0x0F;
+            let (result, carry) = sp.overflowing_sub(b);
+            let flags = Flags {
+                zero: false,
+                subtract: false,
+                half_carry,
+                carry,
+            };
+            (result, flags)
         } else {
-            alu::add_16(sp, (-signed) as u16)
+            let b = signed as u16;
+            let half_carry = (sp & 0x0F) + (b & 0x0F) > 0x0F;
+            let (result, carry) = sp.overflowing_add(b);
+            (result, Flags {
+                zero: false,
+                subtract: false,
+                half_carry,
+                carry,
+            })
         };
-        flags.zero = false;
-        flags.subtract = false;
+
         Instruction::set_target_value_16(cpu, mmu, args, Src::SP, result);
         cpu.registers.set_flags(flags);
         self.cycles
@@ -2710,15 +2729,8 @@ impl Instruction {
     /// Z N H C
     fn op_00f1(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.pop(cpu, mmu, CpuRegIndex::AF);
-        let value = cpu.registers.get_word(CpuRegIndex::AF);
-        // TODO How does POP AF set flags?
-        let flags = Flags {
-            zero: value == 0,
-            subtract: true,
-            half_carry: true,
-            carry: true,
-        };
-        cpu.registers.set_flags(flags);
+        let f = cpu.registers.get_byte(CpuRegIndex::F) & 0xF0;
+        cpu.registers.set_byte(CpuRegIndex::F, f);
         self.cycles
     }
 

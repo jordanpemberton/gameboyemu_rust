@@ -79,13 +79,14 @@ pub(crate) fn add_8(a: u8, b: u8) -> (u8, Flags) {
 }
 
 pub(crate) fn adc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
+    let (b, first_carry) = b.overflowing_add(original_flags.carry as u8);
     let half_carry = (a & 0x0F) + (b & 0x0F) > 0x0F;
-    let (result, carry) = a.overflowing_add(b + original_flags.carry as u8);
+    let (result, second_carry) = a.overflowing_add(b);
     (result, Flags {
         zero: result == 0,
         subtract: false,
         half_carry,
-        carry,
+        carry: first_carry | second_carry,
     })
 }
 
@@ -125,15 +126,14 @@ pub(crate) fn subtract_16(a: u16, b: u16) -> (u16, Flags) {
 }
 
 pub(crate) fn sbc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
-    let half_carry = (a & 0x0F) < (b & 0x0F + original_flags.carry as u8);
-    // ?
-    let (result, first_carry) = a.overflowing_sub(b);
-    let (result, second_carry) = result.overflowing_sub(original_flags.carry as u8);
+    let (b, first_carry) = b.overflowing_add(original_flags.carry as u8);
+    let half_carry = (a & 0x0F) < (b & 0x0F);
+    let (result, second_carry) = a.overflowing_sub(b);
     (result, Flags {
         zero: result == 0,
         subtract: true,
         half_carry,
-        carry: first_carry | second_carry,
+        carry: first_carry | second_carry, // ?
     })
 }
 
@@ -256,10 +256,18 @@ pub(crate) fn daa(a: u8, original_flags: Flags) -> (u8, Flags) {
     let mut carry = false;
 
     if ((result & 0x0F) > 9) || original_flags.half_carry {
-        result += 6;
+        if original_flags.subtract {
+            result = result.wrapping_sub(0x06);
+        } else {
+            result = result.wrapping_add(0x06);
+        }
     }
     if (((result & 0xF0) >> 4) > 9) || original_flags.carry {
-        result += 0x60;
+        if original_flags.subtract {
+            result = result.wrapping_sub(0x60);
+        } else {
+            result = result.wrapping_add(0x60);
+        }
         carry = true;
     }
 
