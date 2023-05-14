@@ -79,14 +79,18 @@ pub(crate) fn add_8(a: u8, b: u8) -> (u8, Flags) {
 }
 
 pub(crate) fn adc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
-    let (b, first_carry) = b.overflowing_add(original_flags.carry as u8);
-    let half_carry = (a & 0x0F) + (b & 0x0F) > 0x0F;
-    let (result, second_carry) = a.overflowing_add(b);
+    let a = a as i16;
+    let b = b as i16;
+    let c = original_flags.carry as i16;
+    let result = a + b + c;
+    let half_carry = ((a & 0x0F) + (b & 0x0F) + (c & 0x0F)) >= 0x10;
+    let carry = result >= 0x100;
+    let result = result as u8;
     (result, Flags {
         zero: result == 0,
         subtract: false,
         half_carry,
-        carry: first_carry | second_carry,
+        carry,
     })
 }
 
@@ -126,14 +130,18 @@ pub(crate) fn subtract_16(a: u16, b: u16) -> (u16, Flags) {
 }
 
 pub(crate) fn sbc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
-    let (b, first_carry) = b.overflowing_add(original_flags.carry as u8);
-    let half_carry = (a & 0x0F) < (b & 0x0F);
-    let (result, second_carry) = a.overflowing_sub(b);
+    let a = a as i16;
+    let b = b as i16;
+    let c = original_flags.carry as i16;
+    let result = a - b - c;
+    let half_carry = ((a & 0x0F) - (b & 0x0F) - (c & 0x0F)) < 0;
+    let carry = result < 0;
+    let result = result as u8;
     (result, Flags {
         zero: result == 0,
         subtract: true,
         half_carry,
-        carry: first_carry | second_carry, // ?
+        carry,
     })
 }
 

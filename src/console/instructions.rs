@@ -1378,6 +1378,7 @@ impl Instruction {
             half_carry: false,
             carry: true,
         };
+        cpu.registers.set_flags(flags);
         self.cycles
     }
 

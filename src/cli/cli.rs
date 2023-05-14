@@ -63,7 +63,9 @@ fn select_rom(is_contained: bool) -> String {
         selection = -1;
     }
 
-    String::from(curr_path.to_str().unwrap())
+    let rom_filepath = String::from(curr_path.to_str().unwrap());
+    println!("\nSELECTED ROM: {}\n", rom_filepath);
+    rom_filepath
 }
 
 fn disassemble_rom(filepath: &str) {
@@ -93,11 +95,13 @@ pub(crate) fn run(args: Vec<String>, is_contained: bool) {
     let debug_enabled = if args.len() > 2 { args[2].clone().parse().unwrap() } else { 1 } > 0;
     let skip_boot = if args.len() > 3 { args[3].clone().parse().unwrap() } else { 0 } > 0;
     let cpu_debug_print = if args.len() > 4 { args[4].clone().parse().unwrap() } else { 1 } > 0;
+    let mut rom_filepath = if args.len() > 5 { args[5].clone() } else { String::new() };
 
     CpuRegisters::test();
 
-    let selection = select_rom(is_contained);
-    println!("\nSELECTED ROM: {}\n", selection);
+    if String::is_empty(&rom_filepath) {
+        rom_filepath = select_rom(is_contained);
+    }
 
-    run_rom(selection.as_str(), display_enabled, debug_enabled, skip_boot, cpu_debug_print);
+    run_rom(rom_filepath.as_str(), display_enabled, debug_enabled, skip_boot, cpu_debug_print);
 }

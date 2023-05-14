@@ -55,6 +55,29 @@ impl Cpu {
             let args = self.fetch_args(&instruction, mmu);
 
             if self.debug_print {
+                // to check against blargg test logging:
+                // println!(
+                //     "A: {:02X} F: {:02X} B: {:02X} C: {:02X} \
+                //     D: {:02X} E: {:02X} H: {:02X} L: {:02X} \
+                //     SP: {:04X} PC: {:02X}:{:04X} ({:02X} {:02X} {:02X} {:02X})",
+                //     self.registers.get_byte(CpuRegIndex::A),
+                //     self.registers.get_byte(CpuRegIndex::F),
+                //     self.registers.get_byte(CpuRegIndex::B),
+                //     self.registers.get_byte(CpuRegIndex::C),
+                //     self.registers.get_byte(CpuRegIndex::D),
+                //     self.registers.get_byte(CpuRegIndex::E),
+                //     self.registers.get_byte(CpuRegIndex::H),
+                //     self.registers.get_byte(CpuRegIndex::L),
+                //     self.registers.get_word(CpuRegIndex::SP),
+                //     0, // ?
+                //     start_pc,
+                //     mmu.read_byte(start_pc),
+                //     mmu.read_byte(start_pc + 1),
+                //     mmu.read_byte(start_pc + 2),
+                //     mmu.read_byte(start_pc + 3),
+                // );
+                // example: "A: 0C F: 40 B: 06 C: FF D: C8 E: 46 H: 8A L: 74 SP: DFF7 PC: 00:C762 (13 A9 22 22)"
+
                 if !self.visited.contains(&start_pc)
                 {
                     print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, instruction.mnemonic);
@@ -69,7 +92,8 @@ impl Cpu {
                 self.visited.push(start_pc);
             }
 
-            instruction.execute(self, mmu, args.as_ref())
+            let args = args.as_ref();
+            instruction.execute(self, mmu, args)
         }
     }
 

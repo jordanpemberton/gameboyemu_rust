@@ -127,7 +127,7 @@ impl CpuRegisters {
                 self.l = (value & 0x00FF) as u8;
             }
             CpuRegIndex::PC => {
-                self.pc =value;
+                self.pc = value;
             }
             CpuRegIndex::SP => {
                 self.sp = value;
