@@ -853,10 +853,10 @@ impl Instruction {
 
     /// SLA, SRA, SRL
     fn shift(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src,
-        is_left: bool, is_arithmetic: bool) -> i16 {
+            is_left: bool, is_arithmetic: bool) -> i16 {
         let value = Instruction::get_source_value_8(cpu, mmu, args, target);
         let (result, flags) = if is_left {
-            alu::shift_left(value, is_arithmetic)
+            alu::shift_left(value)
         } else {
             alu::shift_right(value, is_arithmetic)
         };
@@ -866,9 +866,9 @@ impl Instruction {
     }
 
     /// RL, RR
-    /// RLA, RRA (preserve zero flag)
+    /// RLA, RRA
     fn rotate(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8],
-            target: Src, is_left: bool, preserve_zero: bool) -> i16 {
+            target: Src, is_left: bool, reset_zero: bool) -> i16 {
         let value = Instruction::get_source_value_8(cpu, mmu, args, target);
         let original_flags = cpu.registers.get_flags();
         let (result, mut flags) = if is_left {
@@ -876,8 +876,8 @@ impl Instruction {
         } else {
             alu::rotate_right(value, original_flags.carry)
         };
-        if preserve_zero {
-            flags.zero = original_flags.zero;
+        if reset_zero {
+            flags.zero = false;
         }
         Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);
@@ -885,18 +885,17 @@ impl Instruction {
     }
 
     /// RLC, RRC
-    /// RLCA, RRCA (preserve zero flag)
+    /// RLCA, RRCA
     fn rotate_circular(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8],
-            target: Src, is_left: bool, preserve_zero: bool) -> i16 {
+            target: Src, is_left: bool, reset_zero: bool) -> i16 {
         let value = Instruction::get_source_value_8(cpu, mmu, args, target);
-        let original_flags = cpu.registers.get_flags();
         let (result, mut flags) = if is_left {
             alu::rotate_left_circular(value)
         } else {
             alu::rotate_right_circular(value)
         };
-        if preserve_zero {
-            flags.zero = original_flags.zero;
+        if reset_zero {
+            flags.zero = false;
         }
         Instruction::set_target_value_8(cpu, mmu, args, target, result);
         cpu.registers.set_flags(flags);

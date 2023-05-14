@@ -16,13 +16,12 @@ pub(crate) fn signed_8(value: u8) -> i16 {
 /// Previous carry flag becomes the least significant bit,
 /// and previous most significant bit becomes the new carry flag.
 pub(crate) fn rotate_left(value: u8, original_carry: bool) -> (u8, Flags) {
-    let bit7 = value >> 7;
     let result = (value << 1) | if original_carry { 1 } else { 0 };
     (result, Flags {
-        zero: value == 0,
+        zero: result == 0,
         subtract: false,
         half_carry: false,
-        carry: bit7 == 1,
+        carry: (value >> 7) == 1,
     })
 }
 
@@ -31,37 +30,34 @@ pub(crate) fn rotate_left(value: u8, original_carry: bool) -> (u8, Flags) {
 /// Previous most significant bit becomes the new least significant bit,
 /// as well as the new carry flag.
 pub(crate) fn rotate_left_circular(value: u8) -> (u8, Flags) {
-    let bit7 = value >> 7;
-    let result = (value << 1) | bit7;
+    let result = (value << 1) | (value >> 7);
     (result, Flags {
-        zero: value == 0,
+        zero: result == 0,
         subtract: false,
         half_carry: false,
-        carry: bit7 == 1,
+        carry: (value >> 7) == 1,
     })
 }
 
 /// RR
-pub(crate) fn rotate_right(value: u8, carry: bool) -> (u8, Flags) {
-    let bit0 = value & 1;
-    let result = (value >> 1) | if carry { 0x80 } else { 0 };
+pub(crate) fn rotate_right(value: u8, original_carry: bool) -> (u8, Flags) {
+    let result = (value >> 1) | ((original_carry as u8) << 7);
     (result, Flags {
-        zero: value == 0,
+        zero: result == 0,
         subtract: false,
         half_carry: false,
-        carry: bit0 == 1,
+        carry: (value & 1) == 1,
     })
 }
 
 /// RRC
 pub(crate) fn rotate_right_circular(value: u8) -> (u8, Flags) {
-    let bit0 = value & 1;
-    let result = (value >> 1) | (bit0 << 7);
+    let result = (value >> 1) | ((value << 7) as u8);
     (result, Flags {
-        zero: value == 0,
+        zero: result == 0,
         subtract: false,
         half_carry: false,
-        carry: bit0 == 1,
+        carry: (value & 1) == 1,
     })
 }
 
@@ -218,23 +214,18 @@ pub(crate) fn and_8(a: u8, b: u8) -> (u8, Flags) {
 }
 
 /// SLA
-pub(crate) fn shift_left(a: u8, is_arithmetic: bool) -> (u8, Flags) {
-    let carry = a >> 7 == 1;
-    let mut result = a << 1;
-    if is_arithmetic {
-        result |= a & 0x01;
-    }
+pub(crate) fn shift_left(a: u8) -> (u8, Flags) {
+    let result = a << 1;
     (result, Flags {
         zero: result == 0,
         subtract: false,
         half_carry: false,
-        carry: carry,
+        carry: (a >> 7) == 1,
     })
 }
 
 /// SRA, SRL
 pub(crate) fn shift_right(a: u8, is_arithmetic: bool) -> (u8, Flags) {
-    let carry = (a & 0x01) == 0x01;
     let mut result = a >> 1;
     if is_arithmetic {
         result |= a & 0x80;
@@ -243,7 +234,7 @@ pub(crate) fn shift_right(a: u8, is_arithmetic: bool) -> (u8, Flags) {
         zero: result == 0,
         subtract: false,
         half_carry: false,
-        carry: carry,
+        carry: (a & 1) == 1,
     })
 }
 
