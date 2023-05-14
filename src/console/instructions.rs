@@ -4115,60 +4115,60 @@ impl Instruction {
         self.set(cpu, mmu, args, Src::A, 6, false)
     }
 
-    /// RES 5,B
+    /// RES 7,B
     /// 2 8
     /// - - - -
     fn op_cbb8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.set(cpu, mmu, args, Src::B, 5, false)
+        self.set(cpu, mmu, args, Src::B, 7, false)
     }
 
-    /// RES 5,C
+    /// RES 7,C
     /// 2 8
     /// - - - -
     fn op_cbb9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.set(cpu, mmu, args, Src::C, 5, false)
+        self.set(cpu, mmu, args, Src::C, 7, false)
     }
 
-    /// RES 5,D
+    /// RES 7,D
     /// 2 8
     /// - - - -
     fn op_cbba(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.set(cpu, mmu, args, Src::D, 5, false)
+        self.set(cpu, mmu, args, Src::D, 7, false)
     }
 
-    /// RES 5,E
+    /// RES 7,E
     /// 2 8
     /// - - - -
     fn op_cbbb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.set(cpu, mmu, args, Src::E, 5, false)
+        self.set(cpu, mmu, args, Src::E, 7, false)
     }
 
-    /// RES 5,H
+    /// RES 7,H
     /// 2 8
     /// - - - -
     fn op_cbbc(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.set(cpu, mmu, args, Src::H, 5, false)
+        self.set(cpu, mmu, args, Src::H, 7, false)
     }
 
-    /// RES 5,L
+    /// RES 7,L
     /// 2 8
     /// - - - -
     fn op_cbbd(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.set(cpu, mmu, args, Src::L, 5, false)
+        self.set(cpu, mmu, args, Src::L, 7, false)
     }
 
-    /// RES 5,(HL)
+    /// RES 7,(HL)
     /// 2 16
     /// - - - -
     fn op_cbbe(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.set(cpu, mmu, args, Src::HLa, 5, false)
+        self.set(cpu, mmu, args, Src::HLa, 7, false)
     }
 
-    /// RES 5,A
+    /// RES 7,A
     /// 2 8
     /// - - - -
     fn op_cbbf(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        self.set(cpu, mmu, args, Src::A, 5, false)
+        self.set(cpu, mmu, args, Src::A, 7, false)
     }
 
     /// SET 0,B
