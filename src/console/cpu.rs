@@ -34,17 +34,15 @@ impl Cpu {
     }
 
     pub(crate) fn check_interrupts(&mut self) -> i16 {
+        // TODO
+        self.is_halted = false;
         if self.interrupts.ime {
-            self.is_halted = false;
             16
         } else {
             let value = self.interrupts.get_interrupt_value();
             if value > 0 {
                 self.interrupts.ime = false;
-
             }
-            self.is_halted = false;
-
             0
         }
     }

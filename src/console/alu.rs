@@ -276,7 +276,7 @@ pub(crate) fn daa(a: u8, original_flags: Flags) -> (u8, Flags) {
 
     if !original_flags.subtract {
         if  original_flags.half_carry || (result & 0x0F) > 0x09 {
-            result += 0x06;
+            result = result.wrapping_add(0x06);
         }
             if original_flags.carry || result > 0x9F {
             result = result.wrapping_add(0x60);

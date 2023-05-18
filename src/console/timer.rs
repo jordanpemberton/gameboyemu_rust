@@ -28,15 +28,15 @@ impl Timer {
         // Does anything happen when it overflows /wraps?
         self.div = self.div.wrapping_add(1);
 
-        // if self.is_enabled() {
+        if self.is_enabled() {
             // Increment counter by selected clock frequency
             let clocks = self.selected_clocks();
-            (self.counter, request_interrupt) = self.counter.overflowing_add(clocks as u8); // ?
+            (self.counter, request_interrupt) = self.counter.overflowing_add(clocks as u8); // How is TIMA incremented by u16 values...?
             // If counter overflows, request interrupt and reset counter = modulo
             if request_interrupt {
                 self.counter = self.modulo;
             }
-        // }
+        }
 
         request_interrupt
     }

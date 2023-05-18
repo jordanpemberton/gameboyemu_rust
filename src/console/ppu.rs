@@ -346,8 +346,6 @@ impl LcdStatusRegister {
 
 pub(crate) struct Ppu {
     clocks: usize,
-    pub(crate) lcd_updated: bool,
-
     // Registers -- in IO RAM
     scy: u8,    // 0xFF42
     scx: u8,    // 0xFF43
@@ -371,7 +369,6 @@ impl Ppu {
     pub(crate) fn new(mmu: &mut Mmu) -> Ppu {
         Ppu {
             clocks: 0,
-            lcd_updated: false,
             scy: 0,
             scx: 0,
             ly: 0,
@@ -519,12 +516,8 @@ impl Ppu {
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
         // TODO implement pixel FIFO correctly
-        let is_first_line = self.ly <= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].0;
         let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
-        if is_first_line {
-            self.lcd_updated = false;
-        }
-        if is_last_line && !self.lcd_updated {
+        if is_last_line {
             self.lcd_control.read_from_mem(mmu);
 
             if self.lcd_control.check_bit(LcdControlRegBit::BackgroundAndWindowEnabled) {
@@ -545,13 +538,10 @@ impl Ppu {
                         }
                     }
                 }
-
-                self.lcd_updated = true;
             }
 
             if self.lcd_control.check_bit(LcdControlRegBit::ObjEnabled) {
                 self.draw_sprites(mmu);
-                self.lcd_updated = true;
             }
         }
     }
@@ -598,11 +588,9 @@ impl Ppu {
     fn speed_check_pixel_transfer(&mut self) {
         self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] += 1;
         self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] %= 8;
-        self.lcd_updated = true;
     }
 
     fn display_tiles_at_pixel_transfer(&mut self, mmu: &mut Mmu) {
         self.display_tiles_at(mmu, 0x2000, 0, 0);
-        self.lcd_updated = true;
     }
 }

@@ -50,7 +50,7 @@ impl Mmu {
             if end - 0x8000 > 0x8000 {
                 panic!("invalid range of {:#06X}..{:#06X}", begin, end);
             }
-            self.rom[begin-0x8000..end-0x8000].to_vec()
+            self.ram[begin-0x8000..end-0x8000].to_vec()
         }
     }
 

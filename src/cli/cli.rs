@@ -94,7 +94,7 @@ pub(crate) fn run(args: Vec<String>, is_contained: bool) {
     let display_enabled = if args.len() > 1 { args[1].clone().parse().unwrap() } else { 1 } > 0;
     let debug_enabled = if args.len() > 2 { args[2].clone().parse().unwrap() } else { 1 } > 0;
     let skip_boot = if args.len() > 3 { args[3].clone().parse().unwrap() } else { 0 } > 0;
-    let cpu_debug_print = if args.len() > 4 { args[4].clone().parse().unwrap() } else { 1 } > 0;
+    let cpu_debug_print = if args.len() > 4 { args[4].clone().parse().unwrap() } else { 0 } > 0;
     let mut rom_filepath = if args.len() > 5 { args[5].clone() } else { String::new() };
 
     CpuRegisters::test();
