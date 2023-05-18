@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 use crate::console::cpu::Cpu;
-use crate::console::mmu::{Endianness, Mmu};
+use crate::console::mmu::Mmu;
 use crate::console::ppu::{LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
 
 pub(crate) enum DebugAction {
@@ -101,7 +101,7 @@ impl Debugger {
         let cols: usize = 16;
 
         let mut vram_values_str = String::new();
-        let vram: &[u8] = &mmu.read_buffer(0x8000, 0xA000, Endianness::BIG);
+        let vram: &[u8] = &mmu.read(0x8000, 0xA000);
         let rows: usize = 2; // for all: (vram.len() as u16 / cols as u16) as usize;
 
         let mut i = 0;

@@ -93,32 +93,32 @@ pub(crate) fn adc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
 pub(crate) fn add_16(a: u16, b: u16) -> (u16, Flags) {
     let half_carry = (a & 0x0F) + (b & 0x0F) > 0x0F; // ?
     let (result, carry) = a.overflowing_add(b);
-    return (result, Flags {
-        zero: result == 0,
-        subtract: false,
-        half_carry,
-        carry,
-    });
-
-    let a1 = a >> 4;
-    let a2 = a & 0xFF;
-    let b1 = b >> 4;
-    let b2 = b & 0xFF;
-
-    let c1 = a1 + b1;
-    let carry = c1 > 0xFF;
-
-    let c2 = a2 + b2 + carry as u16;
-    let half_carry = c2 > 0x0F;
-
-    let result = (c1 << 4) | c2;
-
     (result, Flags {
         zero: result == 0,
         subtract: false,
         half_carry,
         carry,
     })
+
+    // let a1 = a >> 4;
+    // let a2 = a & 0xFF;
+    // let b1 = b >> 4;
+    // let b2 = b & 0xFF;
+    //
+    // let c1 = a1 + b1;
+    // let carry = c1 > 0xFF;
+    //
+    // let c2 = a2 + b2 + carry as u16;
+    // let half_carry = c2 > 0x0F;
+    //
+    // let result = (c1 << 4) | c2;
+    //
+    // (result, Flags {
+    //     zero: result == 0,
+    //     subtract: false,
+    //     half_carry,
+    //     carry,
+    // })
 }
 
 /// SUB

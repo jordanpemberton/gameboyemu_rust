@@ -14,6 +14,9 @@
     CARTRIDGE_ROM_BANK_SIZE: u16 = 0x4000;
 */
 
+use crate::console::timer::DIV_REG_ADDRESS;
+
+#[allow(dead_code)]
 #[derive(PartialEq)]
 pub(crate) enum Endianness {
     BIG,
@@ -33,15 +36,25 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn load_rom(&mut self, rom: &[u8], start: usize, size: usize) {
-        let mut n = start + size;
-        if n >= self.rom.len() {
-            n = self.rom.len()
+    pub(crate) fn read(&self, begin: usize, end: usize) -> Vec<u8> {
+        if begin >= end {
+            panic!("invalid range of {:#06X}..{:#06X}", begin, end);
         }
-        self.rom[start..n].clone_from_slice(&rom[..size]);
+
+        if begin < 0x8000 {
+            if end > 0x8000 {
+                panic!("invalid range of {:#06X}..{:#06X}", begin, end);
+            }
+            self.rom[begin..end].to_vec()
+        } else {
+            if end - 0x8000 > 0x8000 {
+                panic!("invalid range of {:#06X}..{:#06X}", begin, end);
+            }
+            self.rom[begin-0x8000..end-0x8000].to_vec()
+        }
     }
 
-    pub(crate) fn read_byte(&self, address: u16) -> u8 {
+    pub(crate) fn read_8(&self, address: u16) -> u8 {
         if address < 0x8000 {
             self.rom[address as usize]
         } else {
@@ -49,7 +62,7 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn read_word(&self, address: u16, endian: Endianness) -> u16 {
+    pub(crate) fn read_16(&self, address: u16, endian: Endianness) -> u16 {
         let lsb: u8;
         let msb: u8;
 
@@ -67,33 +80,48 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn read_buffer(&self, begin: usize, end: usize, endian: Endianness) -> Vec<u8> {
-        if begin >= end {
-            panic!("invalid range of {:#06X}..{:#06X}", begin, end);
+    pub(crate) fn write(&mut self, data: &[u8], start: usize, mut size: usize) {
+        if size > data.len() {
+            size = data.len();
         }
-
-        if begin < 0x8000 {
+        let mut end = start + size;
+        if start < 0x8000 {
             if end > 0x8000 {
-                panic!("invalid range of {:#06X}..{:#06X}", begin, end);
+                end = 0x8000;
             }
-            Mmu::_read_buffer(&self.rom, begin, end, endian)
+            if size > end {
+                size = end;
+            }
+            self.rom[start..end].clone_from_slice(&data[..size]);
         } else {
-            if end - 0x8000 > 0x8000 {
-                panic!("invalid range of {:#06X}..{:#06X}", begin, end);
+            if end >= 0xFFFF {
+                end = 0xFFFF;
             }
-            Mmu::_read_buffer(&self.ram, begin - 0x8000, end - 0x8000, endian)
+            if size > end {
+                size = end;
+            }
+            self.ram[start - 0x8000..end - 0x8000].clone_from_slice(&data[..size - 0x8000]);
+
+            // All writes to timer DIV register reset it to 0
+            if start <= (DIV_REG_ADDRESS as usize) && (DIV_REG_ADDRESS as usize) < end {
+                self.ram[DIV_REG_ADDRESS as usize - 0x8000] = 0;
+            }
         }
     }
 
-    pub(crate) fn load_byte(&mut self, address: u16, value: u8) {
+    pub(crate) fn write_8(&mut self, address: u16, value: u8) {
         if address < 0x8000 {
             self.rom[address as usize] = value;
         } else {
-            self.ram[(address - 0x8000) as usize] = value;
+            self.ram[(address - 0x8000) as usize] = if address == DIV_REG_ADDRESS { // All writes to timer DIV register reset it to 0
+                0
+            } else {
+                value
+            };
         }
     }
 
-    pub(crate) fn load_word(&mut self, address: u16, value: u16, endian: Endianness) {
+    pub(crate) fn write_16(&mut self, address: u16, value: u16, endian: Endianness) {
         let mut a = ((value & 0xFF00) >> 8) as u8;
         let mut b = (value & 0x00FF) as u8;
 
@@ -103,33 +131,7 @@ impl Mmu {
             b = temp;
         }
 
-        self.load_byte(address, a);
-        self.load_byte(address + 1, b);
-    }
-
-    fn _read_buffer(mem: &[u8; 0x8000], begin: usize, end: usize, endian: Endianness) -> Vec<u8> {
-        let mut buffer: Vec<u8> = vec![];
-        let slice: &[u8] = &mem[begin..end];
-
-        match endian {
-            Endianness::BIG => {
-                let mut i = 0;
-                while i < slice.len() - 1 {
-                    buffer.push(slice[i + 1]);
-                    buffer.push(slice[i]);
-                    i += 2;
-                }
-            },
-            Endianness::LITTLE => {
-                let mut i = 0;
-                while i < slice.len() - 1 {
-                    buffer.push(slice[i]);
-                    buffer.push(slice[i + 1]);
-                    i += 2;
-                }
-            },
-        }
-
-        buffer
+        self.write_8(address, a);
+        self.write_8(address + 1, b);
     }
 }

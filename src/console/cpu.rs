@@ -35,10 +35,16 @@ impl Cpu {
 
     pub(crate) fn check_interrupts(&mut self) -> i16 {
         if self.interrupts.ime {
-            // TODO
+            self.is_halted = false;
             16
         } else {
-            // TODO
+            let value = self.interrupts.get_interrupt_value();
+            if value > 0 {
+                self.interrupts.ime = false;
+
+            }
+            self.is_halted = false;
+
             0
         }
     }
@@ -99,7 +105,7 @@ impl Cpu {
 
     fn read_byte_at_pc(&mut self, mmu: &mut Mmu) -> u8 {
         let pc = self.registers.get_word(CpuRegIndex::PC);
-        let d8 = mmu.read_byte(pc);
+        let d8 = mmu.read_8(pc);
         self.registers.increment(CpuRegIndex::PC, 1);
         d8
     }

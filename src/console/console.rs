@@ -11,6 +11,7 @@ use crate::console::display::Display;
 use crate::console::mmu::Mmu;
 use crate::console::ppu::Ppu;
 use crate::console::cpu_registers::{CpuRegIndex};
+use crate::console::timer::Timer;
 
 const TICKS_PER_FRAME: u16 = 500;
 const TICKS_PER_POLL: u16 = 100;
@@ -20,6 +21,7 @@ pub(crate) struct Console {
     tick: u16,
     ticks_per_frame: u16,
     ticks_per_poll: u16,
+    timer: Timer,
     cpu: Cpu,
     mmu: Mmu,
     ppu: Ppu,
@@ -52,9 +54,10 @@ impl Console {
             tick: 0,
             ticks_per_frame: TICKS_PER_FRAME,
             ticks_per_poll: TICKS_PER_POLL,
-            cpu: cpu,
-            mmu: mmu,
-            ppu: ppu,
+            timer: Timer::default(),
+            cpu,
+            mmu,
+            ppu,
             event_pump: sdl_context.event_pump().unwrap(),
             display,
             debugger,
@@ -77,7 +80,7 @@ impl Console {
     fn load_bootrom(&mut self) {
         let bootrom_filepath = "src/console/DMG_ROM.bin";
         let bootrom = read(bootrom_filepath).unwrap();
-        self.mmu.load_rom(bootrom.as_ref(), 0, bootrom.len());
+        self.mmu.write(bootrom.as_ref(), 0, bootrom.len());
     }
 
     fn boot_empty(&mut self) {
@@ -86,7 +89,7 @@ impl Console {
     }
 
     fn run_game(&mut self, game: &Cartridge, skip_boot: bool) {
-        self.mmu.load_rom(&game.data[0..], 0, 0x8000);
+        self.mmu.write(&game.data[0..], 0, 0x8000);
         if !skip_boot {
             self.load_bootrom();
         } else {
@@ -121,6 +124,7 @@ impl Console {
         }
     }
 
+    // returns if still active
     fn poll(&mut self) -> bool {
         for event in self.event_pump.poll_iter() {
             match event {
@@ -166,29 +170,24 @@ impl Console {
         true
     }
 
-    fn step(&mut self) -> i16 {
-        let mut cycles = self.cpu.step(&mut self.mmu);
-        cycles += self.cpu.check_interrupts();
-        self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
-        if self.ppu.lcd_updated && self.tick % self.ticks_per_frame == 0 {
-            self.display.draw(&mut self.mmu, &mut self.ppu);
-        }
-        cycles
-    }
-
     fn main_loop(&mut self) {
         loop {
-            if self.tick % self.ticks_per_poll == 0 {
-                let exit = !self.poll();
-                if exit {
-                    self.debug_print();
-                    self.debug_peek();
-                    break;
-                }
-            }
-
             if !self.is_paused {
-                let status = self.step();
+                let mut status = self.cpu.step(&mut self.mmu);
+                status += self.cpu.check_interrupts(); // TODO implement interrupts
+
+                self.ppu.step(status as u16, &mut self.cpu.interrupts, &mut self.mmu);
+
+                let timer_interrupt_requested = self.timer.step(&mut self.mmu);
+                if timer_interrupt_requested { // ?
+                    if self.ppu.lcd_updated {
+                        self.display.draw(&mut self.mmu, &mut self.ppu);
+                    }
+                    if !self.poll() {
+                        status = -2;
+                    }
+                }
+
                 if status < 0 {
                     self.debug_print();
                     self.debug_peek();
@@ -196,8 +195,6 @@ impl Console {
                         status, self.cpu.registers.get_word(CpuRegIndex::PC));
                 }
             }
-
-            self.tick = self.tick.wrapping_add(1);
         }
     }
 }

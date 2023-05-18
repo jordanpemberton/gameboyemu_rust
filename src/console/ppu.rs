@@ -3,7 +3,7 @@
 #![allow(unused_variables)]
 
 use crate::console::interrupts::{InterruptRegBit, Interrupts};
-use crate::console::mmu::{Endianness, Mmu};
+use crate::console::mmu::Mmu;
 
 pub(crate) const LCD_PIXEL_WIDTH: usize = 160;
 pub(crate) const LCD_PIXEL_HEIGHT: usize = 144;
@@ -129,11 +129,10 @@ impl TileMap {
         tiles
     }
 
-    fn fetch_tile_indices(&mut self, mmu: &mut Mmu, tilemap_address: usize) -> [usize; 32 * 32]{
-        let indices: [usize; 32 * 32] = mmu.read_buffer(
+    fn fetch_tile_indices(&mut self, mmu: &mut Mmu, tilemap_address: usize) -> [usize; 32 * 32] {
+        let indices: [usize; 32 * 32] = mmu.read(
             tilemap_address,
-            tilemap_address + 32 * 32,
-            Endianness::LITTLE)
+            tilemap_address + 32 * 32)
             .iter().map(|x| *x as usize)
             .collect::<Vec<usize>>()
             .try_into().unwrap();
@@ -165,10 +164,9 @@ impl TileMap {
             for col in 0..32 {
                 let address = tile_addresses[row * 32 + col];
 
-                let tile_bytes: [u8; 16] = mmu.read_buffer(
-                        address, 
-                        address + 16, 
-                        Endianness::LITTLE)
+                let tile_bytes: [u8; 16] = mmu.read(
+                    address,
+                    address + 16)
                     .try_into().unwrap();
 
                 self.tiles[row][col] = TileMap::read_tile(tile_bytes);
@@ -232,11 +230,11 @@ impl LcdControlRegister {
     }
 
     fn read_from_mem(&mut self, mmu: &mut Mmu) {
-        self.value = mmu.read_byte(self.address);
+        self.value = mmu.read_8(self.address);
     }
 
     fn write_to_mem(&self, mmu: &mut Mmu) {
-        mmu.load_byte(self.address, self.value);
+        mmu.write_8(self.address, self.value);
     }
 
     fn check_bit(&self, bit: LcdControlRegBit) -> bool {
@@ -305,7 +303,7 @@ impl LcdStatusRegister {
     }
 
     fn read_from_mem(&mut self, mmu: &mut Mmu) {
-        self.value = mmu.read_byte(self.address);
+        self.value = mmu.read_8(self.address);
         let x = self.value & 0b0000_0011;
         self.mode = match x {
             0 => StatMode::HBlank,
@@ -317,7 +315,7 @@ impl LcdStatusRegister {
     }
 
     fn write_to_mem(&self, mmu: &mut Mmu) {
-        mmu.load_byte(self.address, self.value);
+        mmu.write_8(self.address, self.value);
     }
 
     fn check_bit(&self, bit: LcdStatRegBit) -> bool {
@@ -476,16 +474,16 @@ impl Ppu {
     }
 
     fn refresh_from_mem(&mut self, mmu: &mut Mmu) {
-        self.scy = mmu.read_byte(SCY_REG_ADDRESS);
-        self.scx = mmu.read_byte(SCX_REG_ADDRESS);
-        self.ly = mmu.read_byte(LY_REG_ADDRESS);
-        self.lyc = mmu.read_byte(LYC_REG_ADDRESS);
-        self.dma = mmu.read_byte(DMA_REG_ADDRESS);
-        self.bgp = mmu.read_byte(BGP_REG_ADDRESS);
-        self.obp0 = mmu.read_byte(OBP0_REG_ADDRESS);
-        self.obp1 = mmu.read_byte(OBP1_REG_ADDRESS);
-        self.wy = mmu.read_byte(WY_REG_ADDRESS);
-        self.wx = mmu.read_byte(WX_REG_ADDRESS);
+        self.scy = mmu.read_8(SCY_REG_ADDRESS);
+        self.scx = mmu.read_8(SCX_REG_ADDRESS);
+        self.ly = mmu.read_8(LY_REG_ADDRESS);
+        self.lyc = mmu.read_8(LYC_REG_ADDRESS);
+        self.dma = mmu.read_8(DMA_REG_ADDRESS);
+        self.bgp = mmu.read_8(BGP_REG_ADDRESS);
+        self.obp0 = mmu.read_8(OBP0_REG_ADDRESS);
+        self.obp1 = mmu.read_8(OBP1_REG_ADDRESS);
+        self.wy = mmu.read_8(WY_REG_ADDRESS);
+        self.wx = mmu.read_8(WX_REG_ADDRESS);
 
         self.lcd_control.read_from_mem(mmu);
         self.lcd_status.read_from_mem(mmu);
@@ -498,7 +496,7 @@ impl Ppu {
         if self.ly >= MODE_LINE_RANGE[StatMode::VBlank as usize].1 {
             self.ly = 0;
         }
-        mmu.load_byte(LY_REG_ADDRESS, self.ly);
+        mmu.write_8(LY_REG_ADDRESS, self.ly);
     }
 
     fn oam_search(&mut self, mmu: &mut Mmu) {
@@ -509,7 +507,7 @@ impl Ppu {
             self.lcd_control.read_from_mem(mmu);
             let obj_enabled = self.lcd_control.check_bit(LcdControlRegBit::ObjEnabled);
             if obj_enabled {
-                let attribute_data = mmu.read_buffer(0xFE00, 0xFEA0, Endianness::LITTLE);
+                let attribute_data = mmu.read(0xFE00, 0xFEA0);
                 for i in 0..40 {
                     let data = &attribute_data[(i * 4)..(i * 4) + 4];
                     let attr = SpriteAttribute::new(data.try_into().unwrap());
@@ -543,7 +541,7 @@ impl Ppu {
                 for row in 0..LCD_PIXEL_HEIGHT {
                     for col in 0..LCD_PIXEL_WIDTH {
                         if window_lcd.data[row][col] > 0 { // TODO priority, transparency
-                            self.lcd.data[row][col] = window_lcd.data[row][col] + 8; // TEMP colors to distinguish window
+                            // self.lcd.data[row][col] = window_lcd.data[row][col] + 8; // TEMP colors to distinguish window
                         }
                     }
                 }
@@ -564,7 +562,7 @@ impl Ppu {
         for attr in self.sprite_attributes {
             let tile_index = attr.tile_index as usize;
             let tile_address = tiledata_address + tile_index * 16;
-            let tile_data = mmu.read_buffer(tile_address, tile_address + 16, Endianness::LITTLE);
+            let tile_data = mmu.read(tile_address, tile_address + 16);
             let tile = TileMap::read_tile(tile_data.try_into().unwrap());
 
             let sprite_height = if self.lcd_control.check_bit(LcdControlRegBit::SpriteSizeIs16) { 16 } else { 8 };
@@ -589,7 +587,7 @@ impl Ppu {
                         let has_priority = true;
                         let bg_color = self.lcd.data[y as usize][x as usize];
                         if has_priority || bg_color == 0 {
-                            self.lcd.data[y as usize][x as usize] = color + 4; // TEMP colors to distinguish sprites
+                            // self.lcd.data[y as usize][x as usize] = color + 4; // TEMP colors to distinguish sprites
                         }
                     }
                 }

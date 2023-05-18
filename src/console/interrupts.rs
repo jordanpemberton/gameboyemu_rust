@@ -54,11 +54,11 @@ impl InterruptReg {
     }
 
     fn read_from_mem(&mut self, mmu: &mut Mmu) {
-        self.value = mmu.read_byte(self.address);
+        self.value = mmu.read_8(self.address);
     }
 
     fn write_to_mem(&self, mmu: &mut Mmu) {
-        mmu.load_byte(self.address, self.value);
+        mmu.write_8(self.address, self.value);
     }
 }
 
@@ -80,6 +80,28 @@ impl Interrupts {
     pub(crate) fn set_ime(&mut self, enable: bool, mmu: &mut Mmu) {
         self.ime = enable;
         self.enabled.set_all(enable, mmu);
+    }
+
+    pub(crate) fn get_interrupt_value(&mut self) -> u8 {
+        let mut value = 0x00;
+        if self.ime {
+            if (self.enabled.value & 0x01) == 0x01 && (self.requested.value & 0x01) == 0x01 {
+                value = 0x40;
+            }
+            if (self.enabled.value & 0x02) == 0x02 && (self.requested.value & 0x02) == 0x02 {
+                value = 0x48;
+            }
+            if (self.enabled.value & 0x04) == 0x04 && (self.requested.value & 0x04) == 0x04 {
+                value = 0x50;
+            }
+            if (self.enabled.value & 0x08) == 0x08 && (self.requested.value & 0x08) == 0x08 {
+                value = 0x58;
+            }
+            if (self.enabled.value & 0x10) == 0x10 && (self.requested.value & 0x10) == 0x10 {
+                value = 0x60;
+            }
+        }
+        value
     }
 }
 
