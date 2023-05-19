@@ -270,32 +270,29 @@ pub(crate) fn shift_right(a: u8, is_arithmetic: bool) -> (u8, Flags) {
 ///
 /// If this second addition was needed, the C flag is set after execution,
 /// otherwise it is reset.
-pub(crate) fn daa(a: u8, original_flags: Flags) -> (u8, Flags) {
-    let mut result = a;
+pub(crate) fn daa(mut a: u8, original_flags: Flags) -> (u8, Flags) {
     let mut carry = false;
 
     if !original_flags.subtract {
-        if  original_flags.half_carry || (result & 0x0F) > 0x09 {
-            result = result.wrapping_add(0x06);
-        }
-            if original_flags.carry || result > 0x9F {
-            result = result.wrapping_add(0x60);
+        if original_flags.carry || a > 0x99 {
+            a = a.wrapping_add(0x60);
             carry = true;
         }
-    } else {
-        if original_flags.half_carry {
-            result = result.wrapping_sub(0x06);
-            if !original_flags.carry {
-                result &= 0xFF;
-            }
+        if original_flags.half_carry || (a & 0x0F) > 0x09 {
+            a = a.wrapping_add(0x06);
         }
+    } else {
         if original_flags.carry {
-            result = result.wrapping_sub(0x60);
+            a = a.wrapping_sub(0x60);
+            carry = true;
+        }
+        if original_flags.half_carry {
+            a = a.wrapping_sub(0x06);
         }
     }
 
-    (result, Flags {
-        zero: result == 0,
+    (a, Flags {
+        zero: a == 0,
         subtract: original_flags.subtract,
         half_carry: false,
         carry,

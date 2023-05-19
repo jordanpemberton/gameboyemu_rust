@@ -534,7 +534,7 @@ impl Ppu {
                 for row in 0..LCD_PIXEL_HEIGHT {
                     for col in 0..LCD_PIXEL_WIDTH {
                         if window_lcd.data[row][col] > 0 { // TODO priority, transparency
-                            // self.lcd.data[row][col] = window_lcd.data[row][col] + 8; // TEMP colors to distinguish window
+                            self.lcd.data[row][col] = window_lcd.data[row][col] + 8; // TEMP colors to distinguish window
                         }
                     }
                 }
@@ -577,7 +577,7 @@ impl Ppu {
                         let has_priority = true;
                         let bg_color = self.lcd.data[y as usize][x as usize];
                         if has_priority || bg_color == 0 {
-                            // self.lcd.data[y as usize][x as usize] = color + 4; // TEMP colors to distinguish sprites
+                            self.lcd.data[y as usize][x as usize] = color + 4; // TEMP colors to distinguish sprites
                         }
                     }
                 }

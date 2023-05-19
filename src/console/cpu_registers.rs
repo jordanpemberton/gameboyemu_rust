@@ -93,7 +93,7 @@ impl CpuRegisters {
             CpuRegIndex::C => { self.c = value; }
             CpuRegIndex::D => { self.d = value; }
             CpuRegIndex::E => { self.e = value; }
-            CpuRegIndex::F => { self.f = value; }
+            CpuRegIndex::F => { self.f = value & 0xF0; }
             CpuRegIndex::H => { self.h = value; }
             CpuRegIndex::L => { self.l = value; }
             _ => panic!("Invalid RegIndex"),
@@ -101,11 +101,11 @@ impl CpuRegisters {
     }
 
     pub(crate) fn set_flags(&mut self, flags: Flags) {
-        self.f =
+        self.f = 0 |
             (if flags.zero { 1 } else { 0 }) << FLAG_ZERO_BYTE |
-                (if flags.subtract { 1 } else { 0 }) << FLAG_SUBTRACT_BYTE |
-                (if flags.half_carry { 1 } else { 0 }) << FLAG_HALF_CARRY_BYTE |
-                (if flags.carry { 1 } else { 0 }) << FLAG_CARRY_BYTE;
+            (if flags.subtract { 1 } else { 0 }) << FLAG_SUBTRACT_BYTE |
+            (if flags.half_carry { 1 } else { 0 }) << FLAG_HALF_CARRY_BYTE |
+            (if flags.carry { 1 } else { 0 }) << FLAG_CARRY_BYTE;
     }
 
     pub(crate) fn set_word(&mut self, register: CpuRegIndex, value: u16) {
@@ -155,6 +155,7 @@ impl CpuRegisters {
             }
             CpuRegIndex::F => {
                 self.f = self.f.wrapping_add(increment_by as u8);
+                self.f = self.f & 0xF0;
             }
             CpuRegIndex::H => {
                 self.h = self.h.wrapping_add(increment_by as u8);
@@ -206,6 +207,7 @@ impl CpuRegisters {
             }
             CpuRegIndex::F => {
                 self.f = self.f.wrapping_sub(decrement_by as u8);
+                self.f = self.f & 0xF0;
             }
             CpuRegIndex::H => {
                 self.h = self.h.wrapping_sub(decrement_by as u8);

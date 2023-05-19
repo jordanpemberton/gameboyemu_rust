@@ -10,6 +10,7 @@ use crate::console::interrupts::Interrupts;
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
+#[allow(dead_code)]
 pub(crate) struct Cpu {
     is_halted: bool,
     pub(crate) registers: CpuRegisters,
@@ -33,15 +34,16 @@ impl Cpu {
         self.is_halted = true;
     }
 
-    pub(crate) fn check_interrupts(&mut self) -> i16 {
-        // TODO
-        self.is_halted = false;
+    pub(crate) fn check_interrupts(&mut self, mmu: &mut Mmu) -> i16 {
+        let value = self.interrupts.get_interrupt_value();
         if self.interrupts.ime {
+            self.interrupts.ime = false;
+            Instruction::call(self, mmu, value as u16);
+            self.is_halted = false;
             16
         } else {
-            let value = self.interrupts.get_interrupt_value();
-            if value > 0 {
-                self.interrupts.ime = false;
+            if self.is_halted && value > 0 {
+                self.is_halted = false;
             }
             0
         }
@@ -60,40 +62,40 @@ impl Cpu {
 
             if self.debug_print {
                 // to check against blargg test logging:
-                // println!(
-                //     "A: {:02X} F: {:02X} B: {:02X} C: {:02X} \
-                //     D: {:02X} E: {:02X} H: {:02X} L: {:02X} \
-                //     SP: {:04X} PC: {:02X}:{:04X} ({:02X} {:02X} {:02X} {:02X})",
-                //     self.registers.get_byte(CpuRegIndex::A),
-                //     self.registers.get_byte(CpuRegIndex::F),
-                //     self.registers.get_byte(CpuRegIndex::B),
-                //     self.registers.get_byte(CpuRegIndex::C),
-                //     self.registers.get_byte(CpuRegIndex::D),
-                //     self.registers.get_byte(CpuRegIndex::E),
-                //     self.registers.get_byte(CpuRegIndex::H),
-                //     self.registers.get_byte(CpuRegIndex::L),
-                //     self.registers.get_word(CpuRegIndex::SP),
-                //     0, // ?
-                //     start_pc,
-                //     mmu.read_byte(start_pc),
-                //     mmu.read_byte(start_pc + 1),
-                //     mmu.read_byte(start_pc + 2),
-                //     mmu.read_byte(start_pc + 3),
-                // );
+                println!(
+                    "A: {:02X} F: {:02X} B: {:02X} C: {:02X} \
+                    D: {:02X} E: {:02X} H: {:02X} L: {:02X} \
+                    SP: {:04X} PC: {:02X}:{:04X} ({:02X} {:02X} {:02X} {:02X})",
+                    self.registers.get_byte(CpuRegIndex::A),
+                    self.registers.get_byte(CpuRegIndex::F),
+                    self.registers.get_byte(CpuRegIndex::B),
+                    self.registers.get_byte(CpuRegIndex::C),
+                    self.registers.get_byte(CpuRegIndex::D),
+                    self.registers.get_byte(CpuRegIndex::E),
+                    self.registers.get_byte(CpuRegIndex::H),
+                    self.registers.get_byte(CpuRegIndex::L),
+                    self.registers.get_word(CpuRegIndex::SP),
+                    0, // ?
+                    start_pc,
+                    mmu.read_8(start_pc),
+                    mmu.read_8(start_pc + 1),
+                    mmu.read_8(start_pc + 2),
+                    mmu.read_8(start_pc + 3),
+                );
                 // example: "A: 0C F: 40 B: 06 C: FF D: C8 E: 46 H: 8A L: 74 SP: DFF7 PC: 00:C762 (13 A9 22 22)"
 
-                if !self.visited.contains(&start_pc)
-                {
-                    print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, instruction.mnemonic);
-                    if args.len() > 0 {
-                        print!("\t{:#04X}", args[0]);
-                    };
-                    if args.len() > 1 {
-                        print!("\t{:#04X}", args[1]);
-                    };
-                    println!();
-                }
-                self.visited.push(start_pc);
+                // if !self.visited.contains(&start_pc)
+                // {
+                //     print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, instruction.mnemonic);
+                //     if args.len() > 0 {
+                //         print!("\t{:#04X}", args[0]);
+                //     };
+                //     if args.len() > 1 {
+                //         print!("\t{:#04X}", args[1]);
+                //     };
+                //     println!();
+                // }
+                // self.visited.push(start_pc);
             }
 
             let args = args.as_ref();
