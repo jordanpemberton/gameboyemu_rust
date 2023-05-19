@@ -410,7 +410,6 @@ impl Ppu {
                     self.clocks = 0;
                     self.lcd_status.set_mode(StatMode::PixelTransfer, mmu);
                     interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
-                    interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                 }
             }
             StatMode::PixelTransfer => {
@@ -420,8 +419,7 @@ impl Ppu {
                     self.pixel_transfer(mmu);
                     self.clocks = 0;
                     self.lcd_status.set_mode(StatMode::HBlank, mmu);
-                    interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
-                    interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
+                    interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
                 }
             }
             StatMode::HBlank => {
@@ -432,10 +430,8 @@ impl Ppu {
                     if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
                         self.lcd_status.set_mode(StatMode::OamSearch, mmu);
                         interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
-                        interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                     } else {
                         self.lcd_status.set_mode(StatMode::VBlank, mmu);
-                        interrupts.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
                         interrupts.requested.set_bit(InterruptRegBit::VBlank, true, mmu);
                     }
                 }
@@ -449,7 +445,6 @@ impl Ppu {
                         self.clocks = 0;
                         self.lcd_status.set_mode(StatMode::OamSearch, mmu);
                         interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
-                        interrupts.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                     }
                 }
             }

@@ -40,9 +40,8 @@ impl InterruptReg {
         reg
     }
 
-    pub(crate) fn set_all(&mut self, enable: bool, mmu: &mut Mmu) {
-        self.value = if enable { 0xFF } else { 0x00 };
-        self.write_to_mem(mmu);
+    pub(crate) fn get_bit(&mut self, bit: InterruptRegBit) -> bool {
+        (self.value & (1 << bit as usize)) == 1
     }
 
     pub(crate) fn set_bit(&mut self, bit: InterruptRegBit, enable: bool, mmu: &mut Mmu) {
@@ -50,6 +49,11 @@ impl InterruptReg {
         let b = self.value & (1 << p);
         self.value &= !b;
         self.value |= (enable as u8) << p;
+        self.write_to_mem(mmu);
+    }
+
+    pub(crate) fn set_all(&mut self, enable: bool, mmu: &mut Mmu) {
+        self.value = if enable { 0xFF } else { 0x00 };
         self.write_to_mem(mmu);
     }
 

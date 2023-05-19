@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 use crate::console::cpu::Cpu;
+use crate::console::cpu_registers::CpuRegIndex;
 use crate::console::mmu::Mmu;
 use crate::console::ppu::{LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
 
@@ -71,6 +72,46 @@ impl Debugger {
 
     pub(crate) fn step(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
         // todo
+    }
+
+    pub(crate) fn print_cpu_exec_log(cpu: &Cpu, mmu: &Mmu, start_pc: u16) {
+        // to check against blargg test logging:
+        // example: "A: 0C F: 40 B: 06 C: FF D: C8 E: 46 H: 8A L: 74 SP: DFF7 PC: 00:C762 (13 A9 22 22)"
+        println!(
+            "A: {:02X} F: {:02X} B: {:02X} C: {:02X} \
+                    D: {:02X} E: {:02X} H: {:02X} L: {:02X} \
+                    SP: {:04X} PC: {:02X}:{:04X} ({:02X} {:02X} {:02X} {:02X})",
+            cpu.registers.get_byte(CpuRegIndex::A),
+            cpu.registers.get_byte(CpuRegIndex::F),
+            cpu.registers.get_byte(CpuRegIndex::B),
+            cpu.registers.get_byte(CpuRegIndex::C),
+            cpu.registers.get_byte(CpuRegIndex::D),
+            cpu.registers.get_byte(CpuRegIndex::E),
+            cpu.registers.get_byte(CpuRegIndex::H),
+            cpu.registers.get_byte(CpuRegIndex::L),
+            cpu.registers.get_word(CpuRegIndex::SP),
+            0, // ?
+            start_pc,
+            mmu.read_8(start_pc),
+            mmu.read_8(start_pc + 1),
+            mmu.read_8(start_pc + 2),
+            mmu.read_8(start_pc + 3),
+        );
+    }
+
+    pub(crate) fn print_cpu_exec(cpu: &mut Cpu, mmu: &Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
+        if !cpu.visited.contains(&start_pc)
+        {
+            print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, mnemonic);
+            if args.len() > 0 {
+                print!("\t{:#04X}", args[0]);
+            };
+            if args.len() > 1 {
+                print!("\t{:#04X}", args[1]);
+            };
+            println!();
+        }
+        cpu.visited.push(start_pc);
     }
 
     fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
