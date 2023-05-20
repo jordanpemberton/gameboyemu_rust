@@ -36,16 +36,14 @@ impl Cpu {
     }
 
     pub(crate) fn check_interrupts(&mut self, mmu: &mut Mmu) -> i16 {
-        let value = self.interrupts.get_interrupt_value();
-        if self.interrupts.ime {
-            self.interrupts.ime = false;
+        self.is_halted = false;
+
+        let value = self.interrupts.poll(mmu);
+        if value > 0 {
             Instruction::call(self, mmu, value as u16);
-            self.is_halted = false;
+            // self.interrupts.set_ime(false); // ?
             16
         } else {
-            if self.is_halted && value > 0 {
-                self.is_halted = false;
-            }
             0
         }
     }

@@ -716,8 +716,7 @@ impl Instruction {
     }
 
     /// CALL
-    pub(crate)
-    fn call(cpu: &mut Cpu, mmu: &mut Mmu, address: u16) {
+    pub(crate) fn call(cpu: &mut Cpu, mmu: &mut Mmu, address: u16) {
         Instruction::push(cpu, mmu, CpuRegIndex::PC);
         Instruction::jump(cpu, address);
     }
@@ -2568,7 +2567,7 @@ impl Instruction {
     /// 1 16
     /// - - - -
     fn op_00d9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        cpu.interrupts.set_ime(true, mmu);
+        cpu.interrupts.set_ime(true);
         self.pop(cpu, mmu, CpuRegIndex::PC)
     }
 
@@ -2754,7 +2753,7 @@ impl Instruction {
     /// 1 4
     /// - - - -
     fn op_00f3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        cpu.interrupts.set_ime(false, mmu);
+        cpu.interrupts.set_ime(false);
         self.cycles
     }
 
@@ -2818,7 +2817,7 @@ impl Instruction {
     /// 1 4
     /// - - - -
     fn op_00fb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        cpu.interrupts.set_ime(true, mmu);
+        cpu.interrupts.set_ime(true);
         self.cycles
     }
 

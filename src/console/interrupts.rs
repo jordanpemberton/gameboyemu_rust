@@ -41,7 +41,8 @@ impl InterruptReg {
     }
 
     pub(crate) fn get_bit(&mut self, bit: InterruptRegBit) -> bool {
-        (self.value & (1 << bit as usize)) == 1
+        let b = bit as usize;
+        self.value & (1 << b) == 1 << b
     }
 
     pub(crate) fn set_bit(&mut self, bit: InterruptRegBit, enable: bool, mmu: &mut Mmu) {
@@ -67,9 +68,9 @@ impl InterruptReg {
 }
 
 pub(crate) struct Interrupts {
-    pub(crate) ime: bool,
     pub(crate) enabled: InterruptReg,
     pub(crate) requested: InterruptReg,
+    ime: bool,
 }
 
 impl Interrupts {
@@ -81,31 +82,44 @@ impl Interrupts {
         }
     }
 
-    pub(crate) fn set_ime(&mut self, enable: bool, mmu: &mut Mmu) {
+    pub(crate) fn set_ime(&mut self, enable: bool) {
         self.ime = enable;
-        self.enabled.set_all(enable, mmu);
     }
 
-    pub(crate) fn get_interrupt_value(&mut self) -> u8 {
+    pub(crate) fn request(&mut self, requesting: InterruptRegBit, mmu: &mut Mmu) {
+        self.requested.set_bit(requesting, true, mmu);
+    }
+
+    pub(crate) fn poll(&mut self, mmu: &mut Mmu) -> u8 {
         let mut value = 0x00;
+
+        self.refresh_from_mem(mmu);
+
         if self.ime {
-            if (self.enabled.value & 0x01) == 0x01 && (self.requested.value & 0x01) == 0x01 {
+            if self.enabled.get_bit(InterruptRegBit::VBlank) && self.requested.get_bit(InterruptRegBit::VBlank) {
+                self.requested.set_bit(InterruptRegBit::VBlank, false, mmu);
                 value = 0x40;
-            }
-            if (self.enabled.value & 0x02) == 0x02 && (self.requested.value & 0x02) == 0x02 {
+            } else if self.enabled.get_bit(InterruptRegBit::LcdStat) && self.requested.get_bit(InterruptRegBit::LcdStat) {
+                self.requested.set_bit(InterruptRegBit::LcdStat, false, mmu);
                 value = 0x48;
-            }
-            if (self.enabled.value & 0x04) == 0x04 && (self.requested.value & 0x04) == 0x04 {
+            } else if self.enabled.get_bit(InterruptRegBit::Timer) && self.requested.get_bit(InterruptRegBit::Timer) {
+                self.requested.set_bit(InterruptRegBit::Timer, false, mmu);
                 value = 0x50;
-            }
-            if (self.enabled.value & 0x08) == 0x08 && (self.requested.value & 0x08) == 0x08 {
+            } else if self.enabled.get_bit(InterruptRegBit::Serial) && self.requested.get_bit(InterruptRegBit::Serial) {
+                self.requested.set_bit(InterruptRegBit::Serial, false, mmu);
                 value = 0x58;
-            }
-            if (self.enabled.value & 0x10) == 0x10 && (self.requested.value & 0x10) == 0x10 {
+            } else if self.enabled.get_bit(InterruptRegBit::Joypad) && self.requested.get_bit(InterruptRegBit::Joypad) {
+                self.requested.set_bit(InterruptRegBit::Joypad, false, mmu);
                 value = 0x60;
             }
         }
+
         value
+    }
+
+    fn refresh_from_mem(&mut self, mmu: &mut Mmu) {
+        self.enabled.read_from_mem(mmu);
+        self.requested.read_from_mem(mmu);
     }
 }
 

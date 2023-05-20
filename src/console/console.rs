@@ -12,6 +12,7 @@ use crate::console::display::Display;
 use crate::console::mmu::Mmu;
 use crate::console::ppu::Ppu;
 use crate::console::cpu_registers::{CpuRegIndex};
+use crate::console::interrupts::InterruptRegBit;
 use crate::console::timer::Timer;
 
 pub(crate) struct Console {
@@ -191,8 +192,9 @@ impl Console {
 
                         cycles += self.cpu.check_interrupts(&mut self.mmu); // TODO implement interrupts
 
-                        // TODO timer interrupt requests
-                        self.timer.step(&mut self.mmu);
+                        if self.timer.step(&mut self.mmu) {
+                            self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
+                        }
 
                         self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 
@@ -213,5 +215,8 @@ impl Console {
                 delta_time = Duration::from_micros(0);
             }
         }
+
+        self.debug_print();
+        self.debug_peek();
     }
 }
