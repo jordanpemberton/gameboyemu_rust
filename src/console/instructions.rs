@@ -2663,22 +2663,25 @@ impl Instruction {
         let signed = alu::signed_8(d8);
 
         let (result, flags) = if signed < 0 {
-            let b = (-signed) as u16;
-            let half_carry = sp & 0x0F < b & 0x0F;
-            let (result, carry) = sp.overflowing_sub(b);
-            let flags = Flags {
-                zero: false,
+            let a = sp as i32;
+            let b = -signed as i32;
+            let half_carry = (a & 0x0F) < (b & 0x0F);
+            let carry = (a - b) < 0;
+            let result = (a - b) as u16;
+            (result, Flags {
+                zero: result == 0,
                 subtract: false,
                 half_carry,
                 carry,
-            };
-            (result, flags)
+            })
         } else {
-            let b = signed as u16;
-            let half_carry = (sp & 0x0F) + (b & 0x0F) > 0x0F;
-            let (result, carry) = sp.overflowing_add(b);
+            let a = sp as i32;
+            let b = signed as i32;
+            let half_carry = ((a & 0x0F) + (b & 0x0F)) > 0x0F;
+            let carry = (a + b) > 0xFF;
+            let result = (a + b) as u16;
             (result, Flags {
-                zero: false,
+                zero: result == 0,
                 subtract: false,
                 half_carry,
                 carry,
