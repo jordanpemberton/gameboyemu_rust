@@ -290,14 +290,14 @@ impl CpuRegisters {
 impl Display for CpuRegisters {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f,
-            "\ta: {:#04X}\n\
-            \tb: {:#04X}\n\
-            \tc: {:#04X}\n\
-            \td: {:#04X}\n\
-            \te: {:#04X}\n\
-            \tf: {:#04X}\n\
-            \th: {:#04X}\n\
-            \tl: {:#04X}\n\
+            "\ta:  {:#04X}\n\
+            \tb:  {:#04X}\n\
+            \tc:  {:#04X}\n\
+            \td:  {:#04X}\n\
+            \te:  {:#04X}\n\
+            \tf:  {:#04X}\n\
+            \th:  {:#04X}\n\
+            \tl:  {:#04X}\n\
             \tpc: {:#06X}\n\
             \tsp: {:#06X}",
             self.a,

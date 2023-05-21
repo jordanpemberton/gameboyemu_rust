@@ -15,6 +15,9 @@ Bit 2: Timer    Interrupt Request (INT $50)  (1=Request)
 Bit 3: Serial   Interrupt Request (INT $58)  (1=Request)
 Bit 4: Joypad   Interrupt Request (INT $60)  (1=Request)
 */
+
+use std::fmt::{Display, Formatter};
+
 use crate::console::mmu::Mmu;
 
 pub(crate) enum InterruptRegBit {
@@ -40,7 +43,7 @@ impl InterruptReg {
         reg
     }
 
-    pub(crate) fn get_bit(&mut self, bit: InterruptRegBit) -> bool {
+    pub(crate) fn get_bit(&self, bit: InterruptRegBit) -> bool {
         let b = bit as usize;
         self.value & (1 << b) == 1 << b
     }
@@ -48,7 +51,7 @@ impl InterruptReg {
     pub(crate) fn set_bit(&mut self, bit: InterruptRegBit, enable: bool, mmu: &mut Mmu) {
         let p = bit as usize;
         let b = self.value & (1 << p);
-        self.value &= !b;
+        self.value ^= b;
         self.value |= (enable as u8) << p;
         self.write_to_mem(mmu);
     }
@@ -64,6 +67,23 @@ impl InterruptReg {
 
     fn write_to_mem(&self, mmu: &mut Mmu) {
         mmu.write_8(self.address, self.value);
+    }
+}
+
+impl Display for InterruptReg {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f,
+            "\tVBlank: \t{}\n\
+            \tLcdStat:\t{}\n\
+            \tTimer:  \t{}\n\
+            \tSerial: \t{}\n\
+            \tJoypad: \t{}",
+            self.get_bit(InterruptRegBit::VBlank),
+            self.get_bit(InterruptRegBit::LcdStat),
+            self.get_bit(InterruptRegBit::Timer),
+            self.get_bit(InterruptRegBit::Serial),
+            self.get_bit(InterruptRegBit::Joypad)
+        )
     }
 }
 
@@ -122,4 +142,3 @@ impl Interrupts {
         self.requested.read_from_mem(mmu);
     }
 }
-

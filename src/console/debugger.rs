@@ -136,6 +136,11 @@ impl Debugger {
         self.dump_key_value_pairs(HashMap::from([
             ("Cpu.registers", format!("\n{}", cpu.registers).as_str()),
         ]));
+
+        self.dump_key_value_pairs(HashMap::from([
+            ("Cpu.interrupts.enabled", format!("\n{}", cpu.interrupts.enabled).as_str()),
+            ("Cpu.interrupts.requested", format!("\n{}", cpu.interrupts.requested).as_str()),
+        ]));
     }
 
     fn dump_mmu_state(&self, mmu: &Mmu) {

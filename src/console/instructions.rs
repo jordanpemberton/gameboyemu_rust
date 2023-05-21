@@ -914,11 +914,8 @@ impl Instruction {
     /// SET, RES
     fn set(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src, n: u8, set: bool) -> i16 {
         let mut value = Instruction::get_source_value_8(cpu, mmu, args, source);
-        if set {
-            value |= 1 << n;
-        } else {
-            value &= !(value & (1 << n));
-        }
+        value ^= value & (1 << n);
+        value |= (set as u8) << n;
         Instruction::set_target_value_8(cpu, mmu, args, source, value);
         self .cycles
     }
