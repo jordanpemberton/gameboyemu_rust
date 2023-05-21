@@ -6,6 +6,7 @@ use crate::console::cpu::Cpu;
 use crate::console::cpu_registers::CpuRegIndex;
 use crate::console::mmu::Mmu;
 use crate::console::ppu::{LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
+use crate::console::timer::Timer;
 
 pub(crate) enum DebugAction {
     BREAK,
@@ -30,18 +31,18 @@ impl Debugger {
         self.enabled && self.active
     }
 
-    pub(crate) fn break_or_cont(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn break_or_cont(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<HashMap<&str, &str>>) {
         if self.enabled {
             self.active = !self.active;
             if self.active {
-                self.dump(cpu, mmu, ppu, locals);
+                self.dump(cpu, mmu, timer, locals);
             }
         }
     }
 
-    pub(crate) fn peek(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn peek(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<HashMap<&str, &str>>) {
         if self.enabled {
-            self.dump(cpu, mmu, ppu, locals);
+            self.dump(cpu, mmu, timer, locals);
         }
     }
 
@@ -68,10 +69,6 @@ impl Debugger {
             print!("_");
         }
         println!();
-    }
-
-    pub(crate) fn step(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
-        // todo
     }
 
     pub(crate) fn print_cpu_exec_log(cpu: &Cpu, mmu: &Mmu, start_pc: u16) {
@@ -114,12 +111,15 @@ impl Debugger {
         cpu.visited.push(start_pc);
     }
 
-    fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, ppu: Option<&Ppu>, locals: Option<HashMap<&str, &str>>) {
+    fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<HashMap<&str, &str>>) {
         if let Some(_cpu) = cpu {
             self.dump_cpu_state(_cpu);
         }
         if let Some(_mmu) = mmu {
             self.dump_mmu_state(_mmu);
+        }
+        if let Some(_timer) = timer {
+            self.dump_timer_state(_timer);
         }
         if let Some(_locals) = locals {
             self.dump_key_value_pairs(_locals);
@@ -128,7 +128,7 @@ impl Debugger {
 
     fn dump_key_value_pairs(&self, data: HashMap<&str, &str>) {
         for key in data.keys() {
-            println!("{}: {}", key, data.get(key).unwrap());
+            println!("{}:\t{}", key, data.get(key).unwrap());
         }
     }
 
@@ -140,6 +140,12 @@ impl Debugger {
         self.dump_key_value_pairs(HashMap::from([
             ("Cpu.interrupts.enabled", format!("\n{}", cpu.interrupts.enabled).as_str()),
             ("Cpu.interrupts.requested", format!("\n{}", cpu.interrupts.requested).as_str()),
+        ]));
+    }
+
+    fn dump_timer_state(&self, timer: &Timer) {
+        self.dump_key_value_pairs(HashMap::from([
+            ("Timer", format!("\n{}", timer).as_str()),
         ]));
     }
 

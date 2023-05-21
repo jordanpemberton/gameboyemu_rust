@@ -103,7 +103,7 @@ impl Console {
                 debugger.peek(
                     Option::from(&self.cpu),
                     Option::from(&self.mmu),
-                    Option::from(&self.ppu),
+                    Option::from(&self.timer),
                     Option::from(HashMap::from([])));
             }
             None => {}
@@ -131,7 +131,7 @@ impl Console {
                             debugger.break_or_cont(
                                 Option::from(&self.cpu),
                                 Option::from(&self.mmu),
-                                Option::from(&self.ppu),
+                                Option::from(&self.timer),
                                 Option::from(HashMap::from([])));
                             self.paused_for_debugger = debugger.is_active();
                         }
@@ -144,7 +144,7 @@ impl Console {
                             debugger.peek(
                                 Option::from(&self.cpu),
                                 Option::from(&self.mmu),
-                                Option::from(&self.ppu),
+                                Option::from(&self.timer),
                                 Option::from(HashMap::from([])));
                         }
                         None => { }
@@ -192,7 +192,7 @@ impl Console {
 
                         cycles += self.cpu.check_interrupts(&mut self.mmu); // TODO implement interrupts
 
-                        if self.timer.step(&mut self.mmu) {
+                        if self.timer.step(&mut self.mmu, cycles as u16) {
                             self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
                         }
 

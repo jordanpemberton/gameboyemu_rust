@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use crate::console::mmu::Mmu;
 
 pub(crate) const DIV_REG_ADDRESS: u16 = 0xFF04;
@@ -7,10 +8,10 @@ const TAC_REG_ADDRESS: u16 = 0xFF07;
 
 #[derive(Default)]
 pub(crate) struct Timer {
-    pub(crate) div: u8,         // FF04 — DIV: Divider register
-    pub(crate) counter: u8,     // FF05 — TIMA: Timer counter
-    pub(crate) modulo: u8,      // FF06 — TMA: Timer modulo
-    pub(crate) control: u8,     // FF07 — TAC: Timer control
+    div: u8,         // FF04 — DIV: Divider register
+    counter: u8,     // FF05 — TIMA: Timer counter
+    modulo: u8,      // FF06 — TMA: Timer modulo
+    control: u8,     // FF07 — TAC: Timer control
     // Bit  2   - Timer Enable
     // Bits 1-0 - Input Clock Select
     // 00: CPU Clock / 1024 (DMG, SGB2, CGB Single Speed Mode:   4096 Hz, SGB1:   ~4194 Hz, CGB Double Speed Mode:   8192 Hz)
@@ -20,22 +21,17 @@ pub(crate) struct Timer {
 }
 
 impl Timer {
-    pub(crate) fn step(&mut self, mmu: &mut Mmu) -> bool {
+    pub(crate) fn step(&mut self, mmu: &mut Mmu, time: u16) -> bool {
         let mut request_interrupt = false;
+
         self.refresh_from_mem(mmu);
 
-        // Increment Div (unless STOP instruction was run)
-        // Does anything happen when it overflows /wraps?
-        self.div = self.div.wrapping_add(1);
+        self.inc_div(mmu);
 
-        if self.is_enabled() {
-            // Increment counter by selected clock frequency
-            let clocks = self.selected_clocks();
-            (self.counter, request_interrupt) = self.counter.overflowing_add(clocks as u8); // How is TIMA incremented by u16 values...?
-            // If counter overflows, request interrupt and reset counter = modulo
-            if request_interrupt {
-                self.counter = self.modulo;
-            }
+        let clocks = self.selected_clocks();
+
+        if self.is_enabled() && time >= clocks {
+            request_interrupt = self.inc_counter(mmu);
         }
 
         request_interrupt
@@ -57,7 +53,47 @@ impl Timer {
             0b00 => 1024,
             0b01 => 16,
             0b10 => 64,
-            0b11 | _ => 256,
+            0b11 => 256,
+            _ => unreachable!()
         }
+    }
+
+    fn inc_div(&mut self, mmu: &mut Mmu) {
+        // Increment Div (unless STOP instruction was run)
+        // Does anything happen when it overflows /wraps?
+        self.div = self.div.wrapping_add(1);
+
+        mmu.write_8(DIV_REG_ADDRESS, self.div);
+    }
+
+    fn inc_counter(&mut self, mmu: &mut Mmu) -> bool {
+        // Increment counter by selected clock frequency
+        let (counter, request_interrupt) = self.counter.overflowing_add(1);
+
+        // If counter overflows, request interrupt and reset counter = modulo
+        self.counter = if request_interrupt {
+            self.modulo
+        } else {
+            counter
+        };
+
+        mmu.write_8(TIMA_REG_ADDRESS, self.counter);
+
+        request_interrupt
+    }
+}
+
+impl Display for Timer {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f,
+            "\tDIV:            {:#04X}\n\
+            \tTIMA (counter): {:#04X}\n\
+            \tTMA (modulo):   {:#04X}\n\
+            \tTAC (control):  {:#04X}",
+            self.div,
+            self.counter,
+            self.modulo,
+            self.control,
+        )
     }
 }

@@ -284,7 +284,7 @@ impl Instruction {
 
             0x00F0 => Instruction { opcode, mnemonic: "LDH A,(a8)", size: 2, cycles: 12, _fn: Instruction::op_00f0 },
             0x00F1 => Instruction { opcode, mnemonic: "POP AF", size: 1, cycles: 12, _fn: Instruction::op_00f1 },
-            0x00F2 => Instruction { opcode, mnemonic: "LD A,($FF00+C)", size: 1, cycles: 8, _fn: Instruction::op_00f2 },
+            0x00F2 => Instruction { opcode, mnemonic: "LDH A,(C)", size: 1, cycles: 8, _fn: Instruction::op_00f2 },
             0x00F3 => Instruction { opcode, mnemonic: "DI", size: 1, cycles: 4, _fn: Instruction::op_00f3 },
             0x00F4 => Instruction { opcode, mnemonic: "Invalid", size: 1, cycles: -1, _fn: Instruction::invalid },
             0x00F5 => Instruction { opcode, mnemonic: "PUSH AF", size: 1, cycles: 16, _fn: Instruction::op_00f5 },
@@ -2739,7 +2739,8 @@ impl Instruction {
         self.cycles
     }
 
-    /// LD A,($FF00+C)
+    /// LDH A,(C)
+    /// aka LD A,($FF00+C)
     /// 1 8
     /// - - - -
     fn op_00f2(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
