@@ -72,17 +72,12 @@ impl InterruptReg {
 
 impl Display for InterruptReg {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f,
-            "\tVBlank: \t{}\n\
-            \tLcdStat:\t{}\n\
-            \tTimer:  \t{}\n\
-            \tSerial: \t{}\n\
-            \tJoypad: \t{}",
-            self.get_bit(InterruptRegBit::VBlank),
-            self.get_bit(InterruptRegBit::LcdStat),
-            self.get_bit(InterruptRegBit::Timer),
-            self.get_bit(InterruptRegBit::Serial),
-            self.get_bit(InterruptRegBit::Joypad)
+        writeln!(f, "\t{} {} {} {} {}",
+            if self.get_bit(InterruptRegBit::VBlank) {"V"} else {"_"},
+            if self.get_bit(InterruptRegBit::LcdStat) {"L"} else {"_"},
+            if self.get_bit(InterruptRegBit::Timer) {"T"} else {"_"},
+            if self.get_bit(InterruptRegBit::Serial) {"S"} else {"_"},
+            if self.get_bit(InterruptRegBit::Joypad) {"J"} else {"_"}
         )
     }
 }

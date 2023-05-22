@@ -2,7 +2,7 @@
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 
-use crate::console::interrupts::Interrupts;
+use crate::console::interrupts::{InterruptRegBit, Interrupts};
 use crate::console::mmu::Mmu;
 
 pub(crate) const LCD_PIXEL_WIDTH: usize = 160;
@@ -409,7 +409,6 @@ impl Ppu {
                 } else {
                     self.clocks = 0;
                     self.lcd_status.set_mode(StatMode::PixelTransfer, mmu);
-                    // interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
                 }
             }
             StatMode::PixelTransfer => {
@@ -419,7 +418,9 @@ impl Ppu {
                     self.pixel_transfer(mmu);
                     self.clocks = 0;
                     self.lcd_status.set_mode(StatMode::HBlank, mmu);
-                    // interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                    if self.lcd_status.check_bit(LcdStatRegBit::HBlankInterruptEnabled) {
+                        interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                    }
                 }
             }
             StatMode::HBlank => {
@@ -429,10 +430,15 @@ impl Ppu {
                     self.increment_ly(mmu);
                     if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
                         self.lcd_status.set_mode(StatMode::OamSearch, mmu);
-                        // interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                        if self.lcd_status.check_bit(LcdStatRegBit::OamInterruptEnabled) {
+                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                        }
                     } else {
                         self.lcd_status.set_mode(StatMode::VBlank, mmu);
-                        // interrupts.requested.set_bit(InterruptRegBit::VBlank, true, mmu);
+                        interrupts.requested.set_bit(InterruptRegBit::VBlank, true, mmu);
+                        if self.lcd_status.check_bit(LcdStatRegBit::VBlankInterruptEnabled) {
+                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                        }
                     }
                 }
             }
@@ -444,7 +450,9 @@ impl Ppu {
                     if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
                         self.clocks = 0;
                         self.lcd_status.set_mode(StatMode::OamSearch, mmu);
-                        // interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                        if self.lcd_status.check_bit(LcdStatRegBit::OamInterruptEnabled) {
+                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                        }
                     }
                 }
             }
