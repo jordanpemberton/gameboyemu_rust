@@ -54,8 +54,8 @@ struct SpriteAttribute {
     flip_y: bool,               // byte 3, bit 6
     flip_x: bool,               // byte 3, bit 5
     palette_is_obp1: bool,      // byte 3, bit 4
-    tile_vram_bank_cgb: bool,   // byte 3, bit 3 (CGB ONLY)
-    palette_cgb: u8,            // byte 3, bit 2-0 (CGB ONLY)
+    tile_vram_bank_cgb: bool,   // byte 3, bit 3    (CGB ONLY)
+    palette_cgb: u8,            // byte 3, bit 2-0  (CGB ONLY)
 }
 
 impl SpriteAttribute {
@@ -181,10 +181,10 @@ impl TileMap {
             for col in 0..32 {
                 let tile = self.tiles[row][col];
                 for i in 0..8 {
-                    let lcd_row = row * 8 + scy + i;
+                    let lcd_row = ((row * 8 + scy + i) as u8) as usize; // TODO fix
                     if lcd_row >= LCD_PIXEL_HEIGHT { break }
                     for j in 0..8 {
-                        let lcd_col = col * 8 + scx + j;
+                        let lcd_col = ((col * 8 + scx + j) as u8) as usize; // TODO fix
                         if lcd_col >= LCD_PIXEL_WIDTH { break }
                         let pixel = tile[i][j];
                         lcd.data[lcd_row][lcd_col] = palette[pixel as usize];
@@ -521,66 +521,80 @@ impl Ppu {
         // TODO implement pixel FIFO correctly
         let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
         if is_last_line {
-            self.lcd_control.read_from_mem(mmu);
+            self.draw_background(mmu);
+            // self.draw_window(mmu);
+            // self.draw_sprites(mmu);
+        }
+    }
 
-            if self.lcd_control.check_bit(LcdControlRegBit::BackgroundAndWindowEnabled) {
-                let index_mode_8000 = self.lcd_control.check_bit(LcdControlRegBit::AddressingMode8000);
+    fn draw_background(&mut self, mmu: &mut Mmu) {
+        self.lcd_control.read_from_mem(mmu);
+        if self.lcd_control.check_bit(LcdControlRegBit::BackgroundAndWindowEnabled) {
+            let index_mode_8000 = self.lcd_control.check_bit(LcdControlRegBit::AddressingMode8000);
+            let background_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::BackgroundTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
+            let background_tilemap = TileMap::create(mmu, background_tilemap_address, index_mode_8000);
+            self.lcd = background_tilemap.to_lcd(self.scy as usize, self.scx as usize, &[0, 1, 2, 3]); // TODO palettes
+            // self.lcd = background_tilemap.to_lcd(0, 0, &[0, 1, 2, 3]); // TODO fix scy, scx
+        }
+    }
 
-                let background_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::BackgroundTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
-                let background_tilemap = TileMap::create(mmu, background_tilemap_address, index_mode_8000);
-                self.lcd = background_tilemap.to_lcd(self.scy as usize, self.scx as usize, &[0,1,2,3]); // TODO palettes
-
-                // TODO how does window get read?
-                let window_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::WindowTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
-                let window_tilemap = TileMap::create(mmu, window_tilemap_address, index_mode_8000);
-                let window_lcd = window_tilemap.to_lcd(self.wy as usize, self.wx as usize, &[0,1,2,3]); // TODO palettes
-                for row in 0..LCD_PIXEL_HEIGHT {
-                    for col in 0..LCD_PIXEL_WIDTH {
-                        if window_lcd.data[row][col] > 0 { // TODO priority, transparency
-                            self.lcd.data[row][col] = window_lcd.data[row][col] + 8; // TEMP colors to distinguish window
-                        }
+    fn draw_window(&mut self, mmu: &mut Mmu) {
+        self.lcd_control.read_from_mem(mmu);
+        let is_dmg = true;
+        if self.lcd_control.check_bit( if is_dmg { LcdControlRegBit::BackgroundAndWindowEnabled } else { LcdControlRegBit::WindowEnabled }) {
+            let index_mode_8000 = self.lcd_control.check_bit(LcdControlRegBit::AddressingMode8000);
+            let window_tilemap_address = if self.lcd_control.check_bit(LcdControlRegBit::WindowTilemapIsAt9C00) { 0x9C00 } else { 0x9800 };
+            let window_tilemap = TileMap::create(mmu, window_tilemap_address, index_mode_8000);
+            let window_lcd = window_tilemap.to_lcd(self.wy as usize, self.wx as usize, &[0,1,2,3]); // TODO palettes
+            for row in 0..LCD_PIXEL_HEIGHT {
+                for col in 0..LCD_PIXEL_WIDTH {
+                    if window_lcd.data[row][col] > 0 { // TODO priority, transparency
+                        self.lcd.data[row][col] = window_lcd.data[row][col] + 8; // TEMP colors to distinguish window
                     }
                 }
-            }
-
-            if self.lcd_control.check_bit(LcdControlRegBit::ObjEnabled) {
-                self.draw_sprites(mmu);
             }
         }
     }
 
     fn draw_sprites(&mut self, mmu: &mut Mmu) {
-        let tiledata_address: usize = 0x8000;
+        self.lcd_control.read_from_mem(mmu);
+        if self.lcd_control.check_bit(LcdControlRegBit::ObjEnabled) {
+            let tiledata_address: usize = 0x8000; // TODO read this?
 
-        for attr in self.sprite_attributes {
-            let tile_index = attr.tile_index as usize;
-            let tile_address = tiledata_address + tile_index * 16;
-            let tile_data = mmu.read(tile_address, tile_address + 16);
-            let tile = TileMap::read_tile(tile_data.try_into().unwrap());
+            for attr in self.sprite_attributes {
+                let tile_index = attr.tile_index as usize;
+                let tile_address = tiledata_address + tile_index * 16;
+                let tile_data = mmu.read(tile_address, tile_address + 16);
+                let tile = TileMap::read_tile(tile_data.try_into().unwrap());
 
-            let sprite_height = if self.lcd_control.check_bit(LcdControlRegBit::SpriteSizeIs16) { 16 } else { 8 };
-            let palette = if attr.palette_is_obp1 { 1 } else { 0 };
-            let palettes = &[
-                [0,1,2,3],
-                [0,1,2,3],
-            ];
+                let sprite_height = if self.lcd_control.check_bit(LcdControlRegBit::SpriteSizeIs16) { 16 } else { 8 };
+                let palette = if attr.palette_is_obp1 { 1 } else { 0 };
+                let palettes = &[
+                    [0,1,2,3],
+                    [0,1,2,3],
+                ];
 
-            for row in 0..8 {
-                let y = attr.y as i16 - sprite_height + row as i16;
-                if y < 0 { continue };
-                let tile_row = if attr.flip_x { 7 - row } else { row };
-                for col in 0..8 {
-                    let x = attr.x as i16 - 8 + col;
-                    if x < 0 { continue };
-                    let tile_col = if attr.flip_x { 7 - col } else { col };
-                    let color_i = tile[tile_row as usize][tile_col as usize];
-                    if color_i > 0 {
-                        let color = palettes[palette][color_i as usize];
-                        // TODO selection priority and drawing priority
-                        let has_priority = true;
-                        let bg_color = self.lcd.data[y as usize][x as usize];
-                        if has_priority || bg_color == 0 {
-                            self.lcd.data[y as usize][x as usize] = color + 4; // TEMP colors to distinguish sprites
+                for row in 0..8 {
+                    let y = attr.y as i16 - sprite_height + row as i16;
+                    if y < 0 { continue };
+
+                    let tile_row = if attr.flip_x { 7 - row } else { row };
+
+                    for col in 0..8 {
+                        let x = attr.x as i16 - 8 + col;
+                        if x < 0 { continue };
+
+                        let tile_col = if attr.flip_x { 7 - col } else { col };
+
+                        let color_i = tile[tile_row as usize][tile_col as usize];
+                        if color_i > 0 {
+                            let color = palettes[palette][color_i as usize];
+                            // TODO selection priority and drawing priority
+                            let has_priority = true;
+                            let bg_color = self.lcd.data[y as usize][x as usize];
+                            if has_priority || bg_color == 0 {
+                                self.lcd.data[y as usize][x as usize] = color + 4; // TEMP colors to distinguish sprites
+                            }
                         }
                     }
                 }

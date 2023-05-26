@@ -138,8 +138,8 @@ impl Debugger {
         ]));
 
         self.dump_key_value_pairs(HashMap::from([
-            ("Cpu.interrupts.enabled", format!("\n{}", cpu.interrupts.enabled).as_str()),
-            ("Cpu.interrupts.requested", format!("\n{}", cpu.interrupts.requested).as_str()),
+            ("Cpu.interrupts.enabled", format!("\t{}", cpu.interrupts.enabled).as_str()),
+            ("Cpu.interrupts.requested", format!("\t{}", cpu.interrupts.requested).as_str()),
         ]));
     }
 
@@ -173,7 +173,7 @@ impl Debugger {
 
         self.dump_key_value_pairs(HashMap::from([
             (
-                format!("VRAM[0..{}]", (rows * cols)).as_str(),
+                format!("VRAM[0x0000..{:#06X}]", (rows * cols)).as_str(),
                 format!("\n{}\n", vram_values_str).as_str()
             )
         ]));
