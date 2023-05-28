@@ -28,6 +28,7 @@ pub(crate) enum InterruptRegBit {
     Joypad = 4
 }
 
+// TODO replace with Register
 pub(crate) struct InterruptReg {
     address: u16,
     value: u8,

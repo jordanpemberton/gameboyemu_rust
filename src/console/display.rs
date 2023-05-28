@@ -25,9 +25,23 @@ const COLORS: [Color; 12] = [
     Color::RGB(0, 64, 128),
 ];
 
+fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, window_title: &str) -> WindowCanvas {
+    let video_subsystem = sdl_context.video().unwrap();
+
+    let window = video_subsystem
+        .window(window_title, window_width, window_height)
+        .position_centered()
+        .opengl()
+        .build()
+        .unwrap();
+
+    window.into_canvas()
+        .build()
+        .unwrap()
+}
+
 pub(crate) struct Display {
     enabled: bool,
-    gbpixel_size: u32,
     canvas: WindowCanvas,
     pixels: [[Rect; LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT],
 }
@@ -51,7 +65,6 @@ impl Display {
 
         Display {
             enabled: enabled,
-            gbpixel_size: window_scale,
             canvas:
                 create_sdl_canvas(
                     sdl_context,
@@ -76,24 +89,6 @@ impl Display {
         self.canvas.set_draw_color(COLORS[0]);
     }
 
-    #[allow(unused)]
-    fn draw_tile(&mut self, x: usize, y: usize, tile: [[u8; 8]; 8]) {
-        for i in 0..8 {
-            for j in 0..8 {
-                let color = COLORS[tile[i][j] as usize];
-                self.canvas.set_draw_color(color);
-
-                let gbpixel = Rect::new(
-                    ((x + j) as u32 * self.gbpixel_size) as i32,
-                    ((y + i) as u32 * self.gbpixel_size) as i32,
-                    self.gbpixel_size,
-                    self.gbpixel_size);
-
-                self.canvas.fill_rect(gbpixel).unwrap();
-            }
-        }
-    }
-
     fn draw_scanline(&mut self, y: u32, scanline: [Color; LCD_PIXEL_WIDTH as usize]) {
         for x in 0..LCD_PIXEL_WIDTH as u32 {
             let color = scanline[x as usize];
@@ -109,19 +104,4 @@ impl Display {
             self.draw_scanline(y as u32, colors);
         }
     }
-}
-
-fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, window_title: &str) -> WindowCanvas {
-    let video_subsystem = sdl_context.video().unwrap();
-
-    let window = video_subsystem
-        .window(window_title, window_width, window_height)
-        .position_centered()
-        .opengl()
-        .build()
-        .unwrap();
-
-    window.into_canvas()
-        .build()
-        .unwrap()
 }
