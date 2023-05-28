@@ -1,7 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_assignments)]
-#![allow(unused_variables)]
-
 use crate::console::interrupts::{InterruptRegBit, Interrupts};
 use crate::console::mmu::Mmu;
 use crate::console::register::Register;
@@ -16,6 +12,7 @@ enum StatMode {
     PixelTransfer = 3,
 }
 
+#[allow(dead_code)]
 enum LcdControlRegBit {
     // 0	BG and Window enable/priority	0=Off, 1=On
     BackgroundAndWindowEnabled = 0,
@@ -35,6 +32,7 @@ enum LcdControlRegBit {
     LcdAndPpuEnabled = 7,
 }
 
+#[allow(dead_code)]
 enum LcdStatRegBit {
     // Bit 0-1 - Mode Flag
     ModeBit0 = 0,
@@ -199,7 +197,7 @@ impl Ppu {
                     self.clocks = 0;
                     self.set_stat_mode(mmu, StatMode::HBlank);
                     if self.lcd_status.check_bit(mmu, LcdStatRegBit::HBlankInterruptEnabled as u8) {
-                        interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                        interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
                     }
                 }
             }
@@ -211,13 +209,13 @@ impl Ppu {
                     if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
                         self.set_stat_mode(mmu, StatMode::OamSearch);
                         if self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8) {
-                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                            interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
                         }
                     } else {
                         self.set_stat_mode(mmu, StatMode::VBlank);
-                        interrupts.requested.set_bit(InterruptRegBit::VBlank, true, mmu);
+                        interrupts.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, true);
                         if self.lcd_status.check_bit(mmu, LcdStatRegBit::VBlankInterruptEnabled as u8) {
-                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                            interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
                         }
                     }
                 }
@@ -231,7 +229,7 @@ impl Ppu {
                         self.clocks = 0;
                         self.set_stat_mode(mmu, StatMode::OamSearch);
                         if self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8) {
-                            interrupts.requested.set_bit(InterruptRegBit::LcdStat, true, mmu);
+                            interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
                         }
                     }
                 }
@@ -410,12 +408,14 @@ impl Ppu {
     }
 
     // For debugging
+    #[allow(dead_code)]
     fn speed_check_pixel_transfer(&mut self) {
         self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] += 1;
         self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] %= 8;
     }
 
     // For debugging
+    #[allow(dead_code)]
     pub(crate) fn display_tiles_at(&mut self, mmu: &mut Mmu, tilemap_address: usize, scy: usize, scx: usize) {
         let mut tile_addresses = [0; 32 * 32];
         for i in 0..32 * 32 {
@@ -426,6 +426,7 @@ impl Ppu {
     }
 
     // For debugging
+    #[allow(dead_code)]
     fn display_tiles_at_pixel_transfer(&mut self, mmu: &mut Mmu) {
         self.display_tiles_at(mmu, 0x2000, 0, 0);
     }

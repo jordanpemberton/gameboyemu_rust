@@ -138,8 +138,7 @@ impl Debugger {
         ]));
 
         self.dump_key_value_pairs(HashMap::from([
-            ("Cpu.interrupts.enabled", format!("\t{}", cpu.interrupts.enabled).as_str()),
-            ("Cpu.interrupts.requested", format!("\t{}", cpu.interrupts.requested).as_str()),
+            ("Cpu.interrupts", format!("\t{}", cpu.interrupts).as_str()),
         ]));
     }
 

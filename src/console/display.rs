@@ -1,11 +1,8 @@
-#![allow(unused_variables)]
-
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
 
-use crate::console::mmu::Mmu;
 use crate::console::ppu::{Lcd, LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
 
 const COLORS: [Color; 12] = [
@@ -76,7 +73,7 @@ impl Display {
         }
     }
 
-    pub(crate) fn draw(&mut self, mmu: &mut Mmu, ppu: &mut Ppu) {
+    pub(crate) fn draw(&mut self, ppu: &mut Ppu) {
         if !self.enabled {
             return;
         }

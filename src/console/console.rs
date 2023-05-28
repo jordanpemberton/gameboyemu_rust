@@ -204,7 +204,7 @@ impl Console {
                     }
                 }
 
-                self.display.draw(&mut self.mmu, &mut self.ppu);
+                self.display.draw(&mut self.ppu);
                 if !self.poll() {
                     self.debug_print();
                     self.debug_peek();
