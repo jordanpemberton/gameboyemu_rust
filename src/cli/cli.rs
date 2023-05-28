@@ -78,8 +78,8 @@ fn disassemble_rom(filepath: &str) {
     disassembler::disassemble_to_output_file(&cartridge.data, path.as_str());
 }
 
-fn run_rom(rom_filepath: &str, display_enabled: bool, debug_enabled: bool, skip_boot: bool, cpu_debug_print: bool) {
-    let mut gamboy = Console::new("GAMBOY", 6, display_enabled, debug_enabled, cpu_debug_print);
+fn run_rom(rom_filepath: &str, display_enabled: bool, debug_enabled: bool, skip_boot: bool, cpu_debug_print: bool, window_scale: u32) {
+    let mut gamboy = Console::new("GAMBOY", window_scale, display_enabled, debug_enabled, cpu_debug_print);
 
     if rom_filepath.is_empty() {
         disassemble_rom(BOOTROM_FILEPATH);
@@ -96,6 +96,7 @@ pub(crate) fn run(args: Vec<String>, is_contained: bool) {
     let skip_boot = if args.len() > 3 { args[3].clone().parse().unwrap() } else { 1 } > 0;
     let cpu_debug_print = if args.len() > 4 { args[4].clone().parse().unwrap() } else { 0 } > 0;
     let mut rom_filepath = if args.len() > 5 { args[5].clone() } else { String::new() };
+    let window_scale = 4;
 
     CpuRegisters::test();
 
@@ -103,5 +104,5 @@ pub(crate) fn run(args: Vec<String>, is_contained: bool) {
         rom_filepath = select_rom(is_contained);
     }
 
-    run_rom(rom_filepath.as_str(), display_enabled, debug_enabled, skip_boot, cpu_debug_print);
+    run_rom(rom_filepath.as_str(), display_enabled, debug_enabled, skip_boot, cpu_debug_print, window_scale);
 }

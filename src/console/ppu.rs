@@ -5,6 +5,43 @@ use crate::console::sprite_attribute::SpriteAttribute;
 use crate::console::tilemap;
 use crate::console::tilemap::TileMap;
 
+pub(crate) const LCD_PIXEL_WIDTH: usize = 32 * 8; // 160;
+pub(crate) const LCD_PIXEL_HEIGHT: usize = 32 * 8; // 144;
+
+const LCD_CONTROL_REG: u16 = 0xFF40;
+const LCD_STATUS_REG: u16 = 0xFF41;
+const SCY_REG: u16 = 0xFF42;
+const SCX_REG: u16 = 0xFF43;
+const LY_REG: u16 = 0xFF44;
+const LYC_REG: u16 = 0xFF45;
+const DMA_REG: u16 = 0xFF46;
+const BGP_REG: u16 = 0xFF47;
+const OBP0_REG: u16 = 0xFF48;
+const OBP1_REG: u16 = 0xFF49;
+const WY_REG: u16 = 0xFF4A;
+const WX_REG: u16 = 0xFF4B;
+
+const MODE_CLOCKS: [usize; 4] = [
+    204,        // HBlank[0]
+    456,        // VBlank [1]
+    80,         // OAM [2]
+    172,        // PixelTransfer [3]
+];
+
+const MODE_LINE_RANGE: [(u8, u8); 4] = [
+    (0, 144),   // HBlank
+    (144, 154), // VBlank
+    (0, 144),   // OamSearch
+    (0, 144),   // PixelTransfer
+];
+
+const STAT_MODES: [&StatMode; 4] = [
+    &StatMode::HBlank,
+    &StatMode::VBlank,
+    &StatMode::OamSearch,
+    &StatMode::PixelTransfer,
+];
+
 enum StatMode {
     HBlank = 0,
     VBlank = 1,
@@ -51,43 +88,6 @@ enum LcdStatRegBit {
     // Bit 6 - LYC=LY STAT Interrupt source         (1=Enable)
     LcyInterruptEnabled = 6,
 }
-
-pub(crate) const LCD_PIXEL_WIDTH: usize = 160;
-pub(crate) const LCD_PIXEL_HEIGHT: usize = 144;
-
-const LCD_CONTROL_REG: u16 = 0xFF40;
-const LCD_STATUS_REG: u16 = 0xFF41;
-const SCY_REG: u16 = 0xFF42;
-const SCX_REG: u16 = 0xFF43;
-const LY_REG: u16 = 0xFF44;
-const LYC_REG: u16 = 0xFF45;
-const DMA_REG: u16 = 0xFF46;
-const BGP_REG: u16 = 0xFF47;
-const OBP0_REG: u16 = 0xFF48;
-const OBP1_REG: u16 = 0xFF49;
-const WY_REG: u16 = 0xFF4A;
-const WX_REG: u16 = 0xFF4B;
-
-const MODE_CLOCKS: [usize; 4] = [
-    204,        // HBlank[0]
-    456,        // VBlank [1]
-    80,         // OAM [2]
-    172,        // PixelTransfer [3]
-];
-
-const MODE_LINE_RANGE: [(u8, u8); 4] = [
-    (0, 144),   // HBlank
-    (144, 154), // VBlank
-    (0, 144),   // OamSearch
-    (0, 144),   // PixelTransfer
-];
-
-const STAT_MODES: [&StatMode; 4] = [
-    &StatMode::HBlank,
-    &StatMode::VBlank,
-    &StatMode::OamSearch,
-    &StatMode::PixelTransfer,
-];
 
 pub(crate) struct Lcd {
     pub(crate) data: [[u8; LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT],
