@@ -164,6 +164,9 @@ impl Console {
     }
 
     fn main_loop(&mut self) {
+        // TEMP to begin paused and have control over start.
+        self.paused_for_debugger = true;
+
         const CYCLES_PER_REFRESH: i32 = 69905;
         let mut cycles_this_update: i32 = 0;
 

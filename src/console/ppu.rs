@@ -5,8 +5,10 @@ use crate::console::sprite_attribute::SpriteAttribute;
 use crate::console::tilemap;
 use crate::console::tilemap::TileMap;
 
-pub(crate) const LCD_PIXEL_WIDTH: usize = 32 * 8; // 160;
-pub(crate) const LCD_PIXEL_HEIGHT: usize = 32 * 8; // 144;
+const DEBUG_DISPLAY: bool = true;
+
+pub(crate) const LCD_PIXEL_WIDTH: usize = if DEBUG_DISPLAY { 32 * 8 } else { 160 };
+pub(crate) const LCD_PIXEL_HEIGHT: usize = if DEBUG_DISPLAY { 32 * 8 } else { 144 };
 
 const LCD_CONTROL_REG: u16 = 0xFF40;
 const LCD_STATUS_REG: u16 = 0xFF41;
@@ -100,31 +102,34 @@ impl Lcd {
         }
     }
 
-    fn fill_from_tilemap(&mut self, tilemap: TileMap, scy: usize, scx: usize, palette: &[u8; 4]) {
+    fn fill_from_tilemap(&mut self, tilemap: TileMap, scy: u8, scx: u8, palette: &[u8; 4]) {
         for tilemap_row in 0..32 {
             for tilemap_col in 0..32 {
                 let tile = tilemap[tilemap_row][tilemap_col];
+
                 for i in 0..8 {
-                    // let lcd_row = ((tilemap_row * 8 + scy + i) as u8) as usize;
-                    let lcd_row = ((tilemap_row * 8 + i) as u8) as usize; // TEMP
+                    let lcd_row = if DEBUG_DISPLAY {
+                        tilemap_row * 8 + i
+                    } else {
+                        (tilemap_row * 8 + i + scy as usize) as u8 as usize
+                    };
+
                     if lcd_row < LCD_PIXEL_HEIGHT {
                         for j in 0..8 {
-                            // let lcd_col = ((tilemap_col * 8 + scx + j) as u8) as usize;
-                            let lcd_col = ((tilemap_col * 8 + j) as u8) as usize; // TEMP
+                            let lcd_col = if DEBUG_DISPLAY {
+                                tilemap_col * 8 + j
+                            } else {
+                                (tilemap_col * 8 + j + scx as usize) as u8 as usize
+                            };
+
                             if lcd_col < LCD_PIXEL_WIDTH {
-                                // let pixel = tile[i][j];
-                                // TEMP
-                                let pixel = if
-                                    ((lcd_row == scy || lcd_row == (scy + 143)) &&
-                                        (lcd_col >= scx && lcd_col <= (scx + 159))) ||
-                                    ((lcd_col == scx || lcd_col == (scx + 159)) &&
-                                        (lcd_row >= scy && lcd_row <= (scy + 143))) {
+                                let pixel = if DEBUG_DISPLAY && Lcd::is_on_border(lcd_row, lcd_col, scy, scx) {
                                     3
                                 } else {
                                     tile[i][j]
                                 };
 
-                                self.data[lcd_row][lcd_col] = palette[pixel as usize];
+                                self.data[lcd_row as usize][lcd_col as usize] = palette[pixel as usize];
                             }
                         }
                     }
@@ -133,6 +138,33 @@ impl Lcd {
         }
     }
 
+    // For debuggin
+    # [allow(dead_code)]
+    fn is_on_border(lcd_row: usize, lcd_col: usize, scy: u8, scx: u8) -> bool {
+        let bottom_edge = scy.wrapping_add(144 as u8) as usize - 1;
+        let right_edge = scx.wrapping_add(160 as u8) as usize - 1;
+
+        let mut is_y_border = lcd_row == scy as usize || lcd_row == bottom_edge;
+        let mut is_x_border = lcd_col == scx as usize || lcd_col == right_edge;
+
+        is_y_border &= {
+            if right_edge < scx as usize {
+                lcd_col >= scx as usize || lcd_col <= right_edge
+            } else {
+                lcd_col >= scx as usize && lcd_col <= right_edge
+            }
+        };
+
+        is_x_border &= {
+            if bottom_edge < scy as usize {
+                lcd_row >= scy as usize || lcd_row <= bottom_edge
+            } else {
+                lcd_row >= scy as usize && lcd_row <= bottom_edge
+            }
+        };
+
+        is_y_border || is_x_border
+    }
 }
 
 pub(crate) struct Ppu {
@@ -333,12 +365,13 @@ impl Ppu {
 
             let background_tilemap = tilemap::get_tilemap(mmu, background_tilemap_address, index_mode_8000);
 
-            self.lcd.fill_from_tilemap(background_tilemap, self.scy as usize, self.scx as usize, &[0, 1, 2, 3]); // TODO palettes
+            self.lcd.fill_from_tilemap(background_tilemap, self.scy, self.scx, &[0, 1, 2, 3]); // TODO palettes
 
             // self.lcd = background_tilemap.to_lcd(0, 0, &[0, 1, 2, 3]); // TODO fix scy, scx
         }
     }
 
+    #[allow(dead_code)]
     fn draw_window(&mut self, mmu: &mut Mmu) {
         self.lcd_control.read_from_mem(mmu);
 
@@ -361,7 +394,7 @@ impl Ppu {
             let window_tilemap = tilemap::get_tilemap(mmu, window_tilemap_address, index_mode_8000);
 
             let mut window_lcd = Lcd::new();
-            window_lcd.fill_from_tilemap(window_tilemap, self.wy as usize, self.wx as usize, &[0,1,2,3]); // TODO palettes
+            window_lcd.fill_from_tilemap(window_tilemap, self.wy, self.wx, &[0, 1, 2, 3]); // TODO palettes
 
             for row in 0..LCD_PIXEL_HEIGHT {
                 for col in 0..LCD_PIXEL_WIDTH {
@@ -373,6 +406,7 @@ impl Ppu {
         }
     }
 
+    #[allow(dead_code)]
     fn draw_sprites(&mut self, mmu: &mut Mmu) {
         self.lcd_control.read_from_mem(mmu);
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8) {
@@ -388,8 +422,8 @@ impl Ppu {
                 let palette = if attr.palette_is_obp1 { 1 } else { 0 };
                 // TODO palettes
                 let palettes = &[
-                    [0,1,2,3],
-                    [0,1,2,3],
+                    [0, 1, 2, 3],
+                    [0, 1, 2, 3],
                 ];
 
                 for row in 0..8 {
@@ -429,13 +463,13 @@ impl Ppu {
 
     // For debugging
     #[allow(dead_code)]
-    pub(crate) fn display_tiles_at(&mut self, mmu: &mut Mmu, tilemap_address: usize, scy: usize, scx: usize) {
+    pub(crate) fn display_tiles_at(&mut self, mmu: &mut Mmu, tilemap_address: usize, scy: u8, scx: u8) {
         let mut tile_addresses = [0; 32 * 32];
         for i in 0..32 * 32 {
             tile_addresses[i] = tilemap_address + 16 * i;
         }
         let background_tilemap = tilemap::fetch_tilemap(mmu, tile_addresses);
-        self.lcd.fill_from_tilemap(background_tilemap, scy, scx, &[0,1,2,3]);
+        self.lcd.fill_from_tilemap(background_tilemap, scy, scx, &[0, 1, 2, 3]);
     }
 
     // For debugging
