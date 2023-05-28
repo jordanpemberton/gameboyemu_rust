@@ -105,12 +105,25 @@ impl Lcd {
             for tilemap_col in 0..32 {
                 let tile = tilemap[tilemap_row][tilemap_col];
                 for i in 0..8 {
-                    let lcd_row = ((tilemap_row * 8 + scy + i) as u8) as usize;
+                    // let lcd_row = ((tilemap_row * 8 + scy + i) as u8) as usize;
+                    let lcd_row = ((tilemap_row * 8 + i) as u8) as usize; // TEMP
                     if lcd_row < LCD_PIXEL_HEIGHT {
                         for j in 0..8 {
-                            let lcd_col = ((tilemap_col * 8 + scx + j) as u8) as usize;
+                            // let lcd_col = ((tilemap_col * 8 + scx + j) as u8) as usize;
+                            let lcd_col = ((tilemap_col * 8 + j) as u8) as usize; // TEMP
                             if lcd_col < LCD_PIXEL_WIDTH {
-                                let pixel = tile[i][j];
+                                // let pixel = tile[i][j];
+                                // TEMP
+                                let pixel = if
+                                    ((lcd_row == scy || lcd_row == (scy + 143)) &&
+                                        (lcd_col >= scx && lcd_col <= (scx + 159))) ||
+                                    ((lcd_col == scx || lcd_col == (scx + 159)) &&
+                                        (lcd_row >= scy && lcd_row <= (scy + 143))) {
+                                    3
+                                } else {
+                                    tile[i][j]
+                                };
+
                                 self.data[lcd_row][lcd_col] = palette[pixel as usize];
                             }
                         }
@@ -302,8 +315,8 @@ impl Ppu {
         let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
         if is_last_line {
             self.draw_background(mmu);
-            self.draw_window(mmu);
-            self.draw_sprites(mmu);
+            // self.draw_window(mmu);
+            // self.draw_sprites(mmu);
         }
     }
 
