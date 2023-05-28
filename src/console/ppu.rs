@@ -5,7 +5,7 @@ use crate::console::sprite_attribute::SpriteAttribute;
 use crate::console::tilemap;
 use crate::console::tilemap::TileMap;
 
-const DEBUG_DISPLAY: bool = true;
+const DEBUG_DISPLAY: bool = false;
 
 pub(crate) const LCD_PIXEL_WIDTH: usize = if DEBUG_DISPLAY { 32 * 8 } else { 160 };
 pub(crate) const LCD_PIXEL_HEIGHT: usize = if DEBUG_DISPLAY { 32 * 8 } else { 144 };
@@ -108,19 +108,17 @@ impl Lcd {
                 let tile = tilemap[tilemap_row][tilemap_col];
 
                 for i in 0..8 {
-                    let lcd_row = if DEBUG_DISPLAY {
-                        tilemap_row * 8 + i
-                    } else {
-                        (tilemap_row * 8 + i + scy as usize) as u8 as usize
-                    };
+                    let mut lcd_row = tilemap_row * 8 + i;
+                    if !DEBUG_DISPLAY {
+                        lcd_row = (lcd_row as u8).wrapping_sub(scy) as usize;
+                    }
 
                     if lcd_row < LCD_PIXEL_HEIGHT {
                         for j in 0..8 {
-                            let lcd_col = if DEBUG_DISPLAY {
-                                tilemap_col * 8 + j
-                            } else {
-                                (tilemap_col * 8 + j + scx as usize) as u8 as usize
-                            };
+                            let mut lcd_col = tilemap_col * 8 + j;
+                            if !DEBUG_DISPLAY {
+                                lcd_col = (lcd_col as u8).wrapping_sub(scx) as usize;
+                            }
 
                             if lcd_col < LCD_PIXEL_WIDTH {
                                 let pixel = if DEBUG_DISPLAY && Lcd::is_on_border(lcd_row, lcd_col, scy, scx) {
