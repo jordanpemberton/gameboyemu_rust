@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use std::collections::HashMap;
 use crate::console::cpu::Cpu;
 use crate::console::cpu_registers::CpuRegIndex;
 use crate::console::mmu::Mmu;
@@ -31,7 +30,7 @@ impl Debugger {
         self.enabled && self.active
     }
 
-    pub(crate) fn break_or_cont(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn break_or_cont(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
         if self.enabled {
             self.active = !self.active;
             if self.active {
@@ -40,7 +39,7 @@ impl Debugger {
         }
     }
 
-    pub(crate) fn peek(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<HashMap<&str, &str>>) {
+    pub(crate) fn peek(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
         if self.enabled {
             self.dump(cpu, mmu, timer, locals);
         }
@@ -97,21 +96,17 @@ impl Debugger {
     }
 
     pub(crate) fn print_cpu_exec(cpu: &mut Cpu, mmu: &Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
-        if !cpu.visited.contains(&start_pc)
-        {
-            print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, mnemonic);
-            if args.len() > 0 {
-                print!("\t{:#04X}", args[0]);
-            };
-            if args.len() > 1 {
-                print!("\t{:#04X}", args[1]);
-            };
-            println!();
-        }
-        cpu.visited.push(start_pc);
+        print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, mnemonic);
+        if args.len() > 0 {
+            print!("\t{:#04X}", args[0]);
+        };
+        if args.len() > 1 {
+            print!("\t{:#04X}", args[1]);
+        };
+        println!();
     }
 
-    fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<HashMap<&str, &str>>) {
+    fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
         if let Some(_cpu) = cpu {
             self.dump_cpu_state(_cpu);
         }
@@ -126,26 +121,19 @@ impl Debugger {
         }
     }
 
-    fn dump_key_value_pairs(&self, data: HashMap<&str, &str>) {
-        for key in data.keys() {
-            println!("{}:\t{}", key, data.get(key).unwrap());
+    fn dump_key_value_pairs(&self, data: Vec<(&str, &str)>) {
+        for (key, value) in data {
+            println!("{}:\t{}", key, value);
         }
     }
 
     fn dump_cpu_state(&self, cpu: &Cpu) {
-        self.dump_key_value_pairs(HashMap::from([
-            ("Cpu.registers", format!("\n{}", cpu.registers).as_str()),
-        ]));
-
-        self.dump_key_value_pairs(HashMap::from([
-            ("Cpu.interrupts", format!("\t{}", cpu.interrupts).as_str()),
-        ]));
+        self.dump_key_value_pairs(vec![("Cpu.registers", format!("\n{}", cpu.registers).as_str())]);
+        self.dump_key_value_pairs(vec![("Cpu.interrupts", format!("\t{}", cpu.interrupts).as_str())]);
     }
 
     fn dump_timer_state(&self, timer: &Timer) {
-        self.dump_key_value_pairs(HashMap::from([
-            ("Timer", format!("\n{}", timer).as_str()),
-        ]));
+        self.dump_key_value_pairs(vec![("Timer", format!("\n{}", timer).as_str())]);
     }
 
     fn dump_mmu_state(&self, mmu: &Mmu) {
@@ -170,11 +158,11 @@ impl Debugger {
             vram_values_str.push_str("\n");
         }
 
-        self.dump_key_value_pairs(HashMap::from([
+        self.dump_key_value_pairs(vec![
             (
                 format!("VRAM[0x0000..{:#06X}]", (rows * cols)).as_str(),
                 format!("\n{}\n", vram_values_str).as_str()
             )
-        ]));
+        ]);
     }
 }

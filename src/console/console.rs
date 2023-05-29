@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::fs::read;
+use std::ops::Add;
 use std::time::{Duration, SystemTime};
 use sdl2::{EventPump, Sdl};
 use sdl2::event::Event;
@@ -15,8 +15,11 @@ use crate::console::cpu_registers::{CpuRegIndex};
 use crate::console::interrupts::InterruptRegBit;
 use crate::console::timer::Timer;
 
+const CYCLES_PER_REFRESH: u32 = 69905;
+
 pub(crate) struct Console {
     paused_for_debugger: bool,
+    average_cycles_per_update: u128,
     timer: Timer,
     cpu: Cpu,
     mmu: Mmu,
@@ -47,6 +50,7 @@ impl Console {
 
         Console {
             paused_for_debugger: false,
+            average_cycles_per_update: 0,
             timer: Timer::default(),
             cpu,
             mmu,
@@ -104,7 +108,10 @@ impl Console {
                     Option::from(&self.cpu),
                     Option::from(&self.mmu),
                     Option::from(&self.timer),
-                    Option::from(HashMap::from([])));
+                    Option::from(vec![
+                        ("Expected cycles per update", CYCLES_PER_REFRESH.to_string().as_str()),
+                        ("Average cycles per update", self.average_cycles_per_update.to_string().as_str()),
+                    ]));
             }
             None => {}
         }
@@ -132,7 +139,7 @@ impl Console {
                                 Option::from(&self.cpu),
                                 Option::from(&self.mmu),
                                 Option::from(&self.timer),
-                                Option::from(HashMap::from([])));
+                                Option::from(vec![]));
                             self.paused_for_debugger = debugger.is_active();
                         }
                         None => {}
@@ -145,7 +152,7 @@ impl Console {
                                 Option::from(&self.cpu),
                                 Option::from(&self.mmu),
                                 Option::from(&self.timer),
-                                Option::from(HashMap::from([])));
+                                Option::from(vec![]));
                         }
                         None => { }
                     }
@@ -164,61 +171,60 @@ impl Console {
     }
 
     fn main_loop(&mut self) {
-        // TEMP to begin paused and have control over start.
+        // TEMP REMOVE to begin paused and have control over start.
         // self.paused_for_debugger = true;
 
-        const CYCLES_PER_REFRESH: i32 = 69905;
-        let mut cycles_this_update: i32 = 0;
+        let mut cycles_this_update: u32 = 0;
+        let mut total_cycles: u128 = 0;
+        let mut total_updates: u128 = 0;
 
-        const FFS: u128 = 60;
-        let update_duration_ms: u128 = 1000 / FFS;
-        let mut start_time = SystemTime::now();
-        let mut delta_time = Duration::from_micros(0);
-
+        const FFS: u64 = 60;
+        let update_duration = Duration::from_millis(1000 / FFS);
+        let mut next_update_time = SystemTime::now().add(update_duration);
         loop {
-            if delta_time.as_millis() < update_duration_ms {
-                let curr_time = SystemTime::now();
-                delta_time += curr_time.duration_since(start_time).unwrap();
-                start_time = curr_time;
-            } else {
-                while cycles_this_update < CYCLES_PER_REFRESH {
-                    if self.paused_for_debugger {
-                        cycles_this_update += 4; // keep ticking when paused
-                    } else {
-                        let mut cycles = self.cpu.step(&mut self.mmu);
-                        if cycles < 0 {
-                            self.debug_print();
-                            self.debug_peek();
-                            panic!("Console step attempt failed with status {} at address {:#06X}.",
-                                cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
-                        }
-
-                        cycles += self.cpu.check_interrupts(&mut self.mmu); // TODO implement interrupts
-
-                        if self.timer.step(&mut self.mmu, cycles as u16) {
-                            self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
-                        }
-
-                        self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
-
-                        // TODO interrupts
-
-                        cycles_this_update += cycles as i32;
+            while
+                // cycles_this_update < CYCLES_PER_REFRESH - 4 &&
+                SystemTime::now() < next_update_time {
+                if self.paused_for_debugger {
+                    cycles_this_update += 4; // keep ticking when paused
+                } else {
+                    let mut cycles = self.cpu.step(&mut self.mmu);
+                    if cycles < 0 {
+                        self.debug_print();
+                        self.debug_peek();
+                        panic!("Console step attempt failed with status {} at address {:#06X}.",
+                            cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
                     }
-                }
 
+                    cycles += self.cpu.check_interrupts(&mut self.mmu); // TODO implement interrupts
+
+                    if self.timer.step(&mut self.mmu, cycles as u16) {
+                        self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
+                    }
+
+                    self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
+
+                    // TODO interrupts
+
+                    cycles_this_update += cycles as u32;
+                }
+            }
+
+            if SystemTime::now() >= next_update_time {
                 self.display.draw(&mut self.ppu);
                 if !self.poll() {
                     self.debug_print();
                     self.debug_peek();
                     break;
                 }
+                total_cycles += cycles_this_update as u128;
+                total_updates += 1;
                 cycles_this_update = 0;
-
-                delta_time = Duration::from_micros(0);
+                next_update_time = SystemTime::now().add(update_duration);
             }
         }
 
+        self.average_cycles_per_update = total_cycles / total_updates;
         self.debug_print();
         self.debug_peek();
     }

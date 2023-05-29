@@ -3,6 +3,7 @@
 // #![allow(unreachable_patterns)]
 // #![allow(unused_variables)]
 
+use std::collections::HashSet;
 use crate::console::instructions::{Instruction};
 use crate::console::mmu::Mmu;
 use crate::console::cpu_registers::{CpuRegIndex, CpuRegisters};
@@ -16,8 +17,8 @@ pub(crate) struct Cpu {
     is_halted: bool,
     pub(crate) registers: CpuRegisters,
     pub(crate) interrupts: Interrupts,
-    pub(crate) visited: Vec<u16>,
-    debug_print: bool,
+    pub(crate) visited: HashSet<u16>,
+    debug_print_on: bool,
 }
 
 impl Cpu {
@@ -26,8 +27,8 @@ impl Cpu {
             is_halted: false,
             registers: CpuRegisters::new(),
             interrupts: Interrupts::new(mmu),
-            visited: vec![],
-            debug_print,
+            visited: HashSet::from([]),
+            debug_print_on: debug_print,
         }
     }
 
@@ -59,8 +60,10 @@ impl Cpu {
             let mut instruction = Instruction::get_instruction(opcode);
             let args = self.fetch_args(&instruction, mmu);
 
-            if self.debug_print {
+            if self.debug_print_on && !self.visited.contains(&start_pc)
+            {
                 Debugger::print_cpu_exec(self, mmu, start_pc, opcode, instruction.mnemonic, args.as_slice());
+                self.visited.insert(start_pc);
             }
 
             let args = args.as_ref();

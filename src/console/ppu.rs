@@ -345,8 +345,8 @@ impl Ppu {
         let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
         if is_last_line {
             self.draw_background(mmu);
-            // self.draw_window(mmu);
-            // self.draw_sprites(mmu);
+            // self.draw_window(mmu); // TODO
+            self.draw_sprites(mmu);  // TODO
         }
     }
 
@@ -407,6 +407,7 @@ impl Ppu {
     #[allow(dead_code)]
     fn draw_sprites(&mut self, mmu: &mut Mmu) {
         self.lcd_control.read_from_mem(mmu);
+
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8) {
             let tiledata_address: usize = 0x8000; // TODO read this?
 
