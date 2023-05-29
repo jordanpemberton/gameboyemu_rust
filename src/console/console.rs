@@ -182,9 +182,7 @@ impl Console {
         let update_duration = Duration::from_millis(1000 / FFS);
         let mut next_update_time = SystemTime::now().add(update_duration);
         loop {
-            while
-                // cycles_this_update < CYCLES_PER_REFRESH - 4 &&
-                SystemTime::now() < next_update_time {
+            while cycles_this_update < CYCLES_PER_REFRESH - 4 && SystemTime::now() < next_update_time {
                 if self.paused_for_debugger {
                     cycles_this_update += 4; // keep ticking when paused
                 } else {
