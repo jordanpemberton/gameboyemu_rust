@@ -4,7 +4,7 @@
 use crate::console::cpu::Cpu;
 use crate::console::cpu_registers::CpuRegIndex;
 use crate::console::mmu::Mmu;
-use crate::console::ppu::{LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
+use crate::console::ppu::Ppu;
 use crate::console::timer::Timer;
 
 pub(crate) enum DebugAction {
@@ -46,13 +46,13 @@ impl Debugger {
     }
 
     pub(crate) fn print_screen_to_stdout(&mut self, ppu: &Ppu) {
-        for x in 0..LCD_PIXEL_WIDTH + 2 {
+        for x in 0..ppu.lcd.width + 2 {
             print!("_");
         }
         println!();
-        for y in 0..LCD_PIXEL_HEIGHT {
+        for y in 0..ppu.lcd.height {
             print!("|");
-            for x in 0..LCD_PIXEL_WIDTH {
+            for x in 0..ppu.lcd.width {
                 let color = ppu.lcd.data[y as usize][x as usize];
                 match color % 4 {
                     3 => print!("@"),
@@ -64,7 +64,7 @@ impl Debugger {
             print!("|");
             println!();
         }
-        for x in 0..LCD_PIXEL_WIDTH + 2 {
+        for x in 0..ppu.lcd.width + 2 {
             print!("_");
         }
         println!();
@@ -128,6 +128,7 @@ impl Debugger {
     }
 
     fn dump_cpu_state(&self, cpu: &Cpu) {
+        self.dump_key_value_pairs(vec![("Cpu.is_halted", format!("\t{}", cpu.is_halted).as_str())]);
         self.dump_key_value_pairs(vec![("Cpu.registers", format!("\n{}", cpu.registers).as_str())]);
         self.dump_key_value_pairs(vec![("Cpu.interrupts", format!("\t{}", cpu.interrupts).as_str())]);
     }

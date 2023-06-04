@@ -5,10 +5,7 @@ use crate::console::sprite_attribute::SpriteAttribute;
 use crate::console::tilemap;
 use crate::console::tilemap::TileMap;
 
-const DEBUG_DISPLAY: bool = false;
-
-pub(crate) const LCD_PIXEL_WIDTH: usize = if DEBUG_DISPLAY { 32 * 8 } else { 160 };
-pub(crate) const LCD_PIXEL_HEIGHT: usize = if DEBUG_DISPLAY { 32 * 8 } else { 144 };
+const DEBUG_COLOR_I: u8 = 12;
 
 const LCD_CONTROL_REG: u16 = 0xFF40;
 const LCD_STATUS_REG: u16 = 0xFF41;
@@ -92,13 +89,22 @@ enum LcdStatRegBit {
 }
 
 pub(crate) struct Lcd {
-    pub(crate) data: [[u8; LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT],
+    in_debug_mode: bool,
+    pub(crate) width: usize,
+    pub(crate) height: usize,
+    pub(crate) data: Vec<Vec<u8>>,
 }
 
 impl Lcd {
-    pub(crate) fn new() -> Lcd {
+    pub(crate) fn new(in_debug_mode: bool) -> Lcd {
+        let width: usize = if in_debug_mode { 32 * 8 } else { 160 };
+        let height: usize = if in_debug_mode { 32 * 8 } else { 144 };
+
         Lcd {
-            data: [[0; LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT],
+            in_debug_mode,
+            width,
+            height,
+            data: vec![vec![0; width]; height],
         }
     }
 
@@ -109,24 +115,19 @@ impl Lcd {
 
                 for i in 0..8 {
                     let mut lcd_row = tilemap_row * 8 + i;
-                    if !DEBUG_DISPLAY {
+                    if !self.in_debug_mode {
                         lcd_row = (lcd_row as u8).wrapping_sub(scy) as usize;
                     }
 
-                    if lcd_row < LCD_PIXEL_HEIGHT {
+                    if lcd_row < self.height {
                         for j in 0..8 {
                             let mut lcd_col = tilemap_col * 8 + j;
-                            if !DEBUG_DISPLAY {
+                            if !self.in_debug_mode {
                                 lcd_col = (lcd_col as u8).wrapping_sub(scx) as usize;
                             }
 
-                            if lcd_col < LCD_PIXEL_WIDTH {
-                                let pixel = if DEBUG_DISPLAY && Lcd::is_on_border(lcd_row, lcd_col, scy, scx) {
-                                    3
-                                } else {
-                                    tile[i][j]
-                                };
-
+                            if lcd_col < self.width {
+                                let pixel = tile[i][j];
                                 self.data[lcd_row as usize][lcd_col as usize] = palette[pixel as usize];
                             }
                         }
@@ -135,37 +136,11 @@ impl Lcd {
             }
         }
     }
-
-    // For debuggin
-    # [allow(dead_code)]
-    fn is_on_border(lcd_row: usize, lcd_col: usize, scy: u8, scx: u8) -> bool {
-        let bottom_edge = scy.wrapping_add(144 as u8) as usize - 1;
-        let right_edge = scx.wrapping_add(160 as u8) as usize - 1;
-
-        let mut is_y_border = lcd_row == scy as usize || lcd_row == bottom_edge;
-        let mut is_x_border = lcd_col == scx as usize || lcd_col == right_edge;
-
-        is_y_border &= {
-            if right_edge < scx as usize {
-                lcd_col >= scx as usize || lcd_col <= right_edge
-            } else {
-                lcd_col >= scx as usize && lcd_col <= right_edge
-            }
-        };
-
-        is_x_border &= {
-            if bottom_edge < scy as usize {
-                lcd_row >= scy as usize || lcd_row <= bottom_edge
-            } else {
-                lcd_row >= scy as usize && lcd_row <= bottom_edge
-            }
-        };
-
-        is_y_border || is_x_border
-    }
 }
 
 pub(crate) struct Ppu {
+    in_debug_mode: bool,
+
     clocks: usize,
 
     // Registers -- in IO RAM
@@ -188,8 +163,9 @@ pub(crate) struct Ppu {
 }
 
 impl Ppu {
-    pub(crate) fn new(mmu: &mut Mmu) -> Ppu {
+    pub(crate) fn new(mmu: &mut Mmu, in_debug_mode: bool) -> Ppu {
         Ppu {
+            in_debug_mode,
             clocks: 0,
             scy: 0,
             scx: 0,
@@ -204,7 +180,7 @@ impl Ppu {
             lcd_control: Register::new(mmu, LCD_CONTROL_REG),
             lcd_status: Register::new(mmu, LCD_STATUS_REG),
             sprite_attributes: [SpriteAttribute::new(&[0; 4]); 40],
-            lcd: Lcd::new(),
+            lcd: Lcd::new(in_debug_mode),
         }
     }
 
@@ -345,11 +321,16 @@ impl Ppu {
         let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
         if is_last_line {
             self.draw_background(mmu);
-            // self.draw_window(mmu); // TODO
-            self.draw_sprites(mmu);  // TODO
+            // self.draw_window(mmu);      // TODO
+            // self.draw_sprites(mmu);     // TODO
+
+            if self.in_debug_mode {
+                self.draw_lcd_border();
+            }
         }
     }
 
+    #[allow(dead_code)]
     fn draw_background(&mut self, mmu: &mut Mmu) {
         self.lcd_control.read_from_mem(mmu);
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
@@ -364,8 +345,6 @@ impl Ppu {
             let background_tilemap = tilemap::get_tilemap(mmu, background_tilemap_address, index_mode_8000);
 
             self.lcd.fill_from_tilemap(background_tilemap, self.scy, self.scx, &[0, 1, 2, 3]); // TODO palettes
-
-            // self.lcd = background_tilemap.to_lcd(0, 0, &[0, 1, 2, 3]); // TODO fix scy, scx
         }
     }
 
@@ -391,11 +370,11 @@ impl Ppu {
 
             let window_tilemap = tilemap::get_tilemap(mmu, window_tilemap_address, index_mode_8000);
 
-            let mut window_lcd = Lcd::new();
+            let mut window_lcd = Lcd::new(self.in_debug_mode);
             window_lcd.fill_from_tilemap(window_tilemap, self.wy, self.wx, &[0, 1, 2, 3]); // TODO palettes
 
-            for row in 0..LCD_PIXEL_HEIGHT {
-                for col in 0..LCD_PIXEL_WIDTH {
+            for row in 0..self.lcd.height {
+                for col in 0..self.lcd.width {
                     if window_lcd.data[row][col] > 0 { // TODO priority, transparency
                         self.lcd.data[row][col] = window_lcd.data[row][col] + 8; // TEMP colors to distinguish window
                     }
@@ -455,9 +434,51 @@ impl Ppu {
 
     // For debugging
     #[allow(dead_code)]
+    fn draw_lcd_border(&mut self) {
+        let y0 = self.scy as usize;
+        let y1 = self.scy.wrapping_add(144 as u8) as usize;
+        let x0 = self.scx as usize;
+        let x1 = self.scx.wrapping_add(160 as u8) as usize;
+
+        if x1 > x0 {
+            for x in x0..x1 {
+                self.lcd.data[y0][x] = DEBUG_COLOR_I;
+                self.lcd.data[y1 - 1][x] = DEBUG_COLOR_I;
+            }
+        } else {
+            for x in 0..x1 {
+                self.lcd.data[y0][x] = DEBUG_COLOR_I;
+                self.lcd.data[y1 - 1][x] = DEBUG_COLOR_I;
+            }
+            for x in x0..self.lcd.data[0].len() {
+                self.lcd.data[y0][x] = DEBUG_COLOR_I;
+                self.lcd.data[y1 - 1][x] = DEBUG_COLOR_I;
+            }
+        }
+
+
+        if y1 > y0 {
+            for y in y0..y1 {
+                self.lcd.data[y][x0] = DEBUG_COLOR_I;
+                self.lcd.data[y][x1 - 1] = DEBUG_COLOR_I;
+            }
+        } else {
+            for y in 0..y1 {
+                self.lcd.data[y][x0] = DEBUG_COLOR_I;
+                self.lcd.data[y][x1 - 1] = DEBUG_COLOR_I;
+            }
+            for y in y0..self.lcd.data.len() {
+                self.lcd.data[y][x0] = DEBUG_COLOR_I;
+                self.lcd.data[y][x1 - 1] = DEBUG_COLOR_I;
+            }
+        }
+    }
+
+    // For debugging
+    #[allow(dead_code)]
     fn speed_check_pixel_transfer(&mut self) {
-        self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] += 1;
-        self.lcd.data[self.ly as usize % LCD_PIXEL_HEIGHT][self.clocks as usize % LCD_PIXEL_WIDTH] %= 8;
+        self.lcd.data[self.ly as usize % self.lcd.height][self.clocks as usize % self.lcd.width] += 1;
+        self.lcd.data[self.ly as usize % self.lcd.height][self.clocks as usize % self.lcd.width] %= 8;
     }
 
     // For debugging

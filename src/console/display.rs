@@ -2,10 +2,9 @@ use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
+use crate::console::ppu::{Lcd, Ppu};
 
-use crate::console::ppu::{Lcd, LCD_PIXEL_HEIGHT, LCD_PIXEL_WIDTH, Ppu};
-
-const COLORS: [Color; 12] = [
+const COLORS: [Color; 13] = [
     Color::RGB(0, 0, 0),
     Color::RGB(255, 255, 0),
     Color::RGB(255, 0, 255),
@@ -20,6 +19,8 @@ const COLORS: [Color; 12] = [
     Color::RGB(64, 122, 0),
     Color::RGB(64, 0, 128),
     Color::RGB(0, 64, 128),
+
+    Color::RGB(255, 0, 0),
 ];
 
 fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, window_title: &str) -> WindowCanvas {
@@ -38,9 +39,8 @@ fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, w
 }
 
 pub(crate) struct Display {
-    enabled: bool,
     canvas: WindowCanvas,
-    pixels: [[Rect; LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT],
+    pixels: Vec<Vec<Rect>>,
 }
 
 impl Display {
@@ -48,10 +48,11 @@ impl Display {
             window_scale: u32,
             window_title: &str,
             sdl_context: &Sdl,
-            enabled: bool) -> Display {
-        let mut pixels = [[Rect::new(0,0,0,0); LCD_PIXEL_WIDTH]; LCD_PIXEL_HEIGHT];
-        for y in 0..LCD_PIXEL_HEIGHT as u32 {
-            for x in 0..LCD_PIXEL_WIDTH as u32 {
+            lcd_pixel_width: usize,
+            lcd_pixel_height: usize) -> Display {
+        let mut pixels = vec![vec![Rect::new(0,0,0,0); lcd_pixel_width]; lcd_pixel_height];
+        for y in 0..lcd_pixel_height as u32 {
+            for x in 0..lcd_pixel_width as u32 {
                 pixels[y as usize][x as usize] = Rect::new(
                     (x * window_scale) as i32,
                     (y * window_scale) as i32,
@@ -61,12 +62,11 @@ impl Display {
         }
 
         Display {
-            enabled: enabled,
             canvas:
                 create_sdl_canvas(
                     sdl_context,
-                    LCD_PIXEL_WIDTH as u32 * window_scale,
-                    LCD_PIXEL_HEIGHT as u32 * window_scale,
+                    lcd_pixel_width as u32 * window_scale,
+                    lcd_pixel_height as u32 * window_scale,
                     window_title
                 ),
             pixels,
@@ -74,10 +74,6 @@ impl Display {
     }
 
     pub(crate) fn draw(&mut self, ppu: &mut Ppu) {
-        if !self.enabled {
-            return;
-        }
-
         self.canvas.clear();
 
         self.draw_screen(&ppu.lcd);
@@ -86,19 +82,20 @@ impl Display {
         self.canvas.set_draw_color(COLORS[0]);
     }
 
-    fn draw_scanline(&mut self, y: u32, scanline: [Color; LCD_PIXEL_WIDTH as usize]) {
-        for x in 0..LCD_PIXEL_WIDTH as u32 {
-            let color = scanline[x as usize];
+    fn draw_scanline(&mut self, y: usize, scanline: Vec<Color>) {
+        for x in 0..scanline.len() {
+            let color = scanline[x];
             self.canvas.set_draw_color(color);
-            self.canvas.fill_rect(self.pixels[y as usize][x as usize]).unwrap();
+            self.canvas.fill_rect(self.pixels[y][x]).unwrap();
         }
     }
 
     fn draw_screen(&mut self, lcd: &Lcd) {
-        for y in 0..LCD_PIXEL_HEIGHT {
-            let row = lcd.data[y as usize];
-            let colors: [Color; LCD_PIXEL_WIDTH] = row.map(|pixel| COLORS[pixel as usize]);
-            self.draw_scanline(y as u32, colors);
+        let height = self.pixels.len();
+        for y in 0..height {
+            let row = lcd.data[y].as_slice().iter();
+            let colors = row.map(|pixel| COLORS[*pixel as usize]).collect();
+            self.draw_scanline(y, colors);
         }
     }
 }

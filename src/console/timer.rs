@@ -21,6 +21,7 @@ pub(crate) struct Timer {
 }
 
 impl Timer {
+    // returns if timer interrupt requested
     pub(crate) fn step(&mut self, mmu: &mut Mmu, time: u16) -> bool {
         let mut request_interrupt = false;
 

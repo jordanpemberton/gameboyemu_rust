@@ -1,7 +1,14 @@
-/*
-As the Game Boy’s 16-bit address bus offers only limited space for ROM and RAM addressing, many
-games are using Memory Bank Controllers (MBCs) to expand the available address space by bank
-switching. These MBC chips are located in the game cartridge (that is, not in the Game Boy itself).
-In each cartridge, the required (or preferred) MBC type should be specified in the byte at $0147 of
-the ROM, as described in the cartridge header.
- */
+#[allow(dead_code)]
+const ROM_BANK_SIZE: u16 = 0x4000;
+#[allow(dead_code)]
+const RAM_BANK_SIZE: u16 = 0x2000;
+
+#[allow(dead_code)]
+struct Mbc {
+    rom_bank: usize,
+    ram_bank: usize,
+    rom: Vec<u8>,
+    ram: Vec<u8>,
+}
+
+

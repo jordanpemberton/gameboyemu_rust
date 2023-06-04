@@ -30,10 +30,10 @@ pub(crate) struct Console {
 }
 
 impl Console {
-    pub(crate) fn new(window_title: &str, window_scale: u32, display_enabled: bool, debug: bool, cpu_debug_print: bool) -> Console {
+    pub(crate) fn new(window_title: &str, window_scale: u32, debug: bool, cpu_debug_print: bool, debug_mode_display: bool) -> Console {
         let mut mmu = Mmu::new();
         let cpu = Cpu::new(&mut mmu, cpu_debug_print);
-        let ppu = Ppu::new(&mut mmu);
+        let ppu = Ppu::new(&mut mmu, debug_mode_display);
         let sdl_context: Sdl = sdl2::init().unwrap();
 
         let debugger = if debug {
@@ -46,7 +46,8 @@ impl Console {
             window_scale,
             window_title,
             &sdl_context,
-            display_enabled);
+            ppu.lcd.width,
+            ppu.lcd.height);
 
         Console {
             paused_for_debugger: false,
@@ -196,13 +197,12 @@ impl Console {
 
                     cycles += self.cpu.check_interrupts(&mut self.mmu); // TODO implement interrupts
 
+                    self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
+
+
                     if self.timer.step(&mut self.mmu, cycles as u16) {
                         self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
                     }
-
-                    self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
-
-                    // TODO interrupts
 
                     cycles_this_update += cycles as u32;
                 }

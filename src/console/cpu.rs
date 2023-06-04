@@ -14,7 +14,7 @@ pub(crate) const PREFIX_BYTE: u8 = 0xCB;
 
 #[allow(dead_code)]
 pub(crate) struct Cpu {
-    is_halted: bool,
+    pub(crate) is_halted: bool,
     pub(crate) registers: CpuRegisters,
     pub(crate) interrupts: Interrupts,
     pub(crate) visited: HashSet<u16>,
