@@ -4,7 +4,7 @@
 // #![allow(unused_variables)]
 
 use std::collections::HashSet;
-use crate::console::instructions::{Instruction};
+use crate::console::instruction::{Instruction};
 use crate::console::mmu::Mmu;
 use crate::console::cpu_registers::{CpuRegIndex, CpuRegisters};
 use crate::console::debugger::Debugger;
