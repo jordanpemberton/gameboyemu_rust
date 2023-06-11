@@ -14,7 +14,10 @@
     CARTRIDGE_ROM_BANK_SIZE: u16 = 0x4000;
 */
 
+use std::fs::read;
 use crate::console::timer::DIV_REG_ADDRESS;
+
+const BOOTROM_FILEPATH: &str = "src/console/DMG_ROM.bin";
 
 #[allow(dead_code)]
 #[derive(PartialEq)]
@@ -30,10 +33,12 @@ pub(crate) struct Mmu {
 
 impl Mmu {
     pub(crate) fn new() -> Mmu {
-        Mmu {
+        let mut mmu = Mmu {
             rom: [0; 0x8000],
             ram: [0; 0x8000],
-        }
+        };
+        mmu.load_bootrom();
+        mmu
     }
 
     pub(crate) fn read(&self, begin: usize, end: usize) -> Vec<u8> {
@@ -133,5 +138,10 @@ impl Mmu {
 
         self.write_8(address, a);
         self.write_8(address + 1, b);
+    }
+
+    fn load_bootrom(&mut self) {
+        let bootrom = read(BOOTROM_FILEPATH).unwrap();
+        self.write(bootrom.as_ref(), 0, bootrom.len());
     }
 }

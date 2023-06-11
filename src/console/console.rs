@@ -1,4 +1,3 @@
-use std::fs::read;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
 use sdl2::{EventPump, Sdl};
@@ -75,22 +74,15 @@ impl Console {
         }
     }
 
-    fn load_bootrom(&mut self) {
-        let bootrom_filepath = "src/console/DMG_ROM.bin";
-        let bootrom = read(bootrom_filepath).unwrap();
-        self.mmu.write(bootrom.as_ref(), 0, bootrom.len());
-    }
-
     fn boot_empty(&mut self) {
-        self.load_bootrom();
         self.main_loop();
     }
 
+    #[allow(unused_variables)]
     fn run_game(&mut self, game: &Cartridge, skip_boot: bool) {
-        self.mmu.write(&game.data[0..], 0, 0x8000);
-        if !skip_boot {
-            self.load_bootrom();
-        } else {
+        //self.mmu.write(&game.data[0..], 0, 0x8000);
+
+        if skip_boot {
             self.cpu.registers.set_word(CpuRegIndex::AF, 0x01B0);
             self.cpu.registers.set_word(CpuRegIndex::BC, 0x0013);
             self.cpu.registers.set_word(CpuRegIndex::DE, 0x00D8);
