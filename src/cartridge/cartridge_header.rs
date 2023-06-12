@@ -1,6 +1,6 @@
 #[allow(dead_code)]
 pub(crate) enum CartridgeType {
-    None {
+    NoMbc {
         ram: bool,
         battery: bool,
     },
@@ -18,7 +18,7 @@ pub(crate) enum CartridgeType {
 impl CartridgeType {
     pub(crate) fn from_u8(value: u8) -> CartridgeType {
         match value {
-            0x00 => CartridgeType::None {
+            0x00 => CartridgeType::NoMbc {
                 ram: false,
                 battery: false,
             },
@@ -38,16 +38,16 @@ impl CartridgeType {
                 is_multicart: false,
             },
 
-            0x08 => CartridgeType::None {
+            0x08 => CartridgeType::NoMbc {
                 ram: true,
                 battery: false,
             },
-            0x09 => CartridgeType::None {
+            0x09 => CartridgeType::NoMbc {
                 ram: true,
                 battery: true,
             },
 
-            _ => CartridgeType::None {
+            _ => CartridgeType::NoMbc {
                 ram: false,
                 battery: false,
             },

@@ -80,7 +80,7 @@ impl Mbc {
         let cartridge_type = CartridgeType::from_u8(data[0x0147]);
 
         let mbc = match cartridge_type {
-            CartridgeType::None { .. } => Mbc::None,
+            CartridgeType::NoMbc { .. } => Mbc::None,
             CartridgeType::Mbc1 { is_multicart, .. } => {
                 Mbc::Mbc1 {
                     mbc: Mbc1 {

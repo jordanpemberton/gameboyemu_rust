@@ -81,7 +81,7 @@ fn disassemble_rom(filepath: &str) {
 fn run_rom(rom_filepath: &str, skip_boot: bool, debug_enabled: bool, cpu_debug_print: bool, debug_mode_display: bool) {
     let window_scale = if debug_mode_display { 4 } else { 7 };
 
-    if rom_filepath.is_empty() {
+    if rom_filepath.trim().is_empty() {
         disassemble_rom(BOOTROM_FILEPATH);
         let mut gamboy = Console::new("GAMBOY", window_scale, debug_enabled, cpu_debug_print, debug_mode_display, None);
         gamboy.run(false);

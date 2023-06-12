@@ -30,7 +30,7 @@ pub(crate) enum Endianness {
 }
 
 pub(crate) struct Mmu {
-    is_booting: bool,
+    pub(crate) is_booting: bool,
     rom: [u8; 0x8000 as usize],
     ram: [u8; 0x8000 as usize],
     cartridge: Option<Cartridge>,
@@ -50,9 +50,11 @@ impl Mmu {
 
     pub(crate) fn read_8(&self, address: u16) -> u8 {
         match address {
-            0x0000..=0x3FFF => if self.is_booting {
+            0x0000..=0x00FF if self.is_booting => {
                 self.rom[address as usize]
-            } else if let Some(cartridge) = &self.cartridge {
+            }
+
+            0x0000..=0x3FFF => if let Some(cartridge) = &self.cartridge {
                 cartridge.read_8_0000_3fff(address)
             } else {
                 self.rom[address as usize]
@@ -109,6 +111,7 @@ impl Mmu {
         }
     }
 
+    //noinspection RsNonExhaustiveMatch -- u16 range covered
     pub(crate) fn write_8(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x1FFF => {
@@ -191,6 +194,7 @@ impl Mmu {
         self.write_8(address + 1, b);
     }
 
+    #[allow(dead_code)]
     pub(crate) fn write_buffer(&mut self, data: &[u8], start: usize, size: usize) {
         let size = min(size, data.len());
         let end = start + size;
@@ -220,6 +224,7 @@ impl Mmu {
 
     fn load_bootrom(&mut self) {
         let bootrom = read(BOOTROM_FILEPATH).unwrap();
-        self.write_buffer(bootrom.as_ref(), 0, bootrom.len());
+        let size = min(bootrom.len(), 0x100);
+        self.rom[0..size].clone_from_slice(&bootrom[..size]);
     }
 }

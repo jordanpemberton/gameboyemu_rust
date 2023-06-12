@@ -75,6 +75,7 @@ impl Console {
             self.cpu.registers.set_word(CpuRegIndex::HL, 0x014D);
             self.cpu.registers.set_word(CpuRegIndex::SP, 0xFFFE);
             self.cpu.registers.set_word(CpuRegIndex::PC, 0x0100);
+            self.mmu.is_booting = false;
         }
 
         self.main_loop();

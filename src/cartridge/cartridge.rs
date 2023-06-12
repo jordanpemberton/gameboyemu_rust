@@ -47,7 +47,7 @@ impl Cartridge {
     pub(crate) fn read_8_4000_7fff(&self, address: u16) -> u8 {
         let (_, rom_upper) = match &self.mbc {
             Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
-            _ => (0, 0)
+            _ => (0, 0x4000) // ?
         };
         self.data[(rom_upper | (address as usize & 0x3FFF))]
     }
