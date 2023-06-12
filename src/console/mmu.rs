@@ -81,34 +81,53 @@ impl Mmu {
     }
 
     pub(crate) fn read_buffer(&self, start: usize, end: usize) -> Vec<u8> {
+        let mut t = min(end, 0x10000);
+        let mut result = vec![0; t - start];
+
         match start {
             0x0000..=0x3FFF => {
-                let end = min(end, 0x3FFF);
+                if start < 0x0100 && self.is_booting {
+                    t =  min(end, 0x0100);
+                    result[0..t - start].clone_from_slice(&self.rom[start..t]);
 
-                if self.is_booting {
-                    self.rom[start..end].to_vec()
-                } else if let Some(cartridge) = &self.cartridge {
-                    cartridge.read_buffer_0000_3fff(start as u16, end as u16)
+                    if end > 0x0100 {
+                        t = min(end, 0x4000);
+                        if let Some(cartridge) = &self.cartridge {
+                            let data = cartridge.read_buffer_0000_3fff(0x0100 as u16,  t as u16);
+                            result[0x0100..t].clone_from_slice(&data[..]);
+                        } else {
+                            result[0x100..t].clone_from_slice(&self.rom[0x0100..t]);
+                        }
+                    }
                 } else {
-                    self.rom[start..end].to_vec()
+                    t = min(end, 0x4000);
+                    if let Some(cartridge) = &self.cartridge {
+                        let data = cartridge.read_buffer_0000_3fff(start as u16, t as u16);
+                        result[0..t - start].clone_from_slice(&data[..]);
+                    } else {
+                        result[0..t - start].clone_from_slice(&self.rom[start..t]);
+                    }
                 }
             }
 
             0x4000..=0x7FFF => {
-                let end = min(end, 0x7FFF);
+                t = min(end, 0x8000);
 
                 if let Some(cartridge) = &self.cartridge {
-                    cartridge.read_buffer_4000_7fff(start as u16, end as u16)
+                    let data = cartridge.read_buffer_4000_7fff(start as u16, t as u16);
+                    result[0..t - start].clone_from_slice(&data[..]);
                 } else {
-                    self.rom[start..end].to_vec()
+                    result[0..t - start].clone_from_slice(&self.rom[start..t]);
                 }
             }
 
             _ => {
-                let end = min(end, 0xFFFF);
-                self.ram[start - 0x8000..end - 0x8000].to_vec()
+                t = min(end, 0x10000);
+                result[0..t - start].clone_from_slice(&self.ram[start - 0x8000..t - 0x8000]);
             }
         }
+
+        result.to_vec()
     }
 
     //noinspection RsNonExhaustiveMatch -- u16 range covered
@@ -192,34 +211,6 @@ impl Mmu {
 
         self.write_8(address, a);
         self.write_8(address + 1, b);
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn write_buffer(&mut self, data: &[u8], start: usize, size: usize) {
-        let size = min(size, data.len());
-        let end = start + size;
-
-        if let Some(_) = &self.cartridge {
-            self.write_8(start as u16, data[0]);
-        } else {
-            match start {
-                0x0000..=0x3FFF => { }
-                0x4000..=0x7FFF => {
-                    let end = min(end, 0x8000);
-                    self.rom[start..end].clone_from_slice(&data[..end - start]);
-                }
-                0x8000..=0xFFFF => {
-                    let end = min(end, 0x10000);
-                    self.ram[start - 0x8000..end - 0x8000].clone_from_slice(&data[..end - start - 0x8000]);
-
-                    // All writes to timer DIV register reset it to 0
-                    if start <= (DIV_REG_ADDRESS as usize) && (DIV_REG_ADDRESS as usize) < end {
-                        self.ram[DIV_REG_ADDRESS as usize - 0x8000] = 0;
-                    }
-                }
-                _ => { }
-            }
-        }
     }
 
     fn load_bootrom(&mut self) {

@@ -91,11 +91,9 @@ pub(crate) fn adc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
 }
 
 pub(crate) fn add_16(a: u16, b: u16) -> (u16, Flags) {
-    let a = a as i32;
-    let b = b as i32;
-    let half_carry = ((a & 0x0F) + (b & 0x0F)) > 0x0F;
-    let carry = (a + b) > 0xFF;
-    let result = (a + b) as u16;
+    let half_carry = (a & 0x0FFF) + (b & 0x0FFF) > 0x0FFF;
+    let carry = (0xFFFF - b) < a;
+    let result = a.wrapping_add(b);
     (result, Flags {
         zero: result == 0,
         subtract: false,
@@ -133,20 +131,6 @@ pub(crate) fn sbc_8(a: u8, b: u8, original_flags: Flags) -> (u8, Flags) {
     })
 }
 
-pub(crate) fn subtract_16(a: u16, b: u16) -> (u16, Flags) {
-    let a = a as i32;
-    let b = b as i32;
-    let half_carry = (a & 0x0F) < (b & 0x0F);
-    let carry = (a - b) < 0;
-    let result = (a - b) as u16;
-    (result, Flags {
-        zero: result == 0,
-        subtract: false,
-        half_carry,
-        carry,
-    })
-}
-
 /// INC
 
 /// Original carry flag is preserved
@@ -162,8 +146,7 @@ pub(crate) fn increment_8(a: u8, original_carry: bool) -> (u8, Flags) {
 
 /// All original flags are preserved
 pub(crate) fn increment_16(a: u16) -> u16 {
-    let (result, _) = a.overflowing_add(1);
-    result
+    a.wrapping_add(1)
 }
 
 /// DEC
@@ -182,8 +165,7 @@ pub(crate) fn decrement_8(a: u8, original_carry: bool) -> (u8, Flags) {
 
 /// All original flags are preserved
 pub(crate) fn decrement_16(a: u16) -> u16 {
-    let (result, _) = subtract_16(a, 1);
-    result
+    a.wrapping_sub(1)
 }
 
 /// OR

@@ -745,10 +745,10 @@ impl Instruction {
     }
 
     fn add_hl(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
-        let a = Instruction::get_source_value_16(cpu, mmu, args, Src::HL);
+        let hl = cpu.registers.get_word(CpuRegIndex::HL);
         let b = Instruction::get_source_value_16(cpu, mmu, args, source);
         let original_zero = cpu.registers.get_flags().zero;
-        let (result, mut flags) = alu::add_16(a, b);
+        let (result, mut flags) = alu::add_16(hl, b);
         flags.zero = original_zero;
         Instruction::set_target_value_16(cpu, mmu, args, Src::HL, result);
         cpu.registers.set_flags(flags);
@@ -2662,33 +2662,31 @@ impl Instruction {
         let d8 = Instruction::get_source_value_8(cpu, mmu, args, Src::D8);
         let signed = alu::signed_8(d8);
 
-        let (result, flags) = if signed < 0 {
-            let a = sp as i32;
-            let b = -signed as i32;
-            let half_carry = (a & 0x0F) < (b & 0x0F);
-            let carry = (a - b) < 0;
-            let result = (a - b) as u16;
+        let (result, flags) = if signed < 0 { // TODO fix E8 and F8 (sub?)
+            let b = (-signed) as u16;
+            let half_carry = (sp & 0x0F) < (b & 0x0F);
+            let carry = (sp & 0xFF) < (b & 0xFF);
+            let result = sp.wrapping_sub(b);
             (result, Flags {
-                zero: result == 0,
+                zero: false,
                 subtract: false,
                 half_carry,
                 carry,
             })
         } else {
-            let a = sp as i32;
-            let b = signed as i32;
-            let half_carry = ((a & 0x0F) + (b & 0x0F)) > 0x0F;
-            let carry = (a + b) > 0xFF;
-            let result = (a + b) as u16;
+            let b = signed as u16;
+            let half_carry = (sp & 0x0F) + (b & 0x0F) > 0x0F;
+            let carry =  (sp & 0xFF) + (b & 0xFF) > 0xFF;
+            let result = sp.wrapping_add(b);
             (result, Flags {
-                zero: result == 0,
+                zero: false,
                 subtract: false,
                 half_carry,
                 carry,
             })
         };
 
-        Instruction::set_target_value_16(cpu, mmu, args, Src::SP, result);
+        cpu.registers.set_word(CpuRegIndex::SP, result);
         cpu.registers.set_flags(flags);
         self.cycles
     }
@@ -2786,15 +2784,33 @@ impl Instruction {
     /// 0 0 H C
     /// HL = SP +/- dd ; dd is 8-bit signed number
     fn op_00f8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        let a = cpu.registers.get_word(CpuRegIndex::SP);
+        let sp = cpu.registers.get_word(CpuRegIndex::SP);
         let b = alu::signed_8(args[0]);
-        let (result, mut flags) = if b < 0 {
-             alu::subtract_16(a, (-b) as u16)
+
+        let (result, flags) = if b < 0 { // TODO fix E8 and F8 (sub?)
+            let b = (-b) as u16;
+            let half_carry = (sp & 0x0F) < (b & 0x0F);
+            let carry = (sp & 0xFF) < (b & 0xFF);
+            let result = sp.wrapping_sub(b);
+            (result, Flags {
+                zero: false,
+                subtract: false,
+                half_carry,
+                carry,
+            })
         } else {
-            alu::add_16(a, b as u16)
+            let b = b as u16;
+            let half_carry = (sp & 0x0F) + (b & 0x0F) > 0x0F;
+            let carry = (sp & 0xFF) + (b & 0xFF) > 0x00FF;
+            let result = sp.wrapping_add(b);
+            (result, Flags {
+                zero: false,
+                subtract: false,
+                half_carry,
+                carry,
+            })
         };
-        flags.zero = false;
-        flags.subtract = false;
+
         cpu.registers.set_word(CpuRegIndex::HL, result);
         cpu.registers.set_flags(flags);
         self.cycles
