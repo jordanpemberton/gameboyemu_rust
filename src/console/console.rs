@@ -4,7 +4,7 @@ use sdl2::{EventPump, Sdl};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
-use crate::cartridge::cartridge::{Cartridge, CartridgeOption};
+use crate::cartridge::cartridge::Cartridge;
 use crate::console::cpu::Cpu;
 use crate::console::debugger::Debugger;
 use crate::console::display::Display;
@@ -29,8 +29,14 @@ pub(crate) struct Console {
 }
 
 impl Console {
-    pub(crate) fn new(window_title: &str, window_scale: u32, debug: bool, cpu_debug_print: bool, debug_mode_display: bool) -> Console {
-        let mut mmu = Mmu::new();
+    pub(crate) fn new(
+            window_title: &str,
+            window_scale: u32,
+            debug: bool,
+            cpu_debug_print: bool,
+            debug_mode_display: bool,
+            cartridge: Option<Cartridge>) -> Console {
+        let mut mmu = Mmu::new(cartridge);
         let cpu = Cpu::new(&mut mmu, cpu_debug_print);
         let ppu = Ppu::new(&mut mmu, debug_mode_display);
         let sdl_context: Sdl = sdl2::init().unwrap();
@@ -61,27 +67,7 @@ impl Console {
         }
     }
 
-    pub(crate) fn run(&mut self, cartridge: CartridgeOption, skip_boot: bool) {
-        match cartridge {
-            CartridgeOption::NONE => {
-                if !skip_boot {
-                    self.boot_empty();
-                }
-            }
-            CartridgeOption::SOME(cartridge) => {
-                self.run_game(&cartridge, skip_boot);
-            }
-        }
-    }
-
-    fn boot_empty(&mut self) {
-        self.main_loop();
-    }
-
-    #[allow(unused_variables)]
-    fn run_game(&mut self, game: &Cartridge, skip_boot: bool) {
-        //self.mmu.write(&game.data[0..], 0, 0x8000);
-
+    pub(crate) fn run(&mut self, skip_boot: bool) {
         if skip_boot {
             self.cpu.registers.set_word(CpuRegIndex::AF, 0x01B0);
             self.cpu.registers.set_word(CpuRegIndex::BC, 0x0013);

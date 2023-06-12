@@ -1,33 +1,28 @@
+use crate::cartridge::cartridge_header::CartridgeType;
+
 #[allow(dead_code)]
 pub(crate) const ROM_BANK_SIZE: usize = 0x4000;
 #[allow(dead_code)]
 pub(crate) const RAM_BANK_SIZE: usize = 0x2000;
 
 #[allow(dead_code)]
-pub(crate) enum Mbc {
-    None,
-    Mbc1 { state: Mbc1State },
-    Mbc2,
-    Mbc3,
-    Mbc5,
-}
+#[derive(Copy, Clone)]
+pub(crate) struct Mbc1 {
+    pub(crate) ram_enabled: bool,
 
-#[allow(dead_code)]
-pub(crate) struct Mbc1State {
-    ram_enabled: bool,
-    advram_banking_mode: bool,
+    pub(crate) advram_banking_mode: bool,
     // 00 = Simple Banking Mode (default)
     //    0000–3FFF and A000–BFFF locked to bank 0 of ROM/RAM
     // 01 = RAM Banking Mode / Advanced ROM Banking Mode
     //    0000–3FFF and A000–BFFF can be bank-switched via the 4000–5FFF bank register
     // If the cart is not large enough to use the 2-bit register (<= 8 KiB RAM and <= 512 KiB ROM) this mode select has no observable effect.
 
-    is_multicart: bool,
+    pub(crate) is_multicart: bool,
 
-    bank1: u8,  // 5-bit register: ROM bank (0x01..=0x1E)
+    pub(crate) bank1: u8,  // 5-bit register: ROM bank (0x01..=0x1E)
     // If this register is set to $00, it behaves as if it is set to $01.
 
-    bank2: u8,  // 2-bit register: RAM bank (0x01..=0x03), or ROM bank upper bits (0x20..=0x60, or 0x10..=0x30 in 1MB MBC1 multicart) (?)
+    pub(crate) bank2: u8,  // 2-bit register: RAM bank (0x01..=0x03), or ROM bank upper bits (0x20..=0x60, or 0x10..=0x30 in 1MB MBC1 multicart) (?)
     // Can be used to select a RAM Bank in range from $00–$03 (32 KiB ram carts only),
     // OR to specify the upper two bits (bits 5-6) of the ROM Bank number (1 MiB ROM or larger carts only).
     // In 1MB MBC1 multi-carts, this 2-bit register is instead applied to bits 4-5 of the ROM bank number
@@ -35,9 +30,9 @@ pub(crate) struct Mbc1State {
     // If neither ROM nor RAM is large enough, setting this register does nothing.
 }
 
-impl Mbc1State {
+impl Mbc1 {
     #[allow(dead_code)]
-    fn rom_offsets(&self) -> (usize, usize) {
+    pub(crate) fn rom_offsets(&self) -> (usize, usize) {
         let (lower_bits, upper_bits) = if self.is_multicart {
             (self.bank1 & 0x0F, self.bank2 << 4)
         } else {
@@ -56,20 +51,45 @@ impl Mbc1State {
     }
 }
 
+#[allow(dead_code)]
+pub(crate) enum Mbc {
+    None,
+    Mbc1 { mbc: Mbc1 },
+    Mbc2,
+    Mbc3,
+    Mbc5,
+}
+
 #[allow(unused_variables)]
 impl Mbc {
     pub(crate) fn new(data: &[u8]) -> Mbc {
-        let rom_size = data[0x0148] as usize;
-        let ram_size = data[0x0148] as usize;
+        if data.len() < 0x0150 { return Mbc::None; }
 
-        let mbc = match data[0x014] {
-            01 => Mbc::Mbc1 { // TODO
-                state: Mbc1State{
-                    ram_enabled: false,
-                    advram_banking_mode: false,
-                    is_multicart: false,
-                    bank1: 0,
-                    bank2: 0,
+        let rom_size = 32 * (1 << data[0x0148]) as usize; // KiB
+
+        let ram_size = match data[0x0149] as usize { // KiB
+            0 => 0,
+            1 => 2,
+            2 => 8,
+            3 => 32,
+            4 => 128,
+            5 => 64,
+            _ => 0,
+        };
+
+        let cartridge_type = CartridgeType::from_u8(data[0x0147]);
+
+        let mbc = match cartridge_type {
+            CartridgeType::None { .. } => Mbc::None,
+            CartridgeType::Mbc1 { is_multicart, .. } => {
+                Mbc::Mbc1 {
+                    mbc: Mbc1 {
+                        ram_enabled: false,
+                        advram_banking_mode: false,
+                        is_multicart,
+                        bank1: 1,
+                        bank2: 0,
+                    }
                 }
             },
             _ => Mbc::None,

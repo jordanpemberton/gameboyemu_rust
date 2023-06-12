@@ -306,7 +306,7 @@ impl Ppu {
             self.lcd_control.read_from_mem(mmu);
             let obj_enabled = self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8);
             if obj_enabled {
-                let attribute_data = mmu.read(0xFE00, 0xFEA0);
+                let attribute_data = mmu.read_buffer(0xFE00, 0xFEA0);
                 for i in 0..40 {
                     let data = &attribute_data[(i * 4)..(i * 4) + 4];
                     let attr = SpriteAttribute::new(data.try_into().unwrap());
@@ -393,7 +393,7 @@ impl Ppu {
             for attr in self.sprite_attributes {
                 let tile_index = attr.tile_index as usize;
                 let tile_address = tiledata_address + tile_index * 16;
-                let tile_data = mmu.read(tile_address, tile_address + 16);
+                let tile_data = mmu.read_buffer(tile_address, tile_address + 16);
                 let tile = tilemap::read_tile(tile_data.try_into().unwrap());
 
                 let sprite_height = if self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8) { 16 } else { 8 };

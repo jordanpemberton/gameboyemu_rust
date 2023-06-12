@@ -17,7 +17,7 @@ pub(crate) fn fetch_tilemap(mmu: &mut Mmu, tile_addresses: [usize; 32 * 32]) -> 
         for col in 0..32 {
             let address = tile_addresses[row * 32 + col];
 
-            let tile_bytes: [u8; 16] = mmu.read(
+            let tile_bytes: [u8; 16] = mmu.read_buffer(
                 address,
                 address + 16)
                 .try_into().unwrap();
@@ -45,7 +45,7 @@ pub(crate) fn read_tile(tile_bytes: [u8; 16]) -> Tile {
 }
 
 fn fetch_tile_indices(mmu: &mut Mmu, tilemap_address: usize) -> [usize; 32 * 32] {
-    let indices: [usize; 32 * 32] = mmu.read(
+    let indices: [usize; 32 * 32] = mmu.read_buffer(
         tilemap_address,
         tilemap_address + 32 * 32)
         .iter().map(|x| *x as usize)

@@ -2,7 +2,7 @@ use std::{fs, io};
 use std::fs::DirEntry;
 use std::path::PathBuf;
 
-use crate::cartridge::cartridge::{Cartridge, CartridgeOption};
+use crate::cartridge::cartridge::Cartridge;
 use crate::console::console::Console;
 use crate::console::disassembler;
 use crate::console::cpu_registers::CpuRegisters;
@@ -80,14 +80,16 @@ fn disassemble_rom(filepath: &str) {
 
 fn run_rom(rom_filepath: &str, skip_boot: bool, debug_enabled: bool, cpu_debug_print: bool, debug_mode_display: bool) {
     let window_scale = if debug_mode_display { 4 } else { 7 };
-    let mut gamboy = Console::new("GAMBOY", window_scale, debug_enabled, cpu_debug_print, debug_mode_display);
 
     if rom_filepath.is_empty() {
         disassemble_rom(BOOTROM_FILEPATH);
-        gamboy.run(CartridgeOption::NONE, false);
+        let mut gamboy = Console::new("GAMBOY", window_scale, debug_enabled, cpu_debug_print, debug_mode_display, None);
+        gamboy.run(false);
     } else {
         disassemble_rom(rom_filepath);
-        gamboy.run(CartridgeOption::SOME(Cartridge::new(rom_filepath.as_ref())), skip_boot);
+        let cartridge = Cartridge::new(rom_filepath.as_ref());
+        let mut gamboy = Console::new("GAMBOY", window_scale, debug_enabled, cpu_debug_print, debug_mode_display, Some(cartridge));
+        gamboy.run(skip_boot);
     }
 }
 

@@ -14,7 +14,10 @@
     CARTRIDGE_ROM_BANK_SIZE: u16 = 0x4000;
 */
 
+use std::cmp::min;
 use std::fs::read;
+use crate::cartridge::cartridge::Cartridge;
+use crate::cartridge::mbc::Mbc;
 use crate::console::timer::DIV_REG_ADDRESS;
 
 const BOOTROM_FILEPATH: &str = "src/console/DMG_ROM.bin";
@@ -27,57 +30,47 @@ pub(crate) enum Endianness {
 }
 
 pub(crate) struct Mmu {
+    is_booting: bool,
     rom: [u8; 0x8000 as usize],
     ram: [u8; 0x8000 as usize],
+    cartridge: Option<Cartridge>,
 }
 
 impl Mmu {
-    pub(crate) fn new() -> Mmu {
+    pub(crate) fn new(cartridge: Option<Cartridge>) -> Mmu {
         let mut mmu = Mmu {
+            is_booting: true,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
+            cartridge,
         };
         mmu.load_bootrom();
         mmu
     }
 
-    pub(crate) fn read(&self, begin: usize, end: usize) -> Vec<u8> {
-        if begin >= end {
-            panic!("invalid range of {:#06X}..{:#06X}", begin, end);
-        }
-
-        if begin < 0x8000 {
-            if end > 0x8000 {
-                panic!("invalid range of {:#06X}..{:#06X}", begin, end);
-            }
-            self.rom[begin..end].to_vec()
-        } else {
-            if end - 0x8000 > 0x8000 {
-                panic!("invalid range of {:#06X}..{:#06X}", begin, end);
-            }
-            self.ram[begin-0x8000..end-0x8000].to_vec()
-        }
-    }
-
     pub(crate) fn read_8(&self, address: u16) -> u8 {
-        if address < 0x8000 {
-            self.rom[address as usize]
-        } else {
-            self.ram[(address - 0x8000) as usize]
+        match address {
+            0x0000..=0x3FFF => if self.is_booting {
+                self.rom[address as usize]
+            } else if let Some(cartridge) = &self.cartridge {
+                cartridge.read_8_0000_3fff(address)
+            } else {
+                self.rom[address as usize]
+            }
+
+            0x4000..=0x7FFF => if let Some(cartridge) = &self.cartridge {
+                cartridge.read_8_4000_7fff(address)
+            } else {
+                self.rom[address as usize]
+            }
+
+            _ => self.ram[(address - 0x8000) as usize]
         }
     }
 
     pub(crate) fn read_16(&self, address: u16, endian: Endianness) -> u16 {
-        let lsb: u8;
-        let msb: u8;
-
-        if address < 0x8000 {
-            lsb = self.rom[address as usize];
-            msb = self.rom[(address + 1) as usize];
-        } else {
-            lsb = self.ram[(address - 0x8000) as usize];
-            msb = self.ram[(address - 0x8000 + 1) as usize];
-        }
+        let lsb: u8 = self.read_8(address);
+        let msb: u8 = self.read_8(address + 1);
 
         match endian {
             Endianness::BIG => (msb as u16) << 8 | lsb as u16,
@@ -85,44 +78,102 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn write(&mut self, data: &[u8], start: usize, mut size: usize) {
-        if size > data.len() {
-            size = data.len();
-        }
-        let mut end = start + size;
-        if start < 0x8000 {
-            if end > 0x8000 {
-                end = 0x8000;
-            }
-            if size > end {
-                size = end;
-            }
-            self.rom[start..end].clone_from_slice(&data[..size]);
-        } else {
-            if end >= 0xFFFF {
-                end = 0xFFFF;
-            }
-            if size > end {
-                size = end;
-            }
-            self.ram[start - 0x8000..end - 0x8000].clone_from_slice(&data[..size - 0x8000]);
+    pub(crate) fn read_buffer(&self, start: usize, end: usize) -> Vec<u8> {
+        match start {
+            0x0000..=0x3FFF => {
+                let end = min(end, 0x3FFF);
 
-            // All writes to timer DIV register reset it to 0
-            if start <= (DIV_REG_ADDRESS as usize) && (DIV_REG_ADDRESS as usize) < end {
-                self.ram[DIV_REG_ADDRESS as usize - 0x8000] = 0;
+                if self.is_booting {
+                    self.rom[start..end].to_vec()
+                } else if let Some(cartridge) = &self.cartridge {
+                    cartridge.read_buffer_0000_3fff(start as u16, end as u16)
+                } else {
+                    self.rom[start..end].to_vec()
+                }
+            }
+
+            0x4000..=0x7FFF => {
+                let end = min(end, 0x7FFF);
+
+                if let Some(cartridge) = &self.cartridge {
+                    cartridge.read_buffer_4000_7fff(start as u16, end as u16)
+                } else {
+                    self.rom[start..end].to_vec()
+                }
+            }
+
+            _ => {
+                let end = min(end, 0xFFFF);
+                self.ram[start - 0x8000..end - 0x8000].to_vec()
             }
         }
     }
 
     pub(crate) fn write_8(&mut self, address: u16, value: u8) {
-        if address < 0x8000 {
-            self.rom[address as usize] = value;
-        } else {
-            self.ram[(address - 0x8000) as usize] = if address == DIV_REG_ADDRESS { // All writes to timer DIV register reset it to 0
-                0
-            } else {
-                value
-            };
+        match address {
+            0x0000..=0x1FFF => {
+                if let Some(cartridge) = &self.cartridge {
+                    match &cartridge.mbc {
+                        Mbc::Mbc1 { mut mbc } => {
+                            mbc.ram_enabled = (value & 0b1111) == 0b1010;
+                        }
+                        _ => { }
+                    }
+                } else { }
+            }
+
+            0x2000..=0x3FFF => {
+                if let Some(cartridge) = &self.cartridge {
+                    match &cartridge.mbc {
+                        Mbc::Mbc1 { mut mbc } => {
+                            mbc.bank1 = if value & 0b0001_1111 == 0 {
+                                0b0_0001
+                            } else {
+                                value & 0b0001_1111
+                            };
+                        }
+                        _ => { }
+                    }
+                } else { }
+            }
+
+            0x4000..=0x5FFF => {
+                if let Some(cartridge) = &self.cartridge {
+                    match &cartridge.mbc {
+                        Mbc::Mbc1 { mut mbc } => {
+                            mbc.bank2 = value & 0b0011;
+                        }
+                        _ => { }
+                    }
+                } else {
+                    self.rom[address as usize] = value;
+                }
+            }
+
+            0x6000..=0x7FFF => {
+                if let Some(cartridge) = &self.cartridge {
+                    match &cartridge.mbc {
+                        Mbc::Mbc1 { mut mbc } => {
+                            mbc.advram_banking_mode = (value & 1) == 1;
+                        }
+                        _ => { }
+                    }
+                } else {
+                    self.rom[address as usize] = value;
+                }
+            }
+
+            0x8000..=0xFFFF => {
+                self.ram[(address - 0x8000) as usize] = if address == DIV_REG_ADDRESS { // All writes to timer DIV register reset it to 0
+                    0
+                } else {
+                    value
+                };
+
+                if self.is_booting && address == 0xFF50 && (value & 1) == 1 {
+                    self.is_booting = false;
+                }
+            }
         }
     }
 
@@ -140,8 +191,35 @@ impl Mmu {
         self.write_8(address + 1, b);
     }
 
+    pub(crate) fn write_buffer(&mut self, data: &[u8], start: usize, size: usize) {
+        let size = min(size, data.len());
+        let end = start + size;
+
+        if let Some(_) = &self.cartridge {
+            self.write_8(start as u16, data[0]);
+        } else {
+            match start {
+                0x0000..=0x3FFF => { }
+                0x4000..=0x7FFF => {
+                    let end = min(end, 0x8000);
+                    self.rom[start..end].clone_from_slice(&data[..end - start]);
+                }
+                0x8000..=0xFFFF => {
+                    let end = min(end, 0x10000);
+                    self.ram[start - 0x8000..end - 0x8000].clone_from_slice(&data[..end - start - 0x8000]);
+
+                    // All writes to timer DIV register reset it to 0
+                    if start <= (DIV_REG_ADDRESS as usize) && (DIV_REG_ADDRESS as usize) < end {
+                        self.ram[DIV_REG_ADDRESS as usize - 0x8000] = 0;
+                    }
+                }
+                _ => { }
+            }
+        }
+    }
+
     fn load_bootrom(&mut self) {
         let bootrom = read(BOOTROM_FILEPATH).unwrap();
-        self.write(bootrom.as_ref(), 0, bootrom.len());
+        self.write_buffer(bootrom.as_ref(), 0, bootrom.len());
     }
 }
