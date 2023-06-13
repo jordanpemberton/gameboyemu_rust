@@ -2658,9 +2658,8 @@ impl Instruction {
     /// 0 0 H C
     fn op_00e8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         // SP = SP +/- dd ; dd is 8-bit signed number
-        let sp = Instruction::get_source_value_16(cpu, mmu, args, Src::SP);
-        let d8 = Instruction::get_source_value_8(cpu, mmu, args, Src::D8);
-        let signed = alu::signed_8(d8);
+        let sp = cpu.registers.get_word(CpuRegIndex::SP);
+        let signed = alu::signed_8(args[0]);
 
         let (result, flags) = if signed < 0 { // TODO fix E8 and F8 (sub?)
             let b = (-signed) as u16;
@@ -2785,10 +2784,10 @@ impl Instruction {
     /// HL = SP +/- dd ; dd is 8-bit signed number
     fn op_00f8(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let sp = cpu.registers.get_word(CpuRegIndex::SP);
-        let b = alu::signed_8(args[0]);
+        let signed = alu::signed_8(args[0]);
 
-        let (result, flags) = if b < 0 { // TODO fix E8 and F8 (sub?)
-            let b = (-b) as u16;
+        let (result, flags) = if signed < 0 { // TODO fix E8 and F8 (sub?)
+            let b = (-signed) as u16;
             let half_carry = (sp & 0x0F) < (b & 0x0F);
             let carry = (sp & 0xFF) < (b & 0xFF);
             let result = sp.wrapping_sub(b);
@@ -2799,7 +2798,7 @@ impl Instruction {
                 carry,
             })
         } else {
-            let b = b as u16;
+            let b = signed as u16;
             let half_carry = (sp & 0x0F) + (b & 0x0F) > 0x0F;
             let carry = (sp & 0xFF) + (b & 0xFF) > 0x00FF;
             let result = sp.wrapping_add(b);

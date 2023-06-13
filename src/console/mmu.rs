@@ -14,7 +14,7 @@
     CARTRIDGE_ROM_BANK_SIZE: u16 = 0x4000;
 */
 
-use std::cmp::min;
+use std::cmp::{max, min};
 use std::fs::read;
 use crate::cartridge::cartridge::Cartridge;
 use crate::cartridge::mbc::Mbc;
@@ -36,6 +36,7 @@ pub(crate) struct Mmu {
     cartridge: Option<Cartridge>,
 }
 
+// TODO -- refactor, eliminate duplicated code.
 impl Mmu {
     pub(crate) fn new(cartridge: Option<Cartridge>) -> Mmu {
         let mut mmu = Mmu {
@@ -110,6 +111,7 @@ impl Mmu {
                 }
             }
 
+            // TODO banks!
             0x4000..=0x7FFF => {
                 t = min(end, 0x8000);
 
@@ -121,7 +123,24 @@ impl Mmu {
                 }
             }
 
+            // TODO banks
             _ => {
+                // let ram_offset = if let Some(cartridge) = &self.cartridge {
+                //     match &cartridge.mbc {
+                //         Mbc::Mbc1 { mbc } => {
+                //             mbc.ram_offset()
+                //         }
+                //         _ => 0
+                //     }
+                // } else {
+                //     0
+                // };
+
+                // let start = (ram_offset | ((start - 0x8000) & 0x1FFF)) & (self.ram.len() - 1);
+                // t = (ram_offset | ((end - 0x8000) & 0x1FFF)) & (self.ram.len() - 1);
+
+                // result[0..t - start].clone_from_slice(&self.ram[start..t]);
+
                 t = min(end, 0x10000);
                 result[0..t - start].clone_from_slice(&self.ram[start - 0x8000..t - 0x8000]);
             }
@@ -148,11 +167,7 @@ impl Mmu {
                 if let Some(cartridge) = &self.cartridge {
                     match &cartridge.mbc {
                         Mbc::Mbc1 { mut mbc } => {
-                            mbc.bank1 = if value & 0b0001_1111 == 0 {
-                                0b0_0001
-                            } else {
-                                value & 0b0001_1111
-                            };
+                            mbc.bank1 = max(value & 0b0001_1111, 1);
                         }
                         _ => { }
                     }
@@ -185,8 +200,23 @@ impl Mmu {
                 }
             }
 
+            // TODO only write to wrtie-able RAM
             0x8000..=0xFFFF => {
-                self.ram[(address - 0x8000) as usize] = if address == DIV_REG_ADDRESS { // All writes to timer DIV register reset it to 0
+                let ram_offset = if let Some(cartridge) = &self.cartridge {
+                    match &cartridge.mbc {
+                        Mbc::Mbc1 { mbc } => {
+                            mbc.ram_offset()
+                        }
+                        _ => 0
+                    }
+                } else {
+                    0
+                };
+
+                let adj_address = ram_offset | ((address as usize - 0x8000) & (self.ram.len() - 1));
+                // let adj_address = self.ram_offset | (addr as usize & 0x1fff)) & (self.ram.len() - 1); // How is this mask 0x1FFF supposed to work?
+
+                self.ram[adj_address] = if address == DIV_REG_ADDRESS { // All writes to timer DIV register reset it to 0
                     0
                 } else {
                     value

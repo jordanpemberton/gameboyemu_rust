@@ -333,6 +333,7 @@ impl Ppu {
     #[allow(dead_code)]
     fn draw_background(&mut self, mmu: &mut Mmu) {
         self.lcd_control.read_from_mem(mmu);
+
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
             let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8);
 

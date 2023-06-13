@@ -20,18 +20,17 @@ pub(crate) struct Mbc1 {
     pub(crate) is_multicart: bool,
 
     pub(crate) bank1: u8,  // 5-bit register: ROM bank (0x01..=0x1E)
-    // If this register is set to $00, it behaves as if it is set to $01.
+    // If this register is set to $00, it behaves as if it is set to $01. TODO Add code to do this
 
     pub(crate) bank2: u8,  // 2-bit register: RAM bank (0x01..=0x03), or ROM bank upper bits (0x20..=0x60, or 0x10..=0x30 in 1MB MBC1 multicart) (?)
     // Can be used to select a RAM Bank in range from $00–$03 (32 KiB ram carts only),
     // OR to specify the upper two bits (bits 5-6) of the ROM Bank number (1 MiB ROM or larger carts only).
+    // If neither ROM nor RAM is large enough, setting this register does nothing.
     // In 1MB MBC1 multi-carts, this 2-bit register is instead applied to bits 4-5 of the ROM bank number
     // and the top bit of the main 5-bit main ROM banking register is ignored.
-    // If neither ROM nor RAM is large enough, setting this register does nothing.
 }
 
 impl Mbc1 {
-    #[allow(dead_code)]
     pub(crate) fn rom_offsets(&self) -> (usize, usize) {
         let (lower_bits, upper_bits) = if self.is_multicart {
             (self.bank1 & 0x0F, self.bank2 << 4)
@@ -48,6 +47,16 @@ impl Mbc1 {
         };
 
         (ROM_BANK_SIZE * lower_bank as usize, ROM_BANK_SIZE * upper_bank as usize)
+    }
+
+    pub(crate) fn ram_offset(&self) -> usize {
+        let bank = if self.advram_banking_mode {
+            self.bank2 as usize
+        } else {
+            0
+        };
+
+        RAM_BANK_SIZE * bank
     }
 }
 
