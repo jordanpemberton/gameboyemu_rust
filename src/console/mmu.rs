@@ -55,13 +55,13 @@ impl Mmu {
                 self.rom[address as usize]
             }
 
-            0x0000..=0x3FFF => if let Some(cartridge) = &self.cartridge {
+            0x0000..=0x3FFF => if let Some(ref cartridge) = self.cartridge {
                 cartridge.read_8_0000_3fff(address)
             } else {
                 self.rom[address as usize]
             }
 
-            0x4000..=0x7FFF => if let Some(cartridge) = &self.cartridge {
+            0x4000..=0x7FFF => if let Some(ref cartridge) = self.cartridge {
                 cartridge.read_8_4000_7fff(address)
             } else {
                 self.rom[address as usize]
@@ -93,7 +93,7 @@ impl Mmu {
 
                     if end > 0x0100 {
                         t = min(end, 0x4000);
-                        if let Some(cartridge) = &self.cartridge {
+                        if let Some(ref cartridge) = self.cartridge {
                             let data = cartridge.read_buffer_0000_3fff(0x0100 as u16,  t as u16);
                             result[0x0100..t].clone_from_slice(&data[..]);
                         } else {
@@ -102,7 +102,7 @@ impl Mmu {
                     }
                 } else {
                     t = min(end, 0x4000);
-                    if let Some(cartridge) = &self.cartridge {
+                    if let Some(ref cartridge) = self.cartridge {
                         let data = cartridge.read_buffer_0000_3fff(start as u16, t as u16);
                         result[0..t - start].clone_from_slice(&data[..]);
                     } else {
@@ -115,7 +115,7 @@ impl Mmu {
             0x4000..=0x7FFF => {
                 t = min(end, 0x8000);
 
-                if let Some(cartridge) = &self.cartridge {
+                if let Some(ref cartridge) = self.cartridge {
                     let data = cartridge.read_buffer_4000_7fff(start as u16, t as u16);
                     result[0..t - start].clone_from_slice(&data[..]);
                 } else {
@@ -125,8 +125,8 @@ impl Mmu {
 
             // TODO banks
             _ => {
-                // let ram_offset = if let Some(cartridge) = &self.cartridge {
-                //     match &cartridge.mbc {
+                // let ram_offset = if let Some(ref cartridge) = self.cartridge {
+                //     match cartridge.mbc {
                 //         Mbc::Mbc1 { mbc } => {
                 //             mbc.ram_offset()
                 //         }
@@ -153,9 +153,9 @@ impl Mmu {
     pub(crate) fn write_8(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x1FFF => {
-                if let Some(cartridge) = &self.cartridge {
-                    match &cartridge.mbc {
-                        Mbc::Mbc1 { mut mbc } => {
+                if let Some(ref mut cartridge) = self.cartridge {
+                    match cartridge.mbc {
+                        Mbc::Mbc1 { ref mut mbc } => {
                             mbc.ram_enabled = (value & 0b1111) == 0b1010;
                         }
                         _ => { }
@@ -164,9 +164,9 @@ impl Mmu {
             }
 
             0x2000..=0x3FFF => {
-                if let Some(cartridge) = &self.cartridge {
-                    match &cartridge.mbc {
-                        Mbc::Mbc1 { mut mbc } => {
+                if let Some(ref mut cartridge) = self.cartridge {
+                    match cartridge.mbc {
+                        Mbc::Mbc1 { ref mut mbc } => {
                             mbc.bank1 = max(value & 0b0001_1111, 1);
                         }
                         _ => { }
@@ -175,9 +175,9 @@ impl Mmu {
             }
 
             0x4000..=0x5FFF => {
-                if let Some(cartridge) = &self.cartridge {
-                    match &cartridge.mbc {
-                        Mbc::Mbc1 { mut mbc } => {
+                if let Some(ref mut cartridge) = self.cartridge {
+                    match cartridge.mbc {
+                        Mbc::Mbc1 { ref mut mbc } => {
                             mbc.bank2 = value & 0b0011;
                         }
                         _ => { }
@@ -188,9 +188,9 @@ impl Mmu {
             }
 
             0x6000..=0x7FFF => {
-                if let Some(cartridge) = &self.cartridge {
-                    match &cartridge.mbc {
-                        Mbc::Mbc1 { mut mbc } => {
+                if let Some(ref mut cartridge) = self.cartridge {
+                    match cartridge.mbc {
+                        Mbc::Mbc1 { ref mut mbc } => {
                             mbc.advram_banking_mode = (value & 1) == 1;
                         }
                         _ => { }
@@ -202,9 +202,9 @@ impl Mmu {
 
             // TODO only write to wrtie-able RAM
             0x8000..=0xFFFF => {
-                let ram_offset = if let Some(cartridge) = &self.cartridge {
-                    match &cartridge.mbc {
-                        Mbc::Mbc1 { mbc } => {
+                let ram_offset = if let Some(ref mut cartridge) = self.cartridge {
+                    match cartridge.mbc {
+                        Mbc::Mbc1 { ref mut mbc } => {
                             mbc.ram_offset()
                         }
                         _ => 0

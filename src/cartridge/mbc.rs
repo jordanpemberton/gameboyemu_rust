@@ -1,8 +1,6 @@
 use crate::cartridge::cartridge_header::CartridgeType;
 
-#[allow(dead_code)]
 pub(crate) const ROM_BANK_SIZE: usize = 0x4000;
-#[allow(dead_code)]
 pub(crate) const RAM_BANK_SIZE: usize = 0x2000;
 
 #[allow(dead_code)]
@@ -32,19 +30,14 @@ pub(crate) struct Mbc1 {
 
 impl Mbc1 {
     pub(crate) fn rom_offsets(&self) -> (usize, usize) {
-        let (lower_bits, upper_bits) = if self.is_multicart {
-            (self.bank1 & 0x0F, self.bank2 << 4)
+        let (upper_bits, lower_bits) = if self.is_multicart {
+            (self.bank2 << 4, self.bank1 & 0x0F)
         } else {
-            (self.bank1, self.bank2 << 5)
+            (self.bank2 << 5, self.bank1)
         };
 
+        let lower_bank = if self.advram_banking_mode { upper_bits } else { 0 };
         let upper_bank = upper_bits | lower_bits;
-
-        let lower_bank = if self.advram_banking_mode {
-            upper_bits
-        } else {
-            0
-        };
 
         (ROM_BANK_SIZE * lower_bank as usize, ROM_BANK_SIZE * upper_bank as usize)
     }
