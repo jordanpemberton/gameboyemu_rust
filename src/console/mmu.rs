@@ -67,7 +67,15 @@ impl Mmu {
                 self.rom[address as usize]
             }
 
-            _ => self.ram[(address - 0x8000) as usize]
+            _ => {
+                let mut result = self.ram[address as usize - 0x8000];
+
+                if address == 0xFF0F {
+                    result |= 0xE0; // top 3 bits of IF register will always return 1s.
+                }
+
+                result
+            }
         }
     }
 
@@ -125,24 +133,12 @@ impl Mmu {
 
             // TODO banks
             _ => {
-                // let ram_offset = if let Some(cartridge) = &self.cartridge {
-                //     match cartridge.mbc {
-                //         Mbc::Mbc1 { mbc } => {
-                //             mbc.ram_offset()
-                //         }
-                //         _ => 0
-                //     }
-                // } else {
-                //     0
-                // };
-
-                // let start = (ram_offset | ((start - 0x8000) & 0x1FFF)) & (self.ram.len() - 1);
-                // t = (ram_offset | ((end - 0x8000) & 0x1FFF)) & (self.ram.len() - 1);
-
-                // result[0..t - start].clone_from_slice(&self.ram[start..t]);
-
                 t = min(end, 0x10000);
                 result[0..t - start].clone_from_slice(&self.ram[start - 0x8000..t - 0x8000]);
+
+                if start >= 0xFF0F && t < 0xFF0F {
+                    result[0xFF0F - 0x8000] |= 0xE0; // top 3 bits of IF register will always return 1s.
+                }
             }
         }
 

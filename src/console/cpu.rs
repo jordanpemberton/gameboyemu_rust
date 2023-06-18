@@ -41,8 +41,8 @@ impl Cpu {
 
         let value = self.interrupts.poll(mmu);
         if value > 0 {
+            self.interrupts.set_ime(false);
             Instruction::call(self, mmu, value as u16);
-            // self.interrupts.set_ime(false); // ?
             16
         } else {
             0

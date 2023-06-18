@@ -30,7 +30,7 @@ impl Cartridge {
             Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
             _ => (0, 0)
         };
-        self.data[(rom_lower | (address as usize & 0x3FFF))]
+        self.data[(rom_lower | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
     }
 
     pub(crate) fn read_buffer_0000_3fff(&self, start: u16, end: u16) -> Vec<u8> {
@@ -41,7 +41,9 @@ impl Cartridge {
             _ => (0, 0)
         };
 
-        self.data[(rom_lower | (start as usize & 0x3FFF))..(rom_lower | (end as usize & 0x3FFF))].to_vec()
+        let s = (rom_lower | (start as usize & 0x3FFF)) & (self.data.len() - 1);
+        let t = (rom_lower | (end as usize & 0x3FFF)) & (self.data.len() - 1);
+        self.data[s..t].to_vec()
     }
 
     pub(crate) fn read_8_4000_7fff(&self, address: u16) -> u8 {
@@ -49,7 +51,7 @@ impl Cartridge {
             Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
             _ => (0, 0x4000) // ?
         };
-        self.data[(rom_upper | (address as usize & 0x3FFF))]
+        self.data[(rom_upper | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
     }
 
     pub(crate) fn read_buffer_4000_7fff(&self, start: u16, end: u16) -> Vec<u8> {
@@ -60,6 +62,9 @@ impl Cartridge {
             _ => (0, 0)
         };
 
-        self.data[(rom_upper | (start as usize & 0x3FFF))..(rom_upper | (end as usize & 0x3FFF))].to_vec()
+
+        let s = (rom_upper | (start as usize & 0x3FFF)) & (self.data.len() - 1);
+        let t = (rom_upper | (end as usize & 0x3FFF)) & (self.data.len() - 1);
+        self.data[s..t].to_vec()
     }
 }

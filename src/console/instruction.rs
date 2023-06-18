@@ -2660,8 +2660,8 @@ impl Instruction {
         // SP = SP +/- dd ; dd is 8-bit signed number
         let sp = cpu.registers.get_word(CpuRegIndex::SP);
         let signed = alu::signed_8(args[0]);
-
-        let (result, flags) = if signed < 0 { // TODO fix E8 and F8 (sub?)
+        
+        let (result, flags) = if signed < 0 {
             let b = (-signed) as u16;
             let half_carry = (sp & 0x0F) < (b & 0x0F);
             let carry = (sp & 0xFF) < (b & 0xFF);
@@ -2786,7 +2786,7 @@ impl Instruction {
         let sp = cpu.registers.get_word(CpuRegIndex::SP);
         let signed = alu::signed_8(args[0]);
 
-        let (result, flags) = if signed < 0 { // TODO fix E8 and F8 (sub?)
+        let (result, flags) = if signed < 0 {
             let b = (-signed) as u16;
             let half_carry = (sp & 0x0F) < (b & 0x0F);
             let carry = (sp & 0xFF) < (b & 0xFF);
