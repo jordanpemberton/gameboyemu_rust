@@ -320,6 +320,7 @@ impl Ppu {
         // TODO implement pixel FIFO correctly
         let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
         if is_last_line {
+            // self.display_tiles_at(mmu, 0x8000, 0, 0); // debug
             self.draw_background(mmu);
             // self.draw_window(mmu);      // TODO
             // self.draw_sprites(mmu);     // TODO
@@ -491,11 +492,5 @@ impl Ppu {
         }
         let background_tilemap = tilemap::fetch_tilemap(mmu, tile_addresses);
         self.lcd.fill_from_tilemap(background_tilemap, scy, scx, &[0, 1, 2, 3]);
-    }
-
-    // For debugging
-    #[allow(dead_code)]
-    fn display_tiles_at_pixel_transfer(&mut self, mmu: &mut Mmu) {
-        self.display_tiles_at(mmu, 0x2000, 0, 0);
     }
 }

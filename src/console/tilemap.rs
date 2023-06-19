@@ -59,11 +59,18 @@ fn fetch_tile_addresses(tile_indices: [usize; 32 * 32], index_mode_8000: bool) -
 
     for i in 0..32 * 32 {
         let tile_index = tile_indices[i] as i32;
-        addresses[i] = if !index_mode_8000 && tile_index < 128 {
-            0x9000 + tile_index * 16
-        } else {
+        addresses[i] = if index_mode_8000 {
             0x8000 + tile_index * 16
+        } else {
+            let tile_index= (tile_index as i8) as i32;
+            0x9000 + (tile_index * 16)
         } as usize;
+
+        // addresses[i] = if !index_mode_8000 && tile_index < 128 {
+        //     0x9000 + tile_index * 16
+        // } else {
+        //     0x8000 + tile_index * 16
+        // } as usize;
     }
 
     addresses
