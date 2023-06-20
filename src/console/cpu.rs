@@ -32,27 +32,26 @@ impl Cpu {
         }
     }
 
-    pub(crate) fn halt(&mut self) {
-        self.is_halted = true;
-    }
-
     pub(crate) fn check_interrupts(&mut self, mmu: &mut Mmu) -> i16 {
-        self.is_halted = false;
-
-        let value = self.interrupts.poll(mmu);
-        if value > 0 {
-            self.interrupts.set_ime(false);
-            Instruction::call(self, mmu, value as u16);
-            16
+        let mut cycles = 0;
+        if !self.interrupts.ime {
+            if self.is_halted && self.interrupts.peek_if_has_requests() {
+                self.is_halted = false;
+            }
         } else {
-            0
+            let value = self.interrupts.poll(mmu);
+            if value > 0 {
+                Instruction::call(self, mmu, value as u16);
+                self.interrupts.ime = false;
+            }
+            cycles = 16;
         }
+        cycles
     }
 
     pub(crate) fn step(&mut self, mmu: &mut Mmu) -> i16 {
         if self.is_halted {
-            // TODO -- un-halt when interrupts
-            0
+            4
         } else {
             let start_pc = self.registers.get_word(CpuRegIndex::PC);
 

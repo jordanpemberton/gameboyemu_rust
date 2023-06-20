@@ -30,7 +30,7 @@ pub(crate) enum InterruptRegBit {
 pub(crate) struct Interrupts {
     pub(crate) enabled: Register,
     pub(crate) requested: Register,
-    ime: bool,
+    pub(crate) ime: bool,
 }
 
 impl Interrupts {
@@ -42,12 +42,12 @@ impl Interrupts {
         }
     }
 
-    pub(crate) fn set_ime(&mut self, enable: bool) {
-        self.ime = enable;
-    }
-
     pub(crate) fn request(&mut self, requesting: InterruptRegBit, mmu: &mut Mmu) {
         self.requested.set_bit(mmu, requesting as u8, true);
+    }
+
+    pub(crate) fn peek_if_has_requests(&self) -> bool {
+        self.requested.value != 0
     }
 
     pub(crate) fn poll(&mut self, mmu: &mut Mmu) -> u8 {

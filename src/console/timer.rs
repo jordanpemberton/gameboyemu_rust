@@ -22,17 +22,17 @@ pub(crate) struct Timer {
 
 impl Timer {
     // returns if timer interrupt requested
-    pub(crate) fn step(&mut self, mmu: &mut Mmu, time: u16) -> bool {
+    pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
         let mut request_interrupt = false;
 
         self.refresh_from_mem(mmu);
 
-        self.inc_div(mmu);
+        self.inc_div(mmu, cycles);
 
         let clocks = self.selected_clocks();
 
-        if self.is_enabled() && time >= clocks {
-            request_interrupt = self.inc_counter(mmu);
+        if self.is_enabled() && self.div as u16 >= clocks {
+            request_interrupt = self.inc_counter(mmu, cycles);
         }
 
         request_interrupt
@@ -46,11 +46,11 @@ impl Timer {
     }
 
     fn is_enabled(&self) -> bool {
-        self.control & 0b0000_0100 == 0b0000_0100
+        self.control & 0b0100 == 0b0100
     }
 
     fn selected_clocks(&self) -> u16 {
-        match self.control & 0b0000_0011 {
+        match self.control & 0b0011 {
             0b00 => 1024,
             0b01 => 16,
             0b10 => 64,
@@ -59,17 +59,17 @@ impl Timer {
         }
     }
 
-    fn inc_div(&mut self, mmu: &mut Mmu) {
+    fn inc_div(&mut self, mmu: &mut Mmu, increment_by: u8) {
         // Increment Div (unless STOP instruction was run)
         // Does anything happen when it overflows /wraps?
-        self.div = self.div.wrapping_add(1);
+        self.div = self.div.wrapping_add(increment_by);
 
         mmu.write_8(DIV_REG_ADDRESS, self.div);
     }
 
-    fn inc_counter(&mut self, mmu: &mut Mmu) -> bool {
+    fn inc_counter(&mut self, mmu: &mut Mmu, increment_by: u8) -> bool {
         // Increment counter by selected clock frequency
-        let (counter, request_interrupt) = self.counter.overflowing_add(1);
+        let (counter, request_interrupt) = self.counter.overflowing_add(increment_by);
 
         // If counter overflows, request interrupt and reset counter = modulo
         self.counter = if request_interrupt {

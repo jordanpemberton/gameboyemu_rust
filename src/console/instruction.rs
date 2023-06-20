@@ -1828,7 +1828,7 @@ impl Instruction {
     /// 1 4
     /// - - - -
     fn op_0076(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        cpu.halt();
+        cpu.is_halted = true;
         self.cycles
     }
 
@@ -2564,7 +2564,7 @@ impl Instruction {
     /// 1 16
     /// - - - -
     fn op_00d9(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        cpu.interrupts.set_ime(true);
+        cpu.interrupts.ime = true;
         self.pop(cpu, mmu, CpuRegIndex::PC)
     }
 
@@ -2751,7 +2751,7 @@ impl Instruction {
     /// 1 4
     /// - - - -
     fn op_00f3(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        cpu.interrupts.set_ime(false);
+        cpu.interrupts.ime = false;
         self.cycles
     }
 
@@ -2833,7 +2833,7 @@ impl Instruction {
     /// 1 4
     /// - - - -
     fn op_00fb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        cpu.interrupts.set_ime(true);
+        cpu.interrupts.ime = true;
         self.cycles
     }
 

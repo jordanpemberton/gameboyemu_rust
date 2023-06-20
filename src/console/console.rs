@@ -97,7 +97,8 @@ impl Console {
         }
     }
 
-    fn debug_print(&mut self) {
+    #[allow(dead_code)]
+    fn debug_print_screen(&mut self) {
         match self.debugger {
             Some(ref mut debugger) => debugger.print_screen_to_stdout(&self.ppu),
             None => {}
@@ -151,35 +152,32 @@ impl Console {
     }
 
     fn main_loop(&mut self) {
-        // TEMP REMOVE to begin paused and have control over start.
-        // self.paused_for_debugger = true;
-
+        const FFS: u64 = 60;
+        let update_duration = Duration::from_millis(1000 / FFS);
         let mut cycles_this_update: u32 = 0;
         let mut total_cycles: u128 = 0;
         let mut total_updates: u128 = 0;
-
-        const FFS: u64 = 60;
-        let update_duration = Duration::from_millis(1000 / FFS);
         let mut next_update_time = SystemTime::now().add(update_duration);
+
         loop {
             while cycles_this_update < CYCLES_PER_REFRESH - 4 && SystemTime::now() < next_update_time {
                 if self.paused_for_debugger {
                     cycles_this_update += 4; // keep ticking when paused
                 } else {
                     let mut cycles = self.cpu.step(&mut self.mmu);
+
                     if cycles < 0 {
-                        self.debug_print();
+                        // self.debug_print_screen();
                         self.debug_peek();
                         panic!("Console step attempt failed with status {} at address {:#06X}.",
                             cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
                     }
 
-                    cycles += self.cpu.check_interrupts(&mut self.mmu); // TODO implement interrupts
+                    cycles += self.cpu.check_interrupts(&mut self.mmu);
 
                     self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 
-
-                    if self.timer.step(&mut self.mmu, cycles as u16) {
+                    if self.timer.step(&mut self.mmu, cycles as u8) {
                         self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
                     }
 
@@ -190,7 +188,7 @@ impl Console {
             if SystemTime::now() >= next_update_time {
                 self.display.draw(&mut self.ppu);
                 if !self.poll() {
-                    self.debug_print();
+                    // self.debug_print_screen();
                     self.debug_peek();
                     break;
                 }
@@ -202,7 +200,7 @@ impl Console {
         }
 
         self.average_cycles_per_update = total_cycles / total_updates;
-        self.debug_print();
+        // self.debug_print_screen();
         self.debug_peek();
     }
 }

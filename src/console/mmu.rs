@@ -20,7 +20,7 @@ use crate::cartridge::cartridge::Cartridge;
 use crate::cartridge::mbc::Mbc;
 use crate::console::timer::DIV_REG_ADDRESS;
 
-const BOOTROM_FILEPATH: &str = "src/console/DMG_ROM.bin";
+const BOOTROM_FILEPATH: &str = "roms/bootrom/DMG_ROM.bin";
 
 #[allow(dead_code)]
 #[derive(PartialEq)]
@@ -152,7 +152,7 @@ impl Mmu {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
                         Mbc::Mbc1 { mbc } => {
-                            mbc.ram_enabled = (value & 0b1111) == 0b1010;
+                            mbc.ram_enabled = (value & 0x0F) == 0x0A;
                         }
                         _ => { }
                     }
