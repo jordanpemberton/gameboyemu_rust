@@ -317,16 +317,63 @@ impl Ppu {
     }
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
-        // TODO implement pixel FIFO correctly
-        let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
-        if is_last_line {
-            // self.display_tiles_at(mmu, 0x8000, 0, 0); // debug
-            self.draw_background(mmu);
-            // self.draw_window(mmu);      // TODO
-            // self.draw_sprites(mmu);     // TODO
+        self.draw_background_line(mmu);
 
+        // let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::PixelTransfer as usize].1 - 1;
+        // if is_last_line {
+        //     // self.display_tiles_at(mmu, 0x8000, 0, 0); // debug
+        //     self.draw_background(mmu);
+        //     // self.draw_window(mmu);      // TODO
+        //     // self.draw_sprites(mmu);     // TODO
+        //
             if self.in_debug_mode {
                 self.draw_lcd_border();
+            }
+        // }
+    }
+
+    #[allow(dead_code)]
+    fn draw_background_line(&mut self, mmu: &mut Mmu) {
+        self.lcd_control.read_from_mem(mmu);
+
+        if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
+            let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8);
+            let background_tilemap_address = if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundTilemapIsAt9C00 as u8) {
+                0x9C00
+            } else {
+                0x9800
+            };
+
+            let lcd_row = if self.in_debug_mode { self.ly } else { self.ly.wrapping_sub(self.scy) } as usize;
+            let lcd_col_offset = if self.in_debug_mode { 0 } else { self.scx } as usize;
+            let tilemap_row = (self.ly / 8) as usize;
+            let tile_row = (self.ly % 8) as usize;
+
+            let palette = &[0, 1, 2, 3]; // TODO palettes
+            if lcd_row < self.lcd.height {
+                for lcd_col in 0..self.lcd.width {
+                    let x = (lcd_col as u8).wrapping_sub(lcd_col_offset as u8) as usize;
+                    let tilemap_col = (x / 8) as usize;
+                    let tile_col = (x % 8) as usize;
+
+                    let tile_index_address = ((tilemap_row * 32 + tilemap_col) | background_tilemap_address);
+                    let tile_index = mmu.read_8(tile_index_address as u16) as i32;
+                    let mut tile_address = if index_mode_8000 {
+                        0x8000 + tile_index * 16
+                    } else {
+                        let tile_index= (tile_index as i8) as i32; // signed
+                        0x9000 + tile_index * 16
+                    } as usize;
+                    tile_address += tile_row * 2;
+                    let tile_byte1 = mmu.read_8(tile_address as u16);
+                    let tile_byte2 = mmu.read_8((tile_address + 1) as u16);
+
+                    let low = ((tile_byte1 << tile_col) >> 7) << 1;
+                    let high = (tile_byte2 << tile_col) >> 7;
+                    let color = high + low;
+
+                    self.lcd.data[lcd_row][lcd_col] = palette[color as usize];
+                }
             }
         }
     }
