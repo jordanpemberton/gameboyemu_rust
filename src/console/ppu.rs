@@ -328,7 +328,7 @@ impl Ppu {
         // self.display_tiles_at(mmu, 0x8000, 0, 0); // debug
 
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
-            self.fill_lcd_row(mmu, DrawMode::Background);
+            // self.fill_lcd_row(mmu, DrawMode::Background);
         }
 
         let is_dmg = true;  // TODO
@@ -339,6 +339,7 @@ impl Ppu {
         };
         if window_enabled {
             self.fill_lcd_row(mmu, DrawMode::Window);
+            // self.fill_lcd_row_window(mmu);
         }
 
         // self.draw_sprites(mmu);     // TODO
@@ -362,12 +363,12 @@ impl Ppu {
             0x9800
         };
 
-        let (y_offset, x_offset, starting_x) = if self.in_debug_mode {
-            (0, 0, 0)
+        let (y_offset, x_offset) = if self.in_debug_mode {
+            (0, 0)
         } else {
             match mode {
-                DrawMode::Window => (self.wy, self.scx, self.wx.wrapping_sub(7)),
-                DrawMode::Background | _ => (self.scy, self.scx, 0),
+                DrawMode::Window => (self.wy, self.scx.wrapping_sub(7)),
+                DrawMode::Background | _ => (self.scy, self.scx),
             }
         };
 
@@ -377,10 +378,10 @@ impl Ppu {
         let palette = &[0, 1, 2, 3]; // TODO palettes
 
         if lcd_row < self.lcd.height {
-            for lcd_col in starting_x as usize..self.lcd.width {
-                let x = (lcd_col as u8).wrapping_sub(x_offset as u8) as usize;
-                let tilemap_col = (x / 8) as usize;
-                let tile_col = (x % 8) as usize;
+            for x in 0..self.lcd.width {
+                let lcd_col = (x as u8).wrapping_sub(x_offset as u8) as usize;
+                let tilemap_col = (lcd_col / 8) as usize;
+                let tile_col = (lcd_col % 8) as usize;
 
                 let tile_index_address = (tilemap_row * 32 + tilemap_col) | background_tilemap_address;
                 let tile_index = mmu.read_8(tile_index_address as u16) as i32;
