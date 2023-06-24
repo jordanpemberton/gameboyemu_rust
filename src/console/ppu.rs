@@ -217,9 +217,8 @@ impl Ppu {
             }
             StatMode::PixelTransfer => {
                 if self.clocks < t {
-                    // TODO FIFO
-                } else {
                     self.pixel_transfer(mmu);
+                } else {
                     self.clocks = 0;
                     self.set_stat_mode(mmu, StatMode::HBlank);
                     if self.lcd_status.check_bit(mmu, LcdStatRegBit::HBlankInterruptEnabled as u8) {
@@ -339,8 +338,7 @@ impl Ppu {
             self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowEnabled as u8)
         };
         if window_enabled {
-            // self.draw_window(mmu);
-            self.fill_lcd_row_window(mmu);
+            self.fill_lcd_row(mmu, DrawMode::Window);
         }
 
         // self.draw_sprites(mmu);     // TODO
@@ -368,7 +366,7 @@ impl Ppu {
             (0, 0, 0)
         } else {
             match mode {
-                DrawMode::Window => (self.wy, self.scx, self.wx),
+                DrawMode::Window => (self.wy, self.scx, self.wx.wrapping_sub(7)),
                 DrawMode::Background | _ => (self.scy, self.scx, 0),
             }
         };
@@ -379,20 +377,22 @@ impl Ppu {
         let palette = &[0, 1, 2, 3]; // TODO palettes
 
         if lcd_row < self.lcd.height {
-            for lcd_col in (starting_x as usize)..self.lcd.width {
+            for lcd_col in starting_x as usize..self.lcd.width {
                 let x = (lcd_col as u8).wrapping_sub(x_offset as u8) as usize;
                 let tilemap_col = (x / 8) as usize;
                 let tile_col = (x % 8) as usize;
 
                 let tile_index_address = (tilemap_row * 32 + tilemap_col) | background_tilemap_address;
                 let tile_index = mmu.read_8(tile_index_address as u16) as i32;
+
                 let mut tile_address = if index_mode_8000 {
                     0x8000 + tile_index * 16
                 } else {
-                    let tile_index= (tile_index as i8) as i32; // signed
+                    let tile_index = (tile_index as i8) as i32; // signed
                     0x9000 + tile_index * 16
                 } as usize;
                 tile_address += tile_row * 2;
+
                 let tile_byte1 = mmu.read_8(tile_address as u16);
                 let tile_byte2 = mmu.read_8((tile_address + 1) as u16);
 
@@ -401,7 +401,11 @@ impl Ppu {
                 let color = high + low;
 
                 if mode == DrawMode::Background || color > 0 { // TODO priority, transparency
-                    self.lcd.data[lcd_row][lcd_col] = palette[color as usize];
+                    self.lcd.data[lcd_row][lcd_col] = palette[color as usize] + match mode {
+                        DrawMode::Background => 0,
+                        DrawMode::Window => 8,
+                        DrawMode::Sprites => 16,
+                    }
                 }
             }
         }
@@ -423,7 +427,7 @@ impl Ppu {
 
         let palette = &[0, 1, 2, 3]; // TODO palettes
         if lcd_row < self.lcd.height {
-            for lcd_col in (window_x as usize)..self.lcd.width {
+            for lcd_col in window_x as usize..self.lcd.width {
                 let x = (lcd_col as u8).wrapping_sub(lcd_col_offset as u8) as usize;
                 let tilemap_col = (x / 8) as usize;
                 let tile_col = (x % 8) as usize;
@@ -543,7 +547,7 @@ impl Ppu {
         let x0 = self.scx as usize;
         let x1 = self.scx.wrapping_add(160 as u8) as usize;
 
-        if x1 > x0 {
+        if x0 <= x1 {
             for x in x0..x1 {
                 self.lcd.data[y0][x] = DEBUG_COLOR_I;
                 self.lcd.data[y1 - 1][x] = DEBUG_COLOR_I;
@@ -559,8 +563,7 @@ impl Ppu {
             }
         }
 
-
-        if y1 > y0 {
+        if y0 <= y1 {
             for y in y0..y1 {
                 self.lcd.data[y][x0] = DEBUG_COLOR_I;
                 self.lcd.data[y][x1 - 1] = DEBUG_COLOR_I;
