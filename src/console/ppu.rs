@@ -339,12 +339,25 @@ impl Ppu {
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
         self.refresh_from_mem(mmu);
 
-        // self.display_tiles_at(mmu, 0x3FFE, 0, 0); // debug
+        // self.display_tiles_at(mmu, 0x8000, 0, 0); // debug
+        // self.display_tiles_from_indices_at(mmu, false, false, 0, 0); // not working but not sure why
 
+        self.draw_background_line(mmu);
+        self.draw_window_line(mmu);
+        // self.draw_sprites(mmu);     // TODO - rewrite oam draw
+
+        if self.in_debug_mode {
+            self.draw_lcd_border();
+        }
+    }
+
+    fn draw_background_line(&mut self, mmu: &mut Mmu) {
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
             self.fill_lcd_row(mmu, DrawMode::Background);
         }
+    }
 
+    fn draw_window_line(&mut self, mmu: &mut Mmu) {
         let is_dmg = true;  // TODO
         let window_enabled = if is_dmg {
             self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8)
@@ -354,12 +367,10 @@ impl Ppu {
         if window_enabled {
             self.fill_lcd_row(mmu, DrawMode::Window);
         }
+    }
 
-        self.draw_sprites(mmu);     // TODO - rewrite oam draw
-
-        if self.in_debug_mode {
-            self.draw_lcd_border();
-        }
+    fn draw_sprites_line(&mut self, mmu: &mut Mmu) {
+        // TODO
     }
 
     fn fill_lcd_row(&mut self, mmu: &mut Mmu, mode: DrawMode) {
@@ -400,7 +411,7 @@ impl Ppu {
                 let tilemap_col = (lcd_col / 8) as usize;
                 let tile_col = (lcd_col % 8) as usize;
 
-                let tile_index_address = (tilemap_row * 32 + tilemap_col) | background_tilemap_address;
+                let tile_index_address = (tilemap_row * 32 + tilemap_col) + background_tilemap_address;
                 let tile_index = mmu.read_8(tile_index_address as u16) as i32;
 
                 let mut tile_address = if index_mode_8000 {
@@ -524,12 +535,40 @@ impl Ppu {
 
     // For debugging
     #[allow(dead_code)]
-    pub(crate) fn display_tiles_at(&mut self, mmu: &mut Mmu, tilemap_address: usize, scy: u8, scx: u8) {
+    pub(crate) fn display_tiles_at(&mut self, mmu: &mut Mmu, tiledata_address: usize, scy: u8, scx: u8) {
         let mut tile_addresses = [0; 32 * 32];
         for i in 0..32 * 32 {
-            tile_addresses[i] = tilemap_address + 16 * i;
+            tile_addresses[i] = tiledata_address + 16 * i;
         }
         let background_tilemap = tilemap::fetch_tilemap(mmu, tile_addresses);
         self.lcd.fill_from_tilemap(background_tilemap, scy, scx, &[0, 1, 2, 3]);
+    }
+
+    pub(crate) fn display_tiles_from_indices_at(&mut self, mmu: &mut Mmu, tilemap_at_9c00: bool, index_mode_8000: bool, scy: u8, scx: u8) {
+        let tilemap_address = if tilemap_at_9c00 {
+            0x9C00
+        } else {
+            0x9800
+        };
+
+        let mut tilemap: TileMap = [[ [[0; 8]; 8]; 32]; 32];
+
+        for i in 0..32 * 32 {
+            let tile_index = mmu.read_8((tilemap_address + i) as u16) as i32;
+            let tile_address = if index_mode_8000 {
+                0x8000 + tile_index * 16
+            } else {
+                let tile_index = (tile_index as i8) as i32; // signed
+                0x9000 + tile_index * 16
+            } as usize;
+
+            let tile_bytes: [u8; 16] = mmu.read_buffer(tile_address, tile_address + 16)
+                .try_into().unwrap();
+
+            let tile = tilemap::read_tile(tile_bytes);
+            tilemap[i / 32][i % 32] = tile;
+        }
+
+        self.lcd.fill_from_tilemap(tilemap, scy, scx, &[0, 1, 2, 3]);
     }
 }
