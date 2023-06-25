@@ -376,12 +376,15 @@ impl Ppu {
             0x9800
         };
 
-        let (y_offset, x_offset) = if self.in_debug_mode {
-            (0, 0)
+        let (y_offset, x_offset, x_start) = if self.in_debug_mode {
+            match mode {
+                DrawMode::Window => (self.wy, 0, self.wx.wrapping_sub(7)), // TODO fix
+                DrawMode::Background | _ => (0, 0, 0),
+            }
         } else {
             match mode {
-                DrawMode::Window => (self.wy, self.wx.wrapping_sub(7)), // TODO fix
-                DrawMode::Background | _ => (self.scy, self.scx),
+                DrawMode::Window => (self.wy, 0, self.wx.wrapping_sub(7)), // TODO fix
+                DrawMode::Background | _ => (self.scy, self.scx, 0),
             }
         };
 
@@ -391,8 +394,9 @@ impl Ppu {
         let palette = Ppu::read_palette(self.bgp);
 
         if lcd_row < self.lcd.height {
-            for x in 0..self.lcd.width {
+            for x in x_start as usize..self.lcd.width {
                 let lcd_col = (x as u8).wrapping_sub(x_offset as u8) as usize; // TODO fix
+                if lcd_col >= self.lcd.width { break; }
                 let tilemap_col = (lcd_col / 8) as usize;
                 let tile_col = (lcd_col % 8) as usize;
 
