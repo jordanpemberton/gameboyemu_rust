@@ -448,13 +448,13 @@ impl Ppu {
 
                 for row in 0..8 {
                     let y = attr.y as i16 - sprite_height + row as i16;
-                    if y < 0 { continue };
+                    if y < 0 || y as usize >= self.lcd.data.len() { continue };
 
                     let tile_row = if attr.flip_x { 7 - row } else { row };
 
                     for col in 0..8 {
                         let x = attr.x as i16 - 8 + col;
-                        if x < 0 { continue };
+                        if x < 0 || x as usize >= self.lcd.data[0].len() { continue };
 
                         let tile_col = if attr.flip_x { 7 - col } else { col };
 
