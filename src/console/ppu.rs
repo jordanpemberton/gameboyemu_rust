@@ -41,6 +41,7 @@ const STAT_MODES: [&StatMode; 4] = [
     &StatMode::PixelTransfer,
 ];
 
+#[allow(dead_code)]
 #[derive(PartialEq)]
 enum DrawMode {
     Background,
@@ -328,7 +329,7 @@ impl Ppu {
         // self.display_tiles_at(mmu, 0x8000, 0, 0); // debug
 
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
-            // self.fill_lcd_row(mmu, DrawMode::Background);
+            self.fill_lcd_row(mmu, DrawMode::Background);
         }
 
         let is_dmg = true;  // TODO
@@ -339,7 +340,6 @@ impl Ppu {
         };
         if window_enabled {
             self.fill_lcd_row(mmu, DrawMode::Window);
-            // self.fill_lcd_row_window(mmu);
         }
 
         // self.draw_sprites(mmu);     // TODO
@@ -367,7 +367,7 @@ impl Ppu {
             (0, 0)
         } else {
             match mode {
-                DrawMode::Window => (self.wy, self.scx.wrapping_sub(7)),
+                DrawMode::Window => (self.wy, self.wx.wrapping_sub(7)), // TODO fix
                 DrawMode::Background | _ => (self.scy, self.scx),
             }
         };
@@ -379,7 +379,7 @@ impl Ppu {
 
         if lcd_row < self.lcd.height {
             for x in 0..self.lcd.width {
-                let lcd_col = (x as u8).wrapping_sub(x_offset as u8) as usize;
+                let lcd_col = (x as u8).wrapping_sub(x_offset as u8) as usize; // TODO fix
                 let tilemap_col = (lcd_col / 8) as usize;
                 let tile_col = (lcd_col % 8) as usize;
 
@@ -406,85 +406,6 @@ impl Ppu {
                         DrawMode::Background => 0,
                         DrawMode::Window => 8,
                         DrawMode::Sprites => 16,
-                    }
-                }
-            }
-        }
-    }
-
-    fn fill_lcd_row_window(&mut self, mmu: &mut Mmu) {
-        let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8);
-        let window_tilemap_address = if self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowTilemapIsAt9C00 as u8) {
-            0x9C00
-        } else {
-            0x9800
-        };
-
-        let window_x = self.wx.wrapping_sub(7);
-        let lcd_row = if self.in_debug_mode { self.ly } else { self.ly.wrapping_sub(self.wy) } as usize;
-        let lcd_col_offset = if self.in_debug_mode { 0 } else { self.scx } as usize;
-        let tilemap_row = (self.ly / 8) as usize;
-        let tile_row = (self.ly % 8) as usize;
-
-        let palette = &[0, 1, 2, 3]; // TODO palettes
-        if lcd_row < self.lcd.height {
-            for lcd_col in window_x as usize..self.lcd.width {
-                let x = (lcd_col as u8).wrapping_sub(lcd_col_offset as u8) as usize;
-                let tilemap_col = (x / 8) as usize;
-                let tile_col = (x % 8) as usize;
-
-                let tile_index_address = (tilemap_row * 32 + tilemap_col) | window_tilemap_address;
-                let tile_index = mmu.read_8(tile_index_address as u16) as i32;
-                let mut tile_address = if index_mode_8000 {
-                    0x8000 + tile_index * 16
-                } else {
-                    let tile_index= (tile_index as i8) as i32; // signed
-                    0x9000 + tile_index * 16
-                } as usize;
-                tile_address += tile_row * 2;
-                let tile_byte1 = mmu.read_8(tile_address as u16);
-                let tile_byte2 = mmu.read_8((tile_address + 1) as u16);
-
-                let low = ((tile_byte1 << tile_col) >> 7) << 1;
-                let high = (tile_byte2 << tile_col) >> 7;
-                let color = high + low;
-
-                if color > 0 { // TODO priority, transparency
-                    self.lcd.data[lcd_row][lcd_col] = palette[color as usize] + 8; // TEMP colors to distinguish window
-                }
-            }
-        }
-    }
-
-    #[allow(dead_code)]
-    fn draw_window(&mut self, mmu: &mut Mmu) {
-        self.lcd_control.read_from_mem(mmu);
-
-        let is_dmg = true;
-        let enabled_bit = if is_dmg {
-            LcdControlRegBit::BackgroundAndWindowEnabled
-        } else {
-            LcdControlRegBit::WindowEnabled
-        } as u8;
-
-        if self.lcd_control.check_bit(mmu, enabled_bit) {
-            let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8);
-
-            let window_tilemap_address = if self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowTilemapIsAt9C00 as u8) {
-                0x9C00
-            } else {
-                0x9800
-            };
-
-            let window_tilemap = tilemap::get_tilemap(mmu, window_tilemap_address, index_mode_8000);
-
-            let mut window_lcd = Lcd::new(self.in_debug_mode);
-            window_lcd.fill_from_tilemap(window_tilemap, self.wy, self.wx, &[0, 1, 2, 3]); // TODO palettes
-
-            for row in 0..self.lcd.height {
-                for col in 0..self.lcd.width {
-                    if window_lcd.data[row][col] > 0 { // TODO priority, transparency
-                        self.lcd.data[row][col] = window_lcd.data[row][col] + 8; // TEMP colors to distinguish window
                     }
                 }
             }
