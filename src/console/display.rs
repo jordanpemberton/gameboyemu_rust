@@ -16,9 +16,9 @@ const COLORS: [Color; 13] = [
     Color::RGB(0, 128, 255),
 
     Color::RGB(0, 0, 0),
-    Color::RGB(64, 122, 0),
-    Color::RGB(64, 0, 128),
-    Color::RGB(0, 64, 128),
+    Color::RGB(128, 128, 0),
+    Color::RGB(128, 0, 128),
+    Color::RGB(0, 128, 128),
 
     Color::RGB(255, 0, 0),
 ];

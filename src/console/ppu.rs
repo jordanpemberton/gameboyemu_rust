@@ -282,6 +282,19 @@ impl Ppu {
         self.lcd_status.read_from_mem(mmu);
     }
 
+    fn read_palette(byte: u8) -> [u8; 4] {
+        // Bit 1-0 - Color for index 0
+        // Bit 3-2 - Color for index 1
+        // Bit 5-4 - Color for index 2
+        // Bit 7-6 - Color for index 3
+        [
+            byte & 0x03,
+            (byte >> 2) & 0x03,
+            (byte >> 4) & 0x03,
+            byte >> 6,
+        ]
+    }
+
     fn increment_ly(&mut self, mmu: &mut Mmu) {
         self.ly += 1;
         self.clocks = 0;
@@ -324,9 +337,9 @@ impl Ppu {
     }
 
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
-        self.lcd_control.read_from_mem(mmu);
+        self.refresh_from_mem(mmu);
 
-        // self.display_tiles_at(mmu, 0x8000, 0, 0); // debug
+        // self.display_tiles_at(mmu, 0x3FFE, 0, 0); // debug
 
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
             self.fill_lcd_row(mmu, DrawMode::Background);
@@ -342,7 +355,7 @@ impl Ppu {
             self.fill_lcd_row(mmu, DrawMode::Window);
         }
 
-        // self.draw_sprites(mmu);     // TODO
+        self.draw_sprites(mmu);     // TODO - rewrite oam draw
 
         if self.in_debug_mode {
             self.draw_lcd_border();
@@ -375,7 +388,7 @@ impl Ppu {
         let lcd_row = self.ly.wrapping_sub(y_offset) as usize;
         let tilemap_row = (self.ly / 8) as usize;
         let tile_row = (self.ly % 8) as usize;
-        let palette = &[0, 1, 2, 3]; // TODO palettes
+        let palette = Ppu::read_palette(self.bgp);
 
         if lcd_row < self.lcd.height {
             for x in 0..self.lcd.width {
@@ -404,8 +417,8 @@ impl Ppu {
                 if mode == DrawMode::Background || color > 0 { // TODO priority, transparency
                     self.lcd.data[lcd_row][lcd_col] = palette[color as usize] + match mode {
                         DrawMode::Background => 0,
-                        DrawMode::Window => 8,
-                        DrawMode::Sprites => 16,
+                        DrawMode::Window => 4,
+                        DrawMode::Sprites => 8,
                     }
                 }
             }
@@ -426,12 +439,8 @@ impl Ppu {
                 let tile = tilemap::read_tile(tile_data.try_into().unwrap());
 
                 let sprite_height = if self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8) { 16 } else { 8 };
-                let palette = if attr.palette_is_obp1 { 1 } else { 0 };
-                // TODO palettes
-                let palettes = &[
-                    [0, 1, 2, 3],
-                    [0, 1, 2, 3],
-                ];
+                let palette = Ppu::read_palette(self.bgp);
+                // TODO Check attr.palette_is_obp1 to get palette
 
                 for row in 0..8 {
                     let y = attr.y as i16 - sprite_height + row as i16;
@@ -447,12 +456,12 @@ impl Ppu {
 
                         let color_i = tile[tile_row as usize][tile_col as usize];
                         if color_i > 0 {
-                            let color = palettes[palette][color_i as usize];
+                            let color = palette[color_i as usize];
                             // TODO selection priority and drawing priority
                             let has_priority = true;
                             let bg_color = self.lcd.data[y as usize][x as usize];
                             if has_priority || bg_color == 0 {
-                                self.lcd.data[y as usize][x as usize] = color + 4; // TEMP colors to distinguish sprites
+                                self.lcd.data[y as usize][x as usize] = color + 8; // TEMP colors to distinguish sprites
                             }
                         }
                     }
