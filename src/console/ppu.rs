@@ -319,9 +319,7 @@ impl Ppu {
     }
 
     fn oam_search(&mut self, mmu: &mut Mmu) {
-        // TODO
-        let is_last_line = self.ly >= MODE_LINE_RANGE[StatMode::OamSearch as usize].1 - 1;
-        if is_last_line
+        if self.ly == 0
         {
             self.lcd_control.read_from_mem(mmu);
             let obj_enabled = self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8);
@@ -339,12 +337,15 @@ impl Ppu {
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
         self.refresh_from_mem(mmu);
 
-        // self.display_tiles_at(mmu, 0x8000, 0, 0); // debug
-        // self.display_tiles_from_indices_at(mmu, false, false, 0, 0); // not working but not sure why
+        if self.ly == 0 {
+            // self.display_tiles_at(mmu, 0x3D9F, 0, 0); // for debugging
+            // self.display_tiles_at(mmu, 0x8000, 0, 0); // for debugging
+            // self.display_tiles_from_indices_at(mmu, false, false, 0, 0); // not working but not sure why
+            // self.draw_sprites(mmu);     // TODO - rewrite oam draw
+        }
 
         self.draw_background_line(mmu);
         self.draw_window_line(mmu);
-        // self.draw_sprites(mmu);     // TODO - rewrite oam draw
 
         if self.in_debug_mode {
             self.draw_lcd_border();
@@ -359,16 +360,13 @@ impl Ppu {
 
     fn draw_window_line(&mut self, mmu: &mut Mmu) {
         let is_dmg = true;  // TODO
-        let window_enabled = if is_dmg {
-            self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8)
-        } else {
-            self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowEnabled as u8)
-        };
-        if window_enabled {
+        if (is_dmg && self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8))
+            || (!is_dmg && self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowEnabled as u8)) {
             self.fill_lcd_row(mmu, DrawMode::Window);
         }
     }
 
+    #[allow(unused_variables)]
     fn draw_sprites_line(&mut self, mmu: &mut Mmu) {
         // TODO
     }
@@ -442,10 +440,9 @@ impl Ppu {
 
     #[allow(dead_code)]
     fn draw_sprites(&mut self, mmu: &mut Mmu) {
-        self.lcd_control.read_from_mem(mmu);
-
+        // TODO OAM DMA
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8) {
-            let tiledata_address: usize = 0x8000; // TODO read this?
+            let tiledata_address: usize = 0x8000;
 
             for attr in self.sprite_attributes {
                 let tile_index = attr.tile_index as usize;
@@ -453,28 +450,29 @@ impl Ppu {
                 let tile_data = mmu.read_buffer(tile_address, tile_address + 16);
                 let tile = tilemap::read_tile(tile_data.try_into().unwrap());
 
-                let sprite_height = if self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8) { 16 } else { 8 };
-                let palette = Ppu::read_palette(self.bgp);
-                // TODO Check attr.palette_is_obp1 to get palette
+                let sprite_height: u8 = if self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8) { 16 } else { 8 };
+                let palette = Ppu::read_palette(self.bgp); // TODO Check attr.palette_is_obp1 to get palette
 
-                for row in 0..8 {
-                    let y = attr.y as i16 - sprite_height + row as i16;
-                    if y < 0 || y as usize >= self.lcd.data.len() { continue };
+                for tile_row in 0..sprite_height {
+                    let y_offset = if attr.flip_y { sprite_height - tile_row - 1 } else { tile_row };
+                    let y = attr.y.wrapping_sub(16).wrapping_add(y_offset);
+                    if y >= self.lcd.data.len() as u8 { continue };
 
-                    let tile_row = if attr.flip_x { 7 - row } else { row };
-
-                    for col in 0..8 {
-                        let x = attr.x as i16 - 8 + col;
-                        if x < 0 || x as usize >= self.lcd.data[0].len() { continue };
-
-                        let tile_col = if attr.flip_x { 7 - col } else { col };
-
+                    for tile_col in 0..8 {
                         let color_i = tile[tile_row as usize][tile_col as usize];
+
                         if color_i > 0 {
                             let color = palette[color_i as usize];
+
                             // TODO selection priority and drawing priority
                             let has_priority = true;
+
+                            let x_offset = if attr.flip_x { 7 - tile_col } else { tile_col };
+                            let x = attr.x.wrapping_sub(8).wrapping_add(x_offset);
+                            if x >= self.lcd.data[0].len() as u8 { continue };
+
                             let bg_color = self.lcd.data[y as usize][x as usize];
+
                             if has_priority || bg_color == 0 {
                                 self.lcd.data[y as usize][x as usize] = color + 8; // TEMP colors to distinguish sprites
                             }
@@ -544,6 +542,8 @@ impl Ppu {
         self.lcd.fill_from_tilemap(background_tilemap, scy, scx, &[0, 1, 2, 3]);
     }
 
+    // For debugging
+    #[allow(dead_code)]
     pub(crate) fn display_tiles_from_indices_at(&mut self, mmu: &mut Mmu, tilemap_at_9c00: bool, index_mode_8000: bool, scy: u8, scx: u8) {
         let tilemap_address = if tilemap_at_9c00 {
             0x9C00

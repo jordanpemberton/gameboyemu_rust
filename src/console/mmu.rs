@@ -136,7 +136,7 @@ impl Mmu {
                 t = min(end, 0x10000);
                 result[0..t - start].clone_from_slice(&self.ram[start - 0x8000..t - 0x8000]);
 
-                if start >= 0xFF0F && t < 0xFF0F {
+                if start <= 0xFF0F && t >= 0xFF0F {
                     result[0xFF0F - 0x8000] |= 0xE0; // top 3 bits of IF register will always return 1s.
                 }
             }
@@ -210,7 +210,6 @@ impl Mmu {
                 };
 
                 let adj_address = ram_offset | ((address as usize - 0x8000) & (self.ram.len() - 1));
-                // let adj_address = self.ram_offset | (addr as usize & 0x1fff)) & (self.ram.len() - 1); // How is this mask 0x1FFF supposed to work?
 
                 self.ram[adj_address] = if address == DIV_REG_ADDRESS { // All writes to timer DIV register reset it to 0
                     0
