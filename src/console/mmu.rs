@@ -145,7 +145,7 @@ impl Mmu {
         result.to_vec()
     }
 
-    //noinspection RsNonExhaustiveMatch -- u16 range covered
+    // noinspection RsNonExhaustiveMatch -- u16 range covered
     pub(crate) fn write_8(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x1FFF => {

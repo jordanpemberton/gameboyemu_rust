@@ -30,8 +30,7 @@ impl Cartridge {
             Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
             _ => (0, 0)
         };
-        self.data[(rom_lower | address as usize) & (self.data.len() - 1)] // How is this mask 0x3FFF supposed to work?
-        // self.data[(rom_lower | (address as usize & 0x3FFF)) & (self.data.len() - 1)] // How is this mask 0x3FFF supposed to work?
+        self.data[(rom_lower | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
     }
 
     pub(crate) fn read_buffer_0000_3fff(&self, start: u16, end: u16) -> Vec<u8> {
@@ -42,10 +41,8 @@ impl Cartridge {
             _ => (0, 0)
         };
 
-        let s = (rom_lower | start as usize) & (self.data.len() - 1);
-        let t = (rom_lower | end as usize) & (self.data.len() - 1);
-        // let s = (rom_lower | (start as usize & 0x3FFF)) & (self.data.len() - 1);  // How is this mask 0x3FFF supposed to work?
-        // let t = (rom_lower | (end as usize & 0x3FFF)) & (self.data.len() - 1); // How is this mask 0x3FFF supposed to work?
+        let s = (rom_lower | (start as usize & 0x3FFF)) & (self.data.len() - 1);
+        let t = (rom_lower | (end as usize & 0x3FFF)) & (self.data.len() - 1);
 
         self.data[s..t].to_vec()
     }
@@ -53,10 +50,9 @@ impl Cartridge {
     pub(crate) fn read_8_4000_7fff(&self, address: u16) -> u8 {
         let (_, rom_upper) = match &self.mbc {
             Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
-            _ => (0, 0x4000) // ?
+            _ => (0, 0x4000)
         };
-        self.data[(rom_upper | address as usize) & (self.data.len() - 1)]
-        // self.data[(rom_upper | (address as usize & 0x3FFF)) & (self.data.len() - 1)]  // How is this mask 0x3FFF supposed to work?
+        self.data[(rom_upper | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
     }
 
     pub(crate) fn read_buffer_4000_7fff(&self, start: u16, end: u16) -> Vec<u8> {
@@ -67,10 +63,8 @@ impl Cartridge {
             _ => (0, 0)
         };
 
-        let s = (rom_upper | start as usize) & (self.data.len() - 1);
-        let t = (rom_upper | end as usize) & (self.data.len() - 1);
-        // let s = (rom_upper | (start as usize & 0x3FFF)) & (self.data.len() - 1); // How is this mask 0x3FFF supposed to work?
-        // let t = (rom_upper | (end as usize & 0x3FFF)) & (self.data.len() - 1); // How is this mask 0x3FFF supposed to work?
+        let s = (rom_upper | (start as usize & 0x3FFF)) & (self.data.len() - 1);
+        let t = (rom_upper | (end as usize & 0x3FFF)) & (self.data.len() - 1);
 
         self.data[s..t].to_vec()
     }

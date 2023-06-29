@@ -366,6 +366,7 @@ impl Ppu {
         }
     }
 
+    #[allow(dead_code)]
     #[allow(unused_variables)]
     fn draw_sprites_line(&mut self, mmu: &mut Mmu) {
         // TODO
