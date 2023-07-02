@@ -53,6 +53,19 @@ impl Cpu {
         if self.is_halted {
             4
         } else {
+            // OAM DMA
+            if let Some(mut oam_src_address) = mmu.oam_dma_source_address {
+                let value = mmu.read_8(oam_src_address);
+                mmu.write_8(0xFE00 | (oam_src_address & 0x00FF), value);
+                oam_src_address += 1;
+                mmu.oam_dma_source_address = if (oam_src_address & 0xFF) > 0x9F {
+                    None
+                } else {
+                    Option::from(oam_src_address)
+                };
+            }
+
+            // CPU instruction
             let start_pc = self.registers.get_word(CpuRegIndex::PC);
 
             let opcode = self.fetch_opcode(mmu);

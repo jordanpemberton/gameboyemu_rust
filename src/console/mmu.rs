@@ -22,6 +22,8 @@ use crate::console::timer::DIV_REG_ADDRESS;
 
 const BOOTROM_FILEPATH: &str = "roms/bootrom/DMG_ROM.bin";
 
+const OAM_DMA_ADDRESS: u16 = 0xFF46;
+
 #[allow(dead_code)]
 #[derive(PartialEq)]
 pub(crate) enum Endianness {
@@ -31,6 +33,7 @@ pub(crate) enum Endianness {
 
 pub(crate) struct Mmu {
     pub(crate) is_booting: bool,
+    pub(crate) oam_dma_source_address: Option<u16>,
     rom: [u8; 0x8000 as usize],
     ram: [u8; 0x8000 as usize],
     cartridge: Option<Cartridge>,
@@ -41,6 +44,7 @@ impl Mmu {
     pub(crate) fn new(cartridge: Option<Cartridge>) -> Mmu {
         let mut mmu = Mmu {
             is_booting: true,
+            oam_dma_source_address: Option::from(0x0000),
             rom: [0; 0x8000],
             ram: [0; 0x8000],
             cartridge,
@@ -211,11 +215,16 @@ impl Mmu {
 
                 let adj_address = ram_offset | ((address as usize - 0x8000) & (self.ram.len() - 1));
 
-                self.ram[adj_address] = if address == DIV_REG_ADDRESS { // All writes to timer DIV register reset it to 0
-                    0
-                } else {
-                    value
+                self.ram[adj_address] = match address {
+                    DIV_REG_ADDRESS => 0,           // All writes to timer DIV register reset it to 0
+                    _ => value
                 };
+
+                if address == OAM_DMA_ADDRESS {
+                    if self.oam_dma_source_address.is_none() {
+                        self.oam_dma_source_address = Option::from((value as u16) << 8);
+                    }
+                }
 
                 if self.is_booting && address == 0xFF50 && (value & 1) == 1 {
                     self.is_booting = false;
