@@ -53,34 +53,8 @@ impl Cpu {
         if self.is_halted {
             4
         } else {
-            // OAM DMA
-            if let Some(mut oam_src_address) = mmu.oam_dma_source_address {
-                let value = mmu.read_8(oam_src_address);
-                mmu.write_8(0xFE00 | (oam_src_address & 0x00FF), value);
-                oam_src_address += 1;
-                mmu.oam_dma_source_address = if (oam_src_address & 0xFF) > 0x9F {
-                    None
-                } else {
-                    Option::from(oam_src_address)
-                };
-            }
-
-            // CPU instruction
-            let start_pc = self.registers.get_word(CpuRegIndex::PC);
-
-            let opcode = self.fetch_opcode(mmu);
-            let mut instruction = Instruction::get_instruction(opcode);
-            let args = self.fetch_args(&instruction, mmu);
-
-            if self.debug_print_on // && !self.visited.contains(&start_pc)
-            {
-                // Debugger::print_cpu_exec(self, mmu, start_pc, opcode, instruction.mnemonic, args.as_slice());
-                Debugger::print_cpu_exec_log(self, mmu, start_pc);
-                self.visited.insert(start_pc);
-            }
-
-            let args = args.as_ref();
-            instruction.execute(self, mmu, args)
+            self.oam_dma(mmu);
+            self.execute_instruction(mmu)
         }
     }
 
@@ -128,5 +102,36 @@ impl Cpu {
         }
 
         args
+    }
+
+    fn oam_dma(&mut self, mmu: &mut Mmu) {
+        if let Some(mut oam_src_address) = mmu.oam_dma_source_address {
+            let value = mmu.read_8(oam_src_address);
+            mmu.write_8(0xFE00 | (oam_src_address & 0x00FF), value);
+            oam_src_address += 1;
+            mmu.oam_dma_source_address = if (oam_src_address & 0xFF) > 0x9F {
+                None
+            } else {
+                Option::from(oam_src_address)
+            };
+        }
+    }
+
+    fn execute_instruction(&mut self, mmu: &mut Mmu) -> i16 {
+        let start_pc = self.registers.get_word(CpuRegIndex::PC);
+
+        let opcode = self.fetch_opcode(mmu);
+        let mut instruction = Instruction::get_instruction(opcode);
+        let args = self.fetch_args(&instruction, mmu);
+
+        if self.debug_print_on // && !self.visited.contains(&start_pc)
+        {
+            // Debugger::print_cpu_exec(self, mmu, start_pc, opcode, instruction.mnemonic, args.as_slice());
+            Debugger::print_cpu_exec_log(self, mmu, start_pc);
+            self.visited.insert(start_pc);
+        }
+
+        let args = args.as_ref();
+        instruction.execute(self, mmu, args)
     }
 }

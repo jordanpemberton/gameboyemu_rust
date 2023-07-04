@@ -1,13 +1,12 @@
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
-use sdl2::{EventPump, Sdl};
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
+use sdl2::Sdl;
 
 use crate::cartridge::cartridge::Cartridge;
 use crate::console::cpu::Cpu;
 use crate::console::debugger::Debugger;
 use crate::console::display::Display;
+use crate::console::input::{Callback, Input};
 use crate::console::mmu::Mmu;
 use crate::console::ppu::Ppu;
 use crate::console::cpu_registers::{CpuRegIndex};
@@ -17,13 +16,12 @@ use crate::console::timer::Timer;
 const CYCLES_PER_REFRESH: u32 = 69905;
 
 pub(crate) struct Console {
-    paused_for_debugger: bool,
     average_cycles_per_update: u128,
     timer: Timer,
     cpu: Cpu,
     mmu: Mmu,
     ppu: Ppu,
-    event_pump: EventPump,
+    input: Input,
     display: Display,
     debugger: Option<Debugger>,
 }
@@ -39,7 +37,8 @@ impl Console {
         let mut mmu = Mmu::new(cartridge);
         let cpu = Cpu::new(&mut mmu, cpu_debug_print);
         let ppu = Ppu::new(&mut mmu, debug_mode_display);
-        let sdl_context: Sdl = sdl2::init().unwrap();
+        let mut sdl_context: Sdl = sdl2::init().unwrap();
+        let input = Input::new(&mut sdl_context);
 
         let debugger = if debug {
             Option::from(Debugger::new())
@@ -55,13 +54,12 @@ impl Console {
             ppu.lcd.height);
 
         Console {
-            paused_for_debugger: false,
             average_cycles_per_update: 0,
             timer: Timer::default(),
             cpu,
             mmu,
             ppu,
-            event_pump: sdl_context.event_pump().unwrap(),
+            input,
             display,
             debugger,
         }
@@ -105,15 +103,11 @@ impl Console {
         }
     }
 
-    // returns if still active
-    fn poll(&mut self) -> bool {
-        for event in self.event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    return false;
-                }
-                Event::KeyDown { keycode: Some(Keycode::B), .. } => {
+    fn input_polling(&mut self) -> bool {
+        let callbacks = self.input.poll();
+        for callback in callbacks {
+            match callback {
+                Callback::DebugBreak => {
                     match self.debugger {
                         Some(ref mut debugger) => {
                             debugger.break_or_cont(
@@ -121,12 +115,11 @@ impl Console {
                                 Option::from(&self.mmu),
                                 Option::from(&self.timer),
                                 Option::from(vec![]));
-                            self.paused_for_debugger = debugger.is_active();
                         }
                         None => {}
                     }
                 }
-                Event::KeyDown { keycode: Some(Keycode::P), .. } => {
+                Callback::DebugPeek => {
                     match self.debugger {
                         Some(ref mut debugger) => {
                             debugger.peek(
@@ -135,19 +128,22 @@ impl Console {
                                 Option::from(&self.timer),
                                 Option::from(vec![]));
                         }
-                        None => { }
+                        None => {}
                     }
                 }
-                Event::KeyDown { keycode: Some(Keycode::O), .. } => {
+                Callback::DebugPrintScreen => {
                     match self.debugger {
                         Some(ref mut debugger) => debugger.print_screen_to_stdout(&self.ppu),
-                        None => { }
+                        None => {}
                     }
                 }
-                _ => {}
+                Callback::Exit => {
+                    // self.debug_print_screen();
+                    self.debug_peek();
+                    return false;
+                }
             }
         }
-
         true
     }
 
@@ -159,39 +155,42 @@ impl Console {
         let mut total_updates: u128 = 0;
         let mut next_update_time = SystemTime::now().add(update_duration);
 
-        loop {
+        'mainloop: loop {
             while cycles_this_update < CYCLES_PER_REFRESH - 4 && SystemTime::now() < next_update_time {
-                if self.paused_for_debugger {
-                    cycles_this_update += 4; // keep ticking when paused
-                } else {
-                    let mut cycles = self.cpu.step(&mut self.mmu);
-
-                    if cycles < 0 {
-                        // self.debug_print_screen();
-                        self.debug_peek();
-                        panic!("Console step attempt failed with status {} at address {:#06X}.",
-                            cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
+                if let Some(ref mut debugger) = self.debugger {
+                    if debugger.active {
+                        cycles_this_update += 4; // keep ticking when paused
+                        continue;
                     }
-
-                    cycles += self.cpu.check_interrupts(&mut self.mmu);
-
-                    self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
-
-                    if self.timer.step(&mut self.mmu, cycles as u8) {
-                        self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
-                    }
-
-                    cycles_this_update += cycles as u32;
                 }
+
+                let mut cycles = self.cpu.step(&mut self.mmu);
+
+                if cycles < 0 {
+                    // self.debug_print_screen();
+                    self.debug_peek();
+                    panic!("Console step attempt failed with status {} at address {:#06X}.",
+                        cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
+                }
+
+                cycles += self.cpu.check_interrupts(&mut self.mmu);
+
+                self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
+
+                if self.timer.step(&mut self.mmu, cycles as u8) {
+                    self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
+                }
+
+                cycles_this_update += cycles as u32;
             }
 
             if SystemTime::now() >= next_update_time {
                 self.display.draw(&mut self.ppu);
-                if !self.poll() {
-                    // self.debug_print_screen();
-                    self.debug_peek();
-                    break;
+
+                if !self.input_polling() {
+                    break 'mainloop;
                 }
+
                 total_cycles += cycles_this_update as u128;
                 total_updates += 1;
                 cycles_this_update = 0;

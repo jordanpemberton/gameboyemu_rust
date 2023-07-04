@@ -8,6 +8,7 @@ pub(crate) mod timer;
 
 mod alu;
 mod display;
+mod input;
 mod instruction;
 mod interrupts;
 mod ppu;
