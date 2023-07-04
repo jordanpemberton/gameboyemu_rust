@@ -2,11 +2,20 @@ use sdl2::{EventPump, Sdl};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
+#[derive(Debug)]
 pub(crate) enum Callback {
     DebugBreak,
     DebugPeek,
     DebugPrintScreen,
     Exit,
+    InputKeyUp,
+    InputKeyDown,
+    InputKeyLeft,
+    InputKeyRight,
+    InputKeyStart,
+    InputKeySelect,
+    InputKeyA,
+    InputKeyB,
 }
 
 pub(crate) struct Input {
@@ -36,6 +45,30 @@ impl Input {
                 }
                 Event::KeyDown { keycode: Some(Keycode::O), .. } => {
                     callbacks.push(Callback::DebugPrintScreen);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
+                    callbacks.push(Callback::InputKeyUp);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Down), .. } => {
+                    callbacks.push(Callback::InputKeyDown);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
+                    callbacks.push(Callback::InputKeyLeft);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
+                    callbacks.push(Callback::InputKeyRight);
+                }
+                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                    callbacks.push(Callback::InputKeyStart);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Z), .. } => {
+                    callbacks.push(Callback::InputKeySelect);
+                }
+                Event::KeyDown { keycode: Some(Keycode::X), .. } => {
+                    callbacks.push(Callback::InputKeyA);
+                }
+                Event::KeyDown { keycode: Some(Keycode::C), .. } => {
+                    callbacks.push(Callback::InputKeyB);
                 }
                 _ => { }
             }

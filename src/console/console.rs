@@ -142,6 +142,40 @@ impl Console {
                     self.debug_peek();
                     return false;
                 }
+                Callback::InputKeyUp
+                | Callback::InputKeyDown
+                | Callback::InputKeyLeft
+                | Callback::InputKeyRight
+                | Callback::InputKeyStart
+                | Callback::InputKeySelect
+                | Callback::InputKeyA
+                | Callback::InputKeyB => {
+                    // Bit 5 - P15 Select Action buttons    (0=Select)
+                    // Bit 4 - P14 Select Direction buttons (0=Select)
+                    // Bit 3 - P13 Input: Down  or Start    (0=Pressed) (Read Only)
+                    // Bit 2 - P12 Input: Up    or Select   (0=Pressed) (Read Only)
+                    // Bit 1 - P11 Input: Left  or B        (0=Pressed) (Read Only)
+                    // Bit 0 - P10 Input: Right or A        (0=Pressed) (Read Only)
+                    let mut ff00= self.mmu.read_8(0xFF00);
+                    ff00 ^= ff00 & (1 << 5); // TEMP enable
+                    ff00 ^= ff00 & (1 << 4); // TEMP enable
+                    if ff00 & (1 << 5) == 0 {
+                        ff00 ^= ff00 & (1 << (match callback {
+                            Callback::InputKeyDown => 3,
+                            Callback::InputKeyUp => 2,
+                            Callback::InputKeyLeft => 1,
+                            Callback::InputKeyRight | _ => 0,
+                        }));
+                    } else if ff00 & (1 << 4) == 0 {
+                        ff00 ^= ff00 & (1 << (match callback {
+                            Callback::InputKeyStart => 3,
+                            Callback::InputKeySelect => 2,
+                            Callback::InputKeyB => 1,
+                            Callback::InputKeyA | _ => 0,
+                        }));
+                    }
+                    self.mmu.write_8(0xFF00, ff00);
+                }
             }
         }
         true

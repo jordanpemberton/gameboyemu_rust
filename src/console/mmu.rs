@@ -213,9 +213,9 @@ impl Mmu {
                     0
                 };
 
-                let adj_address = ram_offset | ((address as usize - 0x8000) & (self.ram.len() - 1));
+                let adjusted_address = ram_offset | ((address as usize - 0x8000) & (self.ram.len() - 1));
 
-                self.ram[adj_address] = match address {
+                self.ram[adjusted_address] = match address {
                     DIV_REG_ADDRESS => 0,           // All writes to timer DIV register reset it to 0
                     _ => value
                 };
