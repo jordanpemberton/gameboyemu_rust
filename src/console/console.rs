@@ -159,19 +159,19 @@ impl Console {
                     let mut ff00= self.mmu.read_8(0xFF00);
                     ff00 ^= ff00 & (1 << 5); // TEMP enable
                     ff00 ^= ff00 & (1 << 4); // TEMP enable
-                    if ff00 & (1 << 5) == 0 {
-                        ff00 ^= ff00 & (1 << (match callback {
-                            Callback::InputKeyDown => 3,
-                            Callback::InputKeyUp => 2,
-                            Callback::InputKeyLeft => 1,
-                            Callback::InputKeyRight | _ => 0,
-                        }));
-                    } else if ff00 & (1 << 4) == 0 {
+                    if ff00 & (1 << 4) == 0 {
                         ff00 ^= ff00 & (1 << (match callback {
                             Callback::InputKeyStart => 3,
                             Callback::InputKeySelect => 2,
                             Callback::InputKeyB => 1,
                             Callback::InputKeyA | _ => 0,
+                        }));
+                    } else if ff00 & (1 << 5) == 0 {
+                        ff00 ^= ff00 & (1 << (match callback {
+                            Callback::InputKeyDown => 3,
+                            Callback::InputKeyUp => 2,
+                            Callback::InputKeyLeft => 1,
+                            Callback::InputKeyRight | _ => 0,
                         }));
                     }
                     self.mmu.write_8(0xFF00, ff00);

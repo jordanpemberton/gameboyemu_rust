@@ -22,7 +22,9 @@ use crate::console::timer::DIV_REG_ADDRESS;
 
 const BOOTROM_FILEPATH: &str = "roms/bootrom/DMG_ROM.bin";
 
+const IF_REG_ADDRESS: u16 = 0xFF0F;
 const OAM_DMA_ADDRESS: u16 = 0xFF46;
+const BANK_REG_ADDRESS: u16 = 0xFF50;
 
 #[allow(dead_code)]
 #[derive(PartialEq)]
@@ -74,7 +76,7 @@ impl Mmu {
             _ => {
                 let mut result = self.ram[address as usize - 0x8000];
 
-                if address == 0xFF0F {
+                if address == IF_REG_ADDRESS {
                     result |= 0xE0; // top 3 bits of IF register will always return 1s.
                 }
 
@@ -140,8 +142,8 @@ impl Mmu {
                 t = min(end, 0x10000);
                 result[0..t - start].clone_from_slice(&self.ram[start - 0x8000..t - 0x8000]);
 
-                if start <= 0xFF0F && t >= 0xFF0F {
-                    result[0xFF0F - 0x8000] |= 0xE0; // top 3 bits of IF register will always return 1s.
+                if start <= IF_REG_ADDRESS as usize && t >= IF_REG_ADDRESS as usize {
+                    result[IF_REG_ADDRESS as usize - 0x8000] |= 0xE0; // top 3 bits of IF register will always return 1s.
                 }
             }
         }
@@ -226,7 +228,7 @@ impl Mmu {
                     }
                 }
 
-                if self.is_booting && address == 0xFF50 && (value & 1) == 1 {
+                if self.is_booting && address == BANK_REG_ADDRESS && (value & 1) == 1 {
                     self.is_booting = false;
                 }
             }
