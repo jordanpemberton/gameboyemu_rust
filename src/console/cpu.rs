@@ -124,10 +124,10 @@ impl Cpu {
         let mut instruction = Instruction::get_instruction(opcode);
         let args = self.fetch_args(&instruction, mmu);
 
-        if self.debug_print_on // && !self.visited.contains(&start_pc)
+        if self.debug_print_on && !self.visited.contains(&start_pc) // 0x234E == DrMario PollJoypad
         {
-            // Debugger::print_cpu_exec(self, mmu, start_pc, opcode, instruction.mnemonic, args.as_slice());
-            Debugger::print_cpu_exec_log(self, mmu, start_pc);
+            Debugger::print_cpu_exec(self, mmu, start_pc, opcode, instruction.mnemonic, args.as_slice());
+            // Debugger::print_cpu_exec_log(self, mmu, start_pc);
             self.visited.insert(start_pc);
         }
 

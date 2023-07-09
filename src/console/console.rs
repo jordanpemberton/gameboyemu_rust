@@ -76,7 +76,15 @@ impl Console {
             self.mmu.is_booting = false;
         }
 
-        self.main_loop();
+        const FFS: u64 = 60;
+        let update_duration = Duration::from_millis(1000 / FFS);
+
+        // let (total_cycles, total_updates) = self.original_main_loop(update_duration);
+        let (total_cycles, total_updates) = self.main_loop(update_duration);
+
+        self.average_cycles_per_update = total_cycles / total_updates;
+        // self.debug_print_screen();
+        self.debug_peek();
     }
 
     fn debug_peek(&mut self) {
@@ -142,48 +150,103 @@ impl Console {
                     self.debug_peek();
                     return false;
                 }
-                Callback::InputKeyUp
-                | Callback::InputKeyDown
-                | Callback::InputKeyLeft
-                | Callback::InputKeyRight
-                | Callback::InputKeyStart
+                // Bit 5 - P15 Select Action buttons    (0=Select)
+                // Bit 4 - P14 Select Direction buttons (0=Select)
+                // Bit 3 - P13 Input: Down  or Start    (0=Pressed) (Read Only)
+                // Bit 2 - P12 Input: Up    or Select   (0=Pressed) (Read Only)
+                // Bit 1 - P11 Input: Left  or B        (0=Pressed) (Read Only)
+                // Bit 0 - P10 Input: Right or A        (0=Pressed) (Read Only)
+                Callback::InputKeyStart
                 | Callback::InputKeySelect
                 | Callback::InputKeyA
                 | Callback::InputKeyB => {
-                    // Bit 5 - P15 Select Action buttons    (0=Select)
-                    // Bit 4 - P14 Select Direction buttons (0=Select)
-                    // Bit 3 - P13 Input: Down  or Start    (0=Pressed) (Read Only)
-                    // Bit 2 - P12 Input: Up    or Select   (0=Pressed) (Read Only)
-                    // Bit 1 - P11 Input: Left  or B        (0=Pressed) (Read Only)
-                    // Bit 0 - P10 Input: Right or A        (0=Pressed) (Read Only)
                     let mut ff00= self.mmu.read_8(0xFF00);
-                    ff00 ^= ff00 & (1 << 5); // TEMP enable
-                    ff00 ^= ff00 & (1 << 4); // TEMP enable
-                    if ff00 & (1 << 4) == 0 {
-                        ff00 ^= ff00 & (1 << (match callback {
-                            Callback::InputKeyStart => 3,
-                            Callback::InputKeySelect => 2,
-                            Callback::InputKeyB => 1,
-                            Callback::InputKeyA | _ => 0,
-                        }));
-                    } else if ff00 & (1 << 5) == 0 {
-                        ff00 ^= ff00 & (1 << (match callback {
-                            Callback::InputKeyDown => 3,
-                            Callback::InputKeyUp => 2,
-                            Callback::InputKeyLeft => 1,
-                            Callback::InputKeyRight | _ => 0,
-                        }));
-                    }
+                    ff00 ^= ff00 & (1 << 4); // enable?
+                    ff00 ^= ff00 & (1 << (match callback {
+                        Callback::InputKeyStart => 3,
+                        Callback::InputKeySelect => 2,
+                        Callback::InputKeyB => 1,
+                        Callback::InputKeyA | _ => 0,
+                    }));
                     self.mmu.write_8(0xFF00, ff00);
+                    self.cpu.interrupts.request(InterruptRegBit::Joypad, &mut self.mmu);
+                }
+                Callback::InputKeyUp
+                | Callback::InputKeyDown
+                | Callback::InputKeyLeft
+                | Callback::InputKeyRight => {
+                    let mut ff00= self.mmu.read_8(0xFF00);
+                    ff00 ^= ff00 & (1 << 5); // enable?
+                    ff00 ^= ff00 & (1 << (match callback {
+                        Callback::InputKeyDown => 3,
+                        Callback::InputKeyUp => 2,
+                        Callback::InputKeyLeft => 1,
+                        Callback::InputKeyRight | _ => 0,
+                    }));
+                    self.mmu.write_8(0xFF00, ff00);
+                    self.cpu.interrupts.request(InterruptRegBit::Joypad, &mut self.mmu);
                 }
             }
         }
         true
     }
 
-    fn main_loop(&mut self) {
-        const FFS: u64 = 60;
-        let update_duration = Duration::from_millis(1000 / FFS);
+    fn main_loop(&mut self, update_duration: Duration) -> (u128, u128) {
+        let mut cycles_this_update: u32 = 0;
+        let mut total_cycles: u128 = 0;
+        let mut total_updates: u128 = 0;
+        let mut next_update_time = SystemTime::now().add(update_duration);
+
+        'mainloop: loop {
+            if SystemTime::now() >= next_update_time {
+                // time to draw and poll input
+                self.display.draw(&mut self.ppu);
+
+                if !self.input_polling() {
+                    break 'mainloop;
+                }
+
+                total_cycles += cycles_this_update as u128;
+                total_updates += 1;
+                cycles_this_update = 0;
+                next_update_time = SystemTime::now().add(update_duration);
+            }
+            else if cycles_this_update >= (CYCLES_PER_REFRESH - 4)  {
+                continue; // wait till next update
+            }
+            else if self.debugger.is_some() && self.debugger.as_mut().unwrap().active {
+                // Paused for debugger but keep ticking
+                // let Some(ref mut debugger) = self.debugger;
+                cycles_this_update += 4;
+            }
+            else {
+                // main work
+                let mut cycles = self.cpu.step(&mut self.mmu);
+
+                if cycles < 0 {
+                    // self.debug_print_screen();
+                    self.debug_peek();
+                    panic!("Console step attempt failed with status {} at address {:#06X}.",
+                        cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
+                }
+
+                cycles += self.cpu.check_interrupts(&mut self.mmu);
+
+                self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
+
+                if self.timer.step(&mut self.mmu, cycles as u8) {
+                    self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
+                }
+
+                cycles_this_update += cycles as u32;
+            }
+        }
+
+        (total_cycles, total_updates)
+    }
+
+    #[allow(dead_code)]
+    fn original_main_loop(&mut self, update_duration: Duration) -> (u128, u128) {
         let mut cycles_this_update: u32 = 0;
         let mut total_cycles: u128 = 0;
         let mut total_updates: u128 = 0;
@@ -232,8 +295,6 @@ impl Console {
             }
         }
 
-        self.average_cycles_per_update = total_cycles / total_updates;
-        // self.debug_print_screen();
-        self.debug_peek();
+        (total_cycles, total_updates)
     }
 }
