@@ -116,63 +116,6 @@ impl Mmu {
         result
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn _read_buffer(&self, start: usize, end: usize) -> Vec<u8> {
-        let mut t = min(end, 0x10000);
-        let mut result = vec![0; t - start];
-
-        match start {
-            0x0000..=0x3FFF => {
-                if start < 0x0100 && self.is_booting {
-                    t =  min(end, 0x0100);
-                    result[0..t - start].clone_from_slice(&self.rom[start..t]);
-
-                    if end > 0x0100 {
-                        t = min(end, 0x4000);
-                        if let Some(cartridge) = &self.cartridge {
-                            let data = cartridge.read_buffer_0000_3fff(0x0100 as u16,  t as u16);
-                            result[0x0100..t].clone_from_slice(&data[..]);
-                        } else {
-                            result[0x100..t].clone_from_slice(&self.rom[0x0100..t]);
-                        }
-                    }
-                } else {
-                    t = min(end, 0x4000);
-                    if let Some(cartridge) = &self.cartridge {
-                        let data = cartridge.read_buffer_0000_3fff(start as u16, t as u16);
-                        result[0..t - start].clone_from_slice(&data[..]);
-                    } else {
-                        result[0..t - start].clone_from_slice(&self.rom[start..t]);
-                    }
-                }
-            }
-
-            // TODO banks!
-            0x4000..=0x7FFF => {
-                t = min(end, 0x8000);
-
-                if let Some(cartridge) = &self.cartridge {
-                    let data = cartridge.read_buffer_4000_7fff(start as u16, t as u16);
-                    result[0..t - start].clone_from_slice(&data[..]);
-                } else {
-                    result[0..t - start].clone_from_slice(&self.rom[start..t]);
-                }
-            }
-
-            // TODO banks
-            _ => {
-                t = min(end, 0x10000);
-                result[0..t - start].clone_from_slice(&self.ram[start - 0x8000..t - 0x8000]);
-
-                if start <= IF_REG_ADDRESS as usize && t >= IF_REG_ADDRESS as usize {
-                    result[IF_REG_ADDRESS as usize - 0x8000] |= 0xE0; // top 3 bits of IF register will always return 1s.
-                }
-            }
-        }
-
-        result.to_vec()
-    }
-
     // noinspection RsNonExhaustiveMatch -- u16 range covered
     pub(crate) fn write_8(&mut self, address: u16, value: u8) {
         match address {

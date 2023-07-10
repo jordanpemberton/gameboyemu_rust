@@ -33,21 +33,6 @@ impl Cartridge {
         self.data[(rom_lower | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn read_buffer_0000_3fff(&self, start: u16, end: u16) -> Vec<u8> {
-        if end <= start { return vec![]; }
-
-        let (rom_lower, _) = match &self.mbc {
-            Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
-            _ => (0, 0)
-        };
-
-        let s = (rom_lower | (start as usize & 0x3FFF)) & (self.data.len() - 1);
-        let t = (rom_lower | (end as usize & 0x3FFF)) & (self.data.len() - 1);
-
-        self.data[s..t].to_vec()
-    }
-
     pub(crate) fn read_8_4000_7fff(&self, address: u16) -> u8 {
         let (_, rom_upper) = match &self.mbc {
             Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
@@ -56,25 +41,10 @@ impl Cartridge {
         self.data[(rom_upper | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn read_buffer_4000_7fff(&self, start: u16, end: u16) -> Vec<u8> {
-        if end <= start { return vec![]; }
-
-        let (_, rom_upper) = match &self.mbc {
-            Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
-            _ => (0, 0)
-        };
-
-        let s = (rom_upper | (start as usize & 0x3FFF)) & (self.data.len() - 1);
-        let t = (rom_upper | (end as usize & 0x3FFF)) & (self.data.len() - 1);
-
-        self.data[s..t].to_vec()
-    }
-
     pub(crate) fn read_8_a000_bfff(&self, address: u16) -> u8 {
         match &self.mbc {
             Mbc::Mbc1 { mbc } if mbc.ram_enabled => self.read_8_ram(address),
-            _ => 0
+            _ => 0xFF
         }
     }
 
@@ -90,7 +60,8 @@ impl Cartridge {
             Mbc::Mbc1 { mbc } => mbc.ram_offset(),
             _ => 0
         };
-        let adjusted_address = (ram_offset | address as usize) & (self.data.len() - 1);
+        let adjusted_address = (ram_offset | ((address as usize & 0x1FFF) + 0x8000)) & (self.data.len() - 1);
+            // (ram_offset as usize + address as usize) & (self.data.len() - 1);
         self.data[adjusted_address]
     }
 
@@ -99,7 +70,8 @@ impl Cartridge {
             Mbc::Mbc1 { mbc } => mbc.ram_offset(),
             _ => 0
         };
-        let adjusted_address = (ram_offset | address as usize) & (self.data.len() - 1);
+        let adjusted_address = (ram_offset | ((address as usize & 0x1FFF) + 0x8000)) & (self.data.len() - 1);
+            // ((ram_offset as usize) + (address as usize)) & (self.data.len() - 1);
         self.data[adjusted_address] = value;
     }
 }
