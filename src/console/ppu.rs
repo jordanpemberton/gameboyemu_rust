@@ -1,3 +1,4 @@
+use std::cmp::min;
 use crate::console::interrupts::{InterruptRegBit, Interrupts};
 use crate::console::mmu::Mmu;
 use crate::console::register::Register;
@@ -337,20 +338,18 @@ impl Ppu {
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
         self.refresh_from_mem(mmu);
 
+        // TODO Pixel FIFO instead of redrawing line multiple times
         self.draw_background_line(mmu);
+        // self.draw_window_line(mmu);
 
         // for debugging
         if self.ly == 0 {
             // self.display_tiles_at(mmu, 0x3D9F, 0, 0); // for debugging
             // self.display_tiles_at(mmu, 0xBF00, 0, 0); // for debugging
             // self.display_tiles_at(mmu, 0x8000, 0, 0); // for debugging
-            // self.display_tiles_from_indices_at(mmu, true, false, 0, 0); // not working but not sure why
-            // self.display_tiles_from_indices_at(mmu, true, true, 0, 0); // not working but not sure why
-            self.draw_sprites(mmu);
+            // self.display_tiles_from_indices_at(mmu, false, true, 0, 0);
+            self.draw_sprites(mmu); // TODO rewrite to draw by line
         }
-
-        // self.draw_background_line(mmu);
-        // self.draw_window_line(mmu);
 
         if self.in_debug_mode {
             self.draw_lcd_border();
@@ -456,7 +455,7 @@ impl Ppu {
             for attr in self.sprite_attributes {
                 let tile_index = attr.tile_index as usize;
                 let tile_address = tiledata_address + tile_index * 16;
-                let tile_bytes = mmu.read_buffer(tile_address, tile_address + 16)
+                let tile_bytes = mmu.read_buffer(tile_address as u16, tile_address as u16 + 16)
                     .try_into().unwrap();
                 let tile = tilemap::read_tile(tile_bytes);
                 let sprite_height: u8 = if self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8) { 16 } else { 8 };
@@ -501,34 +500,58 @@ impl Ppu {
         let x1 = self.scx.wrapping_add(160 as u8) as usize;
 
         if x0 <= x1 {
-            for x in x0..x1 {
-                self.lcd.data[y0][x] = DEBUG_COLOR_I;
-                self.lcd.data[y1 - 1][x] = DEBUG_COLOR_I;
+            for x in x0..min(x1, self.lcd.data[0].len()) {
+                if y0 < self.lcd.data.len() {
+                    self.lcd.data[y0][x] = DEBUG_COLOR_I;
+                }
+                if y1.wrapping_sub(1) < self.lcd.data.len() {
+                    self.lcd.data[y1.wrapping_sub(1)][x] = DEBUG_COLOR_I;
+                }
             }
         } else {
-            for x in 0..x1 {
-                self.lcd.data[y0][x] = DEBUG_COLOR_I;
-                self.lcd.data[y1 - 1][x] = DEBUG_COLOR_I;
+            for x in 0..min(x1, self.lcd.data.last().unwrap().len()) {
+                if y0 < self.lcd.data.len() {
+                    self.lcd.data[y0][x] = DEBUG_COLOR_I;
+                }
+                if y1.wrapping_sub(1) < self.lcd.data.len() {
+                    self.lcd.data[y1.wrapping_sub(1)][x] = DEBUG_COLOR_I;
+                }
             }
             for x in x0..self.lcd.data[0].len() {
-                self.lcd.data[y0][x] = DEBUG_COLOR_I;
-                self.lcd.data[y1 - 1][x] = DEBUG_COLOR_I;
+                if y0 < self.lcd.data.len() {
+                    self.lcd.data[y0][x] = DEBUG_COLOR_I;
+                }
+                if y1.wrapping_sub(1) < self.lcd.data.len() {
+                    self.lcd.data[y1.wrapping_sub(1)][x] = DEBUG_COLOR_I;
+                }
             }
         }
 
         if y0 <= y1 {
-            for y in y0..y1 {
-                self.lcd.data[y][x0] = DEBUG_COLOR_I;
-                self.lcd.data[y][x1 - 1] = DEBUG_COLOR_I;
+            for y in y0..min(y1, self.lcd.data.len()) {
+                if x0 < self.lcd.data[0].len() {
+                    self.lcd.data[y][x0] = DEBUG_COLOR_I;
+                }
+                if x1.wrapping_sub(1) < self.lcd.data[0].len() {
+                    self.lcd.data[y][x1.wrapping_sub(1)] = DEBUG_COLOR_I;
+                }
             }
         } else {
-            for y in 0..y1 {
-                self.lcd.data[y][x0] = DEBUG_COLOR_I;
-                self.lcd.data[y][x1 - 1] = DEBUG_COLOR_I;
+            for y in 0..min(y1, self.lcd.data.len()) {
+                if x0 < self.lcd.data[0].len() {
+                    self.lcd.data[y][x0] = DEBUG_COLOR_I;
+                }
+                if x1.wrapping_sub(1) < self.lcd.data[0].len() {
+                    self.lcd.data[y][x1.wrapping_sub(1)] = DEBUG_COLOR_I;
+                }
             }
             for y in y0..self.lcd.data.len() {
-                self.lcd.data[y][x0] = DEBUG_COLOR_I;
-                self.lcd.data[y][x1 - 1] = DEBUG_COLOR_I;
+                if x0 < self.lcd.data[0].len() {
+                    self.lcd.data[y][x0] = DEBUG_COLOR_I;
+                }
+                if x1.wrapping_sub(1) < self.lcd.data[0].len() {
+                    self.lcd.data[y][x1.wrapping_sub(1)] = DEBUG_COLOR_I;
+                }
             }
         }
     }
@@ -571,7 +594,7 @@ impl Ppu {
                 0x9000 + tile_index * 16
             } as usize;
 
-            let tile_bytes: [u8; 16] = mmu.read_buffer(tile_address, tile_address + 16)
+            let tile_bytes: [u8; 16] = mmu.read_buffer(tile_address as u16, tile_address as u16 + 16)
                 .try_into().unwrap();
 
             let tile = tilemap::read_tile(tile_bytes);

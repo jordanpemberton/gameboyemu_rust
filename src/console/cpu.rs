@@ -11,6 +11,7 @@ use crate::console::debugger::Debugger;
 use crate::console::interrupts::Interrupts;
 
 pub(crate) const PREFIX_BYTE: u8 = 0xCB;
+const OAM_ADDRESS: u16 = 0xFE00;
 
 #[allow(dead_code)]
 pub(crate) struct Cpu {
@@ -105,14 +106,14 @@ impl Cpu {
     }
 
     fn oam_dma(&mut self, mmu: &mut Mmu) {
-        if let Some(mut oam_src_address) = mmu.oam_dma_source_address {
-            let value = mmu.read_8(oam_src_address);
-            mmu.write_8(0xFE00 | (oam_src_address & 0x00FF), value);
-            oam_src_address += 1;
-            mmu.oam_dma_source_address = if (oam_src_address & 0xFF) > 0x9F {
+        if let Some(mut src_address) = mmu.oam_dma_source_address {
+            let value = mmu.read_8(src_address);
+            mmu.write_8(OAM_ADDRESS | (src_address & 0x00FF), value);
+            src_address += 1;
+            mmu.oam_dma_source_address = if (src_address & 0xFF) > 0x9F {
                 None
             } else {
-                Option::from(oam_src_address)
+                Option::from(src_address)
             };
         }
     }

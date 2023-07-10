@@ -33,6 +33,7 @@ impl Cartridge {
         self.data[(rom_lower | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
     }
 
+    #[allow(dead_code)]
     pub(crate) fn read_buffer_0000_3fff(&self, start: u16, end: u16) -> Vec<u8> {
         if end <= start { return vec![]; }
 
@@ -55,6 +56,7 @@ impl Cartridge {
         self.data[(rom_upper | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
     }
 
+    #[allow(dead_code)]
     pub(crate) fn read_buffer_4000_7fff(&self, start: u16, end: u16) -> Vec<u8> {
         if end <= start { return vec![]; }
 
@@ -67,5 +69,37 @@ impl Cartridge {
         let t = (rom_upper | (end as usize & 0x3FFF)) & (self.data.len() - 1);
 
         self.data[s..t].to_vec()
+    }
+
+    pub(crate) fn read_8_a000_bfff(&self, address: u16) -> u8 {
+        match &self.mbc {
+            Mbc::Mbc1 { mbc } if mbc.ram_enabled => self.read_8_ram(address),
+            _ => 0
+        }
+    }
+
+    pub(crate) fn write_8_a000_bfff(&mut self, address: u16, value: u8) {
+        match &self.mbc {
+            Mbc::Mbc1 { mbc } if mbc.ram_enabled => self.write_8_ram(address, value),
+            _ => ()
+        }
+    }
+
+    fn read_8_ram(&self, address: u16) -> u8 {
+        let ram_offset = match &self.mbc {
+            Mbc::Mbc1 { mbc } => mbc.ram_offset(),
+            _ => 0
+        };
+        let adjusted_address = (ram_offset | address as usize) & (self.data.len() - 1);
+        self.data[adjusted_address]
+    }
+
+    fn write_8_ram(&mut self, address: u16, value: u8) {
+        let ram_offset = match &self.mbc {
+            Mbc::Mbc1 { mbc } => mbc.ram_offset(),
+            _ => 0
+        };
+        let adjusted_address = (ram_offset | address as usize) & (self.data.len() - 1);
+        self.data[adjusted_address] = value;
     }
 }

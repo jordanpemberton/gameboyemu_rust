@@ -11,8 +11,8 @@ pub(crate) fn fetch_tilemap(mmu: &mut Mmu, tile_addresses: [usize; 32 * 32]) -> 
             let address = tile_addresses[row * 32 + col];
 
             let tile_bytes: [u8; 16] = mmu.read_buffer(
-                address,
-                address + 16)
+                address as u16,
+                address as u16 + 16)
                 .try_into().unwrap();
 
             tilemap[row][col] = read_tile(tile_bytes);

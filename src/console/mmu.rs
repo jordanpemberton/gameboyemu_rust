@@ -46,7 +46,7 @@ impl Mmu {
     pub(crate) fn new(cartridge: Option<Cartridge>) -> Mmu {
         let mut mmu = Mmu {
             is_booting: true,
-            oam_dma_source_address: Option::from(0x0000),
+            oam_dma_source_address: None,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
             cartridge,
@@ -55,6 +55,7 @@ impl Mmu {
         mmu
     }
 
+    // noinspection RsNonExhaustiveMatch -- u16 range covered
     pub(crate) fn read_8(&self, address: u16) -> u8 {
         match address {
             0x0000..=0x00FF if self.is_booting => {
@@ -73,13 +74,25 @@ impl Mmu {
                 self.rom[address as usize]
             }
 
-            _ => {
-                let mut result = self.ram[address as usize - 0x8000];
+            0x8000..=0x9FFF => {
+                let result = self.ram[address as usize - 0x8000];
+                result
+            }
 
+            0xA000..=0xBFFF => {
+                let result = if let Some(cartridge) = &self.cartridge {
+                    cartridge.read_8_a000_bfff(address)
+                } else {
+                    self.ram[address as usize - 0x8000]
+                };
+                result
+            }
+
+            0xC000..=0xFFFF => {
+                let mut result = self.ram[address as usize - 0x8000];
                 if address == IF_REG_ADDRESS {
                     result |= 0xE0; // top 3 bits of IF register will always return 1s.
                 }
-
                 result
             }
         }
@@ -95,7 +108,16 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn read_buffer(&self, start: usize, end: usize) -> Vec<u8> {
+    pub(crate) fn read_buffer(&self, start: u16, end: u16) -> Vec<u8> {
+        let mut result = vec![0; end as usize - start as usize];
+        for address in start..end {
+            result[address as usize - start as usize] = self.read_8(address);
+        }
+        result
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn _read_buffer(&self, start: usize, end: usize) -> Vec<u8> {
         let mut t = min(end, 0x10000);
         let mut result = vec![0; t - start];
 
@@ -169,7 +191,7 @@ impl Mmu {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
                         Mbc::Mbc1 { mbc } => {
-                            mbc.bank1 = max(value & 0b0001_1111, 1);
+                            mbc.bank1 = max(value & 0x1F, 1);
                         }
                         _ => { }
                     }
@@ -180,7 +202,7 @@ impl Mmu {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
                         Mbc::Mbc1 { mbc } => {
-                            mbc.bank2 = value & 0b0011;
+                            mbc.bank2 = value & 0x03;
                         }
                         _ => { }
                     }
@@ -203,19 +225,22 @@ impl Mmu {
             }
 
             // TODO only write to wrtie-able RAM
-            0x8000..=0xFFFF => {
-                let ram_offset = if let Some(cartridge) = &mut self.cartridge {
-                    match &mut cartridge.mbc {
-                        Mbc::Mbc1 { mbc } => {
-                            mbc.ram_offset()
-                        }
-                        _ => 0
-                    }
-                } else {
-                    0
-                };
+            0x8000..=0x9FFF => {
+                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                self.ram[adjusted_address] = value;
+            }
 
-                let adjusted_address = ram_offset | ((address as usize - 0x8000) & (self.ram.len() - 1));
+            0xA000..=0xBFFF => {
+                if let Some(cartridge) = &mut self.cartridge {
+                    cartridge.write_8_a000_bfff(address, value);
+                } else {
+                    let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                    self.ram[adjusted_address] = value;
+                }
+            }
+
+            0xC000..=0xFFFF => {
+                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
 
                 self.ram[adjusted_address] = match address {
                     DIV_REG_ADDRESS => 0,           // All writes to timer DIV register reset it to 0
