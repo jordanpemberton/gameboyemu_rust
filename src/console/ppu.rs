@@ -9,11 +9,11 @@ use crate::console::tilemap::TileMap;
 const DEBUG_COLOR_I: u8 = 12;
 
 const LCD_CONTROL_REG: u16 = 0xFF40;
-const LCD_STATUS_REG: u16 = 0xFF41;
+pub(crate) const LCD_STATUS_REG: u16 = 0xFF41;
 const SCY_REG: u16 = 0xFF42;
 const SCX_REG: u16 = 0xFF43;
 const LY_REG: u16 = 0xFF44;
-const LYC_REG: u16 = 0xFF45;
+pub(crate) const LYC_REG: u16 = 0xFF45;
 const DMA_REG: u16 = 0xFF46;
 const BGP_REG: u16 = 0xFF47;
 const OBP0_REG: u16 = 0xFF48;
@@ -339,16 +339,15 @@ impl Ppu {
         self.refresh_from_mem(mmu);
 
         // TODO Pixel FIFO instead of redrawing line multiple times
-        self.draw_background_line(mmu);
+        // self.draw_background_line(mmu);
         // self.draw_window_line(mmu);
 
         // for debugging
         if self.ly == 0 {
-            // self.display_tiles_at(mmu, 0x3D9F, 0, 0); // for debugging
-            // self.display_tiles_at(mmu, 0xBF00, 0, 0); // for debugging
             // self.display_tiles_at(mmu, 0x8000, 0, 0); // for debugging
-            // self.display_tiles_from_indices_at(mmu, false, true, 0, 0);
-            self.draw_sprites(mmu); // TODO rewrite to draw by line
+            self.display_tiles_from_indices_at(mmu, false, true, 0, 0); // what tetris should draw (mostly)
+            // self.display_tiles_from_indices_at(mmu, false, false, 0, 0); // what tetris is drawing (punctuation/noise)
+            // self.draw_sprites(mmu); // TODO rewrite to draw by line
         }
 
         if self.in_debug_mode {
