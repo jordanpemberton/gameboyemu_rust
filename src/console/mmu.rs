@@ -22,6 +22,7 @@ use crate::console::timer::DIV_REG_ADDRESS;
 
 const BOOTROM_FILEPATH: &str = "roms/bootrom/DMG_ROM.bin";
 
+pub(crate) const JOYPAD_REG_ADDRESS: u16 = 0xFF00;
 const IF_REG_ADDRESS: u16 = 0xFF0F;
 const OAM_DMA_ADDRESS: u16 = 0xFF46;
 const BANK_REG_ADDRESS: u16 = 0xFF50;
@@ -92,6 +93,9 @@ impl Mmu {
                 let mut result = self.ram[address as usize - 0x8000];
                 if address == IF_REG_ADDRESS {
                     result |= 0xE0; // top 3 bits of IF register will always return 1s.
+                }
+                else if address == JOYPAD_REG_ADDRESS {
+                    // result ^= 0xFF; // invert?
                 }
                 result
             }
@@ -187,6 +191,7 @@ impl Mmu {
 
                 self.ram[adjusted_address] = match address {
                     DIV_REG_ADDRESS => 0,           // All writes to timer DIV register reset it to 0
+                    JOYPAD_REG_ADDRESS => value,    // invert?
                     _ => value
                 };
 

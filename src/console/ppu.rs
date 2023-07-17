@@ -21,11 +21,13 @@ const OBP1_REG: u16 = 0xFF49;
 const WY_REG: u16 = 0xFF4A;
 const WX_REG: u16 = 0xFF4B;
 
+// From Michael Steil, Ultimate Game Boy Talk
+// (Gekkio (Mooneye) has HBlank=50 and OAM=21)
 const MODE_CLOCKS: [usize; 4] = [
-    204,        // HBlank[0]
-    456,        // VBlank [1]
-    80,         // OAM [2]
-    172,        // PixelTransfer [3]
+    51 * 4,             // = 204    HBlank[0]
+    (20 + 43 + 51) * 4, // = 456    VBlank [1]
+    20 * 4,             // = 80     OAM [2]
+    43 * 4,             // = 172    PixelTransfer [3]
 ];
 
 const MODE_LINE_RANGE: [(u8, u8); 4] = [
@@ -339,15 +341,15 @@ impl Ppu {
         self.refresh_from_mem(mmu);
 
         // TODO Pixel FIFO instead of redrawing line multiple times
-        // self.draw_background_line(mmu);
+        self.draw_background_line(mmu);
         // self.draw_window_line(mmu);
 
         // for debugging
         if self.ly == 0 {
             // self.display_tiles_at(mmu, 0x8000, 0, 0); // for debugging
-            self.display_tiles_from_indices_at(mmu, false, true, 0, 0); // what tetris should draw (mostly)
+            // self.display_tiles_from_indices_at(mmu, false, true, 0, 0); // what tetris should draw (mostly)
             // self.display_tiles_from_indices_at(mmu, false, false, 0, 0); // what tetris is drawing (punctuation/noise)
-            // self.draw_sprites(mmu); // TODO rewrite to draw by line
+            self.draw_sprites(mmu); // TODO rewrite to draw by line
         }
 
         if self.in_debug_mode {
