@@ -8,11 +8,19 @@ const FLAG_SUBTRACT_BYTE: u8 = 6;
 const FLAG_HALF_CARRY_BYTE: u8 = 5;
 const FLAG_CARRY_BYTE: u8 = 4;
 
+#[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub(crate) struct Flags {
     pub(crate) zero: bool,          // Z
     pub(crate) subtract: bool,      // N
     pub(crate) half_carry: bool,    // H
     pub(crate) carry: bool,         // C
+}
+
+impl Display for Flags {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Z: {}, N: {}, H: {}, C: {}",
+            self.zero as u8, self.subtract as u8, self.half_carry as u8, self.carry as u8)
+    }
 }
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
