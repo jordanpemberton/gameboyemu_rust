@@ -220,7 +220,7 @@ impl Ppu {
                 }
             }
             StatMode::PixelTransfer => {
-                if self.clocks < t {
+                if self.clocks < t { // where is correct to check if enabled?
                     self.pixel_transfer(mmu);
                 } else {
                     self.clocks = 0;
@@ -360,6 +360,7 @@ impl Ppu {
     #[allow(dead_code)]
     fn draw_background_line(&mut self, mmu: &mut Mmu) {
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
+                // && self.lcd_control.check_bit(mmu, LcdControlRegBit::LcdAndPpuEnabled as u8) { // why is this never enabled...
             self.fill_lcd_row(mmu, DrawMode::Background);
         }
     }

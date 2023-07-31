@@ -2660,7 +2660,8 @@ impl Instruction {
         // SP = SP +/- dd ; dd is 8-bit signed number
         let sp = cpu.registers.get_word(CpuRegIndex::SP);
         let signed = alu::signed_8(args[0]);
-        
+
+        // Does not work (fails Blargg 3 with -1):
         let (result, flags) = if signed < 0 {
             let b = (-signed) as u16;
             let half_carry = (sp & 0x0F) < (b & 0x0F);
@@ -2683,6 +2684,22 @@ impl Instruction {
                 half_carry,
                 carry,
             })
+        };
+
+        // vs Mooneye code (works):
+        let offset = args[0] as i8 as i16 as u16;;
+        let result = sp.wrapping_add(offset);
+        let mut mask: u16 = (1 << 3);
+        mask |= mask.wrapping_sub(1);
+        let half_carry = (sp & mask) + (offset & mask) > mask;
+        let mut mask: u16 = (1 << 7);
+        mask |= mask.wrapping_sub(1);
+        let carry = (sp & mask) + (offset & mask) > mask;
+        let flags = Flags{
+            zero: false,
+            subtract: false,
+            half_carry,
+            carry,
         };
 
         cpu.registers.set_word(CpuRegIndex::SP, result);
@@ -2786,6 +2803,7 @@ impl Instruction {
         let sp = cpu.registers.get_word(CpuRegIndex::SP);
         let signed = alu::signed_8(args[0]);
 
+        // Does not work (fails Blargg 3 with -1):
         let (result, flags) = if signed < 0 {
             let b = (-signed) as u16;
             let half_carry = (sp & 0x0F) < (b & 0x0F);
@@ -2808,6 +2826,22 @@ impl Instruction {
                 half_carry,
                 carry,
             })
+        };
+
+        // vs Mooneye (works):
+        let offset = args[0] as i8 as u16;
+        let result = sp.wrapping_add(offset);
+        let mut mask: u16 = (1 << 3);
+        mask |= mask.wrapping_sub(1);
+        let half_carry = (sp & mask) + (offset & mask) > mask;
+        let mut mask: u16 = (1 << 7);
+        mask |= mask.wrapping_sub(1);
+        let carry = (sp & mask) + (offset & mask) > mask;
+        let flags = Flags {
+            zero: false,
+            subtract: false,
+            half_carry,
+            carry,
         };
 
         cpu.registers.set_word(CpuRegIndex::HL, result);
