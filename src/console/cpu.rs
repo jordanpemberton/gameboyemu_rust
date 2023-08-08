@@ -54,7 +54,7 @@ impl Cpu {
         if self.is_halted {
             4
         } else {
-            self.oam_dma(mmu);
+            self.oam_dma(mmu); // TODO Fix OAM DMA timing (mooneye acceptance/add_sp_e_timing)
             self.execute_instruction(mmu)
         }
     }
@@ -127,14 +127,7 @@ impl Cpu {
 
         if self.debug_print_on
         {
-            // Option 1, Example: "0xC375	0x00CA	JP Z,a16      	0xB9	0xC1"
-            if !self.visited.contains(&start_pc) { // 0x234E == DrMario PollJoypad
-                Debugger::print_cpu_exec(self, mmu, start_pc, opcode, instruction.mnemonic, args.as_slice());
-                self.visited.insert(start_pc);
-            }
-
-            // Option 2, Example: "A: 0C F: 40 B: 06 C: FF D: C8 E: 46 H: 8A L: 74 SP: DFF7 PC: 00:C762 (13 A9 22 22)"
-            // Debugger::print_cpu_exec_log(self, mmu, start_pc);
+            Debugger::print_cpu_exec(self, mmu, start_pc, opcode, instruction.mnemonic, args.as_slice());
         }
 
         let args = args.as_ref();

@@ -70,9 +70,29 @@ impl Debugger {
         println!();
     }
 
-    pub(crate) fn print_cpu_exec_log(cpu: &Cpu, mmu: &Mmu, start_pc: u16) {
-        // to check against blargg test logging:
-        // example: "A: 0C F: 40 B: 06 C: FF D: C8 E: 46 H: 8A L: 74 SP: DFF7 PC: 00:C762 (13 A9 22 22)"
+    pub(crate) fn print_cpu_exec(cpu: &mut Cpu, mmu: &Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
+        // Debugger::print_cpu_exec_op1(cpu, mmu, start_pc, opcode, mnemonic, args);
+        Debugger::print_cpu_exec_op2(cpu, mmu, start_pc, opcode, mnemonic, args);
+    }
+
+    // Option 1, Example: "0xC375	0x00CA	JP Z,a16      	0xB9	0xC1"
+    pub(crate) fn print_cpu_exec_op1(cpu: &mut Cpu, mmu: &Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
+        if !cpu.visited.contains(&start_pc) { // 0x234E == DrMario PollJoypad
+            print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, mnemonic);
+            if args.len() > 0 {
+                print!("\t{:#04X}", args[0]);
+            };
+            if args.len() > 1 {
+                print!("\t{:#04X}", args[1]);
+            };
+            println!();
+            cpu.visited.insert(start_pc);
+        }
+    }
+
+    // Option 2, Example: "A: 0C F: 40 B: 06 C: FF D: C8 E: 46 H: 8A L: 74 SP: DFF7 PC: 00:C762 (13 A9 22 22)"
+    // (to check against blargg test logging)
+    pub(crate) fn print_cpu_exec_op2(cpu: &mut Cpu, mmu: &Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
         println!(
             "A: {:02X} F: {:02X} B: {:02X} C: {:02X} \
                     D: {:02X} E: {:02X} H: {:02X} L: {:02X} \
@@ -93,17 +113,6 @@ impl Debugger {
             mmu.read_8(start_pc + 2),
             mmu.read_8(start_pc + 3),
         );
-    }
-
-    pub(crate) fn print_cpu_exec(cpu: &mut Cpu, mmu: &Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
-        print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, mnemonic);
-        if args.len() > 0 {
-            print!("\t{:#04X}", args[0]);
-        };
-        if args.len() > 1 {
-            print!("\t{:#04X}", args[1]);
-        };
-        println!();
     }
 
     fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {

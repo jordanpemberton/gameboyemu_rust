@@ -27,7 +27,7 @@ impl Timer {
 
         self.refresh_from_mem(mmu);
 
-        self.inc_div(mmu, cycles);
+        self.inc_div(mmu, cycles); // TODO fix
 
         let clocks = self.selected_clocks();
 
@@ -59,6 +59,7 @@ impl Timer {
         }
     }
 
+    // TODO failing mooneye test acceptance/div_timing
     fn inc_div(&mut self, mmu: &mut Mmu, increment_by: u8) {
         // Increment Div (unless STOP instruction was run)
         // Does anything happen when it overflows /wraps?
