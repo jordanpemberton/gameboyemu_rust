@@ -71,8 +71,8 @@ impl Debugger {
     }
 
     pub(crate) fn print_cpu_exec(cpu: &mut Cpu, mmu: &Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
-        // Debugger::print_cpu_exec_op1(cpu, mmu, start_pc, opcode, mnemonic, args);
-        Debugger::print_cpu_exec_op2(cpu, mmu, start_pc, opcode, mnemonic, args);
+        Debugger::print_cpu_exec_op1(cpu, mmu, start_pc, opcode, mnemonic, args);
+        // Debugger::print_cpu_exec_op2(cpu, mmu, start_pc, opcode, mnemonic, args);
     }
 
     // Option 1, Example: "0xC375	0x00CA	JP Z,a16      	0xB9	0xC1"

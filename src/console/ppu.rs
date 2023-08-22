@@ -341,15 +341,16 @@ impl Ppu {
         self.refresh_from_mem(mmu);
 
         // TODO Pixel FIFO instead of redrawing line multiple times
-        self.draw_background_line(mmu);
+        // self.draw_background_line(mmu);
         // self.draw_window_line(mmu);
+        self.draw_sprites_line(mmu);
 
         // for debugging
         if self.ly == 0 {
             // self.display_tiles_at(mmu, 0x8000, 0, 0); // for debugging
             // self.display_tiles_from_indices_at(mmu, false, true, 0, 0); // what tetris should draw (mostly)
             // self.display_tiles_from_indices_at(mmu, false, false, 0, 0); // what tetris is drawing (punctuation/noise)
-            self.draw_sprites(mmu); // TODO rewrite to draw by line
+            // self.draw_sprites(mmu); // TODO rewrite to draw by line
         }
 
         if self.in_debug_mode {
@@ -375,26 +376,64 @@ impl Ppu {
     }
 
     #[allow(dead_code)]
-    #[allow(unused_variables)]
     fn draw_sprites_line(&mut self, mmu: &mut Mmu) {
-        // TODO
+        if self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8) {
+            let tiledata_address: usize = 0x8000;
+            let scanline = self.ly;
+
+            for attr in self.sprite_attributes {
+                let sprite_height: u8 = if self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8) { 16 } else { 8 };
+                let sprite_top_y = attr.y.wrapping_sub(16);
+                let distance_sprite_top_y_to_scanline = scanline.wrapping_sub(sprite_top_y);
+
+                if sprite_top_y <= scanline && distance_sprite_top_y_to_scanline < sprite_height {
+                    let tile_index = attr.tile_index as usize;
+                    let tile_address = tiledata_address + tile_index * 16;
+                    let tile_bytes = mmu.read_buffer(tile_address as u16, tile_address as u16 + 16)
+                        .try_into().unwrap();
+                    let tile = tilemap::read_tile(tile_bytes);   // TODO support 16 height tiles...
+                    let palette = Ppu::read_palette(self.bgp); // TODO Check attr.palette_is_obp1 to get palette
+
+                    let mut tile_row = distance_sprite_top_y_to_scanline;
+                    if attr.flip_y { tile_row = sprite_height - tile_row - 1 };
+                    if tile_row >= 8 { break; }  // TODO fix 16 height tiles...
+                    for tile_col in 0..8 {
+                        let color_i = tile[tile_row as usize][tile_col as usize];
+
+                        if color_i > 0 {
+                            let color = palette[color_i as usize];
+
+                            // TODO selection priority and drawing priority
+                            let has_priority = true;
+
+                            let x_offset = if attr.flip_x { 7 - tile_col } else { tile_col };
+                            let x = attr.x.wrapping_sub(8).wrapping_add(x_offset);
+                            if x as usize >= self.lcd.data[0].len() { continue };
+
+                            let bg_color = self.lcd.data[scanline as usize][x as usize];
+
+                            if has_priority || bg_color == 0 {
+                                self.lcd.data[scanline as usize][x as usize] = color + 8; // TEMP colors to distinguish sprites
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[allow(dead_code)]
     fn fill_lcd_row(&mut self, mmu: &mut Mmu, mode: DrawMode) {
         let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8);
-
         let tilemap_at_9c00_bit = match mode {
             DrawMode::Window => LcdControlRegBit::WindowTilemapIsAt9C00,
             DrawMode::Background | _ => LcdControlRegBit::BackgroundTilemapIsAt9C00,
         } as u8;
-
         let background_tilemap_address = if self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit) {
             0x9C00
         } else {
             0x9800
         };
-
         let (y_offset, x_offset, x_start) = if self.in_debug_mode {
             match mode {
                 DrawMode::Window => (self.wy, 0, self.wx.wrapping_sub(7)), // TODO fix
@@ -406,7 +445,6 @@ impl Ppu {
                 DrawMode::Background | _ => (self.scy, self.scx, 0),
             }
         };
-
         let lcd_row = self.ly.wrapping_sub(y_offset) as usize;
         let tilemap_row = (self.ly / 8) as usize;
         let tile_row = (self.ly % 8) as usize;
@@ -459,7 +497,7 @@ impl Ppu {
                 let tile_address = tiledata_address + tile_index * 16;
                 let tile_bytes = mmu.read_buffer(tile_address as u16, tile_address as u16 + 16)
                     .try_into().unwrap();
-                let tile = tilemap::read_tile(tile_bytes);
+                let tile = tilemap::read_tile(tile_bytes);  // TODO support 16 height tiles...
                 let sprite_height: u8 = if self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8) { 16 } else { 8 };
                 let palette = Ppu::read_palette(self.bgp); // TODO Check attr.palette_is_obp1 to get palette
 

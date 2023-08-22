@@ -191,34 +191,34 @@ impl Console {
         true
     }
 
-    fn main_loop(&mut self, update_duration: Duration) -> (u128, u128) {
-        let mut cycles_this_update: u32 = 0;
+    fn main_loop(&mut self, refresh_duration: Duration) -> (u128, u128) {
+        let mut cycles_this_refresh: u32 = 0;
         let mut total_cycles: u128 = 0;
-        let mut total_updates: u128 = 0;
-        let mut next_update_time = SystemTime::now().add(update_duration);
+        let mut total_refreshes: u128 = 0;
+        let mut next_refresh_time = SystemTime::now().add(refresh_duration);
 
         'mainloop: loop {
-            if SystemTime::now() >= next_update_time {
-                // time to draw and poll input
+            if SystemTime::now() >= next_refresh_time {
+                // Time to draw and poll input
                 self.display.draw(&mut self.ppu);
 
                 if !self.input_polling() {
                     break 'mainloop;
                 }
 
-                total_cycles += cycles_this_update as u128;
-                total_updates += 1;
-                cycles_this_update = 0;
-                next_update_time = SystemTime::now().add(update_duration);
-            } else if cycles_this_update >= (CYCLES_PER_REFRESH - 4) {
-                continue; // wait till next update
+                total_cycles += cycles_this_refresh as u128;
+                total_refreshes += 1;
+                cycles_this_refresh = 0;
+                next_refresh_time = SystemTime::now().add(refresh_duration);
+            } else if cycles_this_refresh >= (CYCLES_PER_REFRESH - 4) {
+                // Wait till next update
+                continue;
             } else if self.debugger.is_some() && self.debugger.as_mut().unwrap().active {
-                // Paused for debugger but keep ticking
-                // let Some(ref mut debugger) = self.debugger;
-                cycles_this_update += 4;
+                // Currently paused for debugger but keep ticking
+                cycles_this_refresh += 4;
             } else {
+                // TICK (CPU, Interrupts, PPU, Timer)
                 let mut cycles = self.cpu.step(&mut self.mmu);
-
                 if cycles < 0 {
                     // self.debug_print_screen();
                     self.debug_peek();
@@ -234,10 +234,10 @@ impl Console {
                     self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
                 }
 
-                cycles_this_update += cycles as u32;
+                cycles_this_refresh += cycles as u32;
             }
         }
 
-        (total_cycles, total_updates)
+        (total_cycles, total_refreshes)
     }
 }

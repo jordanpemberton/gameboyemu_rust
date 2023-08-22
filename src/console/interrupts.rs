@@ -71,7 +71,9 @@ impl Interrupts {
             } else if self.enabled.check_bit(mmu, InterruptRegBit::Serial as u8) && self.requested.check_bit(mmu, InterruptRegBit::Serial as u8) {
                 self.requested.set_bit(mmu, InterruptRegBit::Serial as u8, false);
                 value = 0x58;
-            } else if self.enabled.check_bit(mmu, InterruptRegBit::Joypad as u8) && self.requested.check_bit(mmu, InterruptRegBit::Joypad as u8) {
+            } else if
+                    self.enabled.check_bit(mmu, InterruptRegBit::Joypad as u8) &&
+                    self.requested.check_bit(mmu, InterruptRegBit::Joypad as u8) {
                 self.requested.set_bit(mmu, InterruptRegBit::Joypad as u8, false);
                 value = 0x60;
             }
