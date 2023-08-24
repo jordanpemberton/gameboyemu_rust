@@ -908,7 +908,7 @@ impl Instruction {
         flags.subtract = false;
         flags.half_carry = true;
         cpu.registers.set_flags(flags);
-        self .cycles
+        self.cycles
     }
 
     /// SET, RES

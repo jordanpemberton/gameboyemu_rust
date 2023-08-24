@@ -23,7 +23,7 @@ const WX_REG: u16 = 0xFF4B;
 
 // From Michael Steil, Ultimate Game Boy Talk
 // (Gekkio (Mooneye) has HBlank=50 and OAM=21)
-const MODE_CLOCKS: [usize; 4] = [
+const MODE_DURATION: [usize; 4] = [
     51 * 4,             // = 204    HBlank[0]
     (20 + 43 + 51) * 4, // = 456    VBlank [1]
     20 * 4,             // = 80     OAM [2]
@@ -202,17 +202,18 @@ impl Ppu {
 
         // TODO check incoming interrupt requests /enables
 
-        let x = (self.lcd_status.value & 0x03) as usize;
-        let mode = STAT_MODES[x];
-        let t = MODE_CLOCKS[x];
-        let (y0, y1) = MODE_LINE_RANGE[x];
-        if self.ly < y0 || y1 <= self.ly {
-            self.ly = y0;
+        let mode_flag = (self.lcd_status.value & 0x03) as usize;
+        let mode = STAT_MODES[mode_flag];
+        let mode_duration = MODE_DURATION[mode_flag];
+        let (mode_y_start, mode_y_end) = MODE_LINE_RANGE[mode_flag];
+        // Force current line ly to align with current mode (hack)
+        if self.ly < mode_y_start || mode_y_end <= self.ly {
+            self.set_ly(mmu, mode_y_start);
         }
 
         match *mode {
             StatMode::OamSearch => {
-                if self.clocks < t {
+                if self.clocks < mode_duration {
                     self.oam_search(mmu);
                 } else {
                     self.clocks = 0;
@@ -220,7 +221,7 @@ impl Ppu {
                 }
             }
             StatMode::PixelTransfer => {
-                if self.clocks < t { // where is correct to check if enabled?
+                if self.clocks < mode_duration { // where is correct to check if enabled?
                     self.pixel_transfer(mmu);
                 } else {
                     self.clocks = 0;
@@ -231,7 +232,7 @@ impl Ppu {
                 }
             }
             StatMode::HBlank => {
-                if self.clocks < t {
+                if self.clocks < mode_duration {
                     // wait
                 } else {
                     self.increment_ly(mmu);
@@ -250,7 +251,7 @@ impl Ppu {
                 }
             }
             StatMode::VBlank => {
-                if self.clocks < t {
+                if self.clocks < mode_duration {
                     // wait
                 } else {
                     self.increment_ly(mmu);
@@ -298,13 +299,22 @@ impl Ppu {
         ]
     }
 
-    fn increment_ly(&mut self, mmu: &mut Mmu) {
-        self.ly += 1;
-        self.clocks = 0;
-
+    fn set_ly(&mut self, mmu: &mut Mmu, value: u8) {
+        self.ly = value;
         if self.ly >= MODE_LINE_RANGE[StatMode::VBlank as usize].1 {
             self.ly = 0;
         }
+
+        mmu.write_8(LY_REG, self.ly);
+    }
+
+    fn increment_ly(&mut self, mmu: &mut Mmu) {
+        self.ly += 1;
+        self.clocks = 0;
+        if self.ly >= MODE_LINE_RANGE[StatMode::VBlank as usize].1 {
+            self.ly = 0;
+        }
+
         mmu.write_8(LY_REG, self.ly);
     }
 
@@ -341,8 +351,8 @@ impl Ppu {
         self.refresh_from_mem(mmu);
 
         // TODO Pixel FIFO instead of redrawing line multiple times
-        // self.draw_background_line(mmu);
-        // self.draw_window_line(mmu);
+        self.draw_background_line(mmu);
+        self.draw_window_line(mmu);
         self.draw_sprites_line(mmu);
 
         // for debugging
@@ -350,7 +360,7 @@ impl Ppu {
             // self.display_tiles_at(mmu, 0x8000, 0, 0); // for debugging
             // self.display_tiles_from_indices_at(mmu, false, true, 0, 0); // what tetris should draw (mostly)
             // self.display_tiles_from_indices_at(mmu, false, false, 0, 0); // what tetris is drawing (punctuation/noise)
-            // self.draw_sprites(mmu); // TODO rewrite to draw by line
+            // self.draw_sprites(mmu);
         }
 
         if self.in_debug_mode {
@@ -384,6 +394,7 @@ impl Ppu {
             for attr in self.sprite_attributes {
                 let sprite_height: u8 = if self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8) { 16 } else { 8 };
                 let sprite_top_y = attr.y.wrapping_sub(16);
+
                 let distance_sprite_top_y_to_scanline = scanline.wrapping_sub(sprite_top_y);
 
                 if sprite_top_y <= scanline && distance_sprite_top_y_to_scanline < sprite_height {
@@ -488,7 +499,6 @@ impl Ppu {
 
     #[allow(dead_code)]
     fn draw_sprites(&mut self, mmu: &mut Mmu) {
-        // TODO OAM DMA
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8) {
             let tiledata_address: usize = 0x8000;
 
