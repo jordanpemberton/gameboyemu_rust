@@ -104,10 +104,8 @@ impl Mmu {
 
             0xC000..=0xFFFF => {
                 let mut result = self.ram[address as usize - 0x8000];
-                if address == IF_REG {
-                    result |= 0xE0; // top 3 bits of IF register will always return 1s.
-                } else if address == JOYPAD_REG {
-                    result = !result;
+                if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                    println!("Get {:#06X}: {:#06X}", address, result);
                 }
                 result
             }
@@ -203,7 +201,6 @@ impl Mmu {
 
                 self.ram[adjusted_address] = match address {
                     DIV_REG_ADDRESS => 0,      // All writes to timer DIV register reset it to 0
-                    JOYPAD_REG => (!value) & 0x2F,
                     _ => value
                 };
 
@@ -211,6 +208,10 @@ impl Mmu {
                     if self.oam_dma_source_address.is_none() {
                         self.oam_dma_source_address = Option::from((value as u16) << 8);
                     }
+                }
+
+                if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                    println!("Set {:#06X} = {:#06X}", address, value);
                 }
 
                 if self.is_booting && address == BANK_REG && (value & 1) == 1 {

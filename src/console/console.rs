@@ -161,7 +161,7 @@ impl Console {
                 | Callback::InputKeyA
                 | Callback::InputKeyB => {
                     let mut value = self.mmu.read_8(mmu::JOYPAD_REG);
-                    let enabled_bit_value = 1; // 0 or 1?
+                    let enabled_bit_value = 1;
                     let enabled = (value & (1 << 4)) >> 4 == enabled_bit_value;
                     if enabled {
                         let bit_mask = 1 << (match callback {
@@ -170,8 +170,7 @@ impl Console {
                             Callback::InputKeyB => 1,
                             Callback::InputKeyA | _ => 0,
                         });
-                        // value &= !(value & bit_mask);   // to clear bit N
-                        value |= bit_mask;           // to set bit N
+                        value |= bit_mask;
                         self.mmu.write_8(mmu::JOYPAD_REG, value);
                         self.cpu.interrupts.request(InterruptRegBit::Joypad, &mut self.mmu);
                     }
@@ -181,7 +180,7 @@ impl Console {
                 | Callback::InputKeyLeft
                 | Callback::InputKeyRight => {
                     let mut value = self.mmu.read_8(mmu::JOYPAD_REG);
-                    let enabled_bit_value = 1; // 0 or 1?
+                    let enabled_bit_value = 1;
                     let enabled = (value & (1 << 5)) >> 5 == enabled_bit_value;
                     if enabled {
                         let bit_mask = 1 << (match callback {
@@ -190,8 +189,7 @@ impl Console {
                             Callback::InputKeyLeft => 1,
                             Callback::InputKeyRight | _ => 0,
                         });
-                        value &= !(value & bit_mask);   // to clear bit N
-                        value |= bit_mask;           // to set bit N
+                        value |= bit_mask;
                         self.mmu.write_8(mmu::JOYPAD_REG, value);
                         self.cpu.interrupts.request(InterruptRegBit::Joypad, &mut self.mmu);
                     }
