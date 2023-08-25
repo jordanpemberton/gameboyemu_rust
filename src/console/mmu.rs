@@ -211,7 +211,7 @@ impl Mmu {
 
                 let value = match address {
                     DIV_REG_ADDRESS => 0,       // All writes to timer DIV register reset it to 0
-                    JOYPAD_REG => self.ram[adjusted_address] | (value & 0xF0), // Bottom nibble is read only
+                    JOYPAD_REG => (value & 0xF0) | (self.ram[adjusted_address] & 0x0F), // Bottom nibble is read only
                     _ => value
                 };
                 self.ram[adjusted_address] = value;
@@ -255,7 +255,7 @@ impl Mmu {
     }
 
     fn read_joypad_reg(&mut self, reg_value: u8) -> u8 {
-        let mut adjusted_value = reg_value & 0xF0;
+        let mut adjusted_value = (reg_value & 0xF0) | 0x0F;
 
         // accumulative(?)
         for input in &self.input_queue {
@@ -263,6 +263,6 @@ impl Mmu {
         }
         self.input_queue = vec![]; // clear input queue
 
-        0
+        adjusted_value
     }
 }
