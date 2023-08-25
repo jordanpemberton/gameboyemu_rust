@@ -18,6 +18,8 @@ use std::cmp::{max, min};
 use std::fs::read;
 use crate::cartridge::cartridge::Cartridge;
 use crate::cartridge::mbc::Mbc;
+use crate::console::input;
+use crate::console::input::{Input, JoypadInput};
 use crate::console::timer::DIV_REG_ADDRESS;
 
 pub(crate) const OAM_START: u16 = 0xFE00;
@@ -53,6 +55,7 @@ pub(crate) struct Mmu {
     rom: [u8; 0x8000 as usize],
     ram: [u8; 0x8000 as usize],
     cartridge: Option<Cartridge>,
+    pub(crate) input_queue: Vec<JoypadInput>, // TODO this doesn't belong here
 }
 
 // TODO -- refactor, eliminate duplicated code.
@@ -64,13 +67,14 @@ impl Mmu {
             rom: [0; 0x8000],
             ram: [0; 0x8000],
             cartridge,
+            input_queue: vec![],
         };
         mmu.load_bootrom();
         mmu
     }
 
     // noinspection RsNonExhaustiveMatch -- u16 range covered
-    pub(crate) fn read_8(&self, address: u16) -> u8 {
+    pub(crate) fn read_8(&mut self, address: u16) -> u8 {
         match address {
             0x0000..=0x00FF if self.is_booting => {
                 self.rom[address as usize]
@@ -103,16 +107,22 @@ impl Mmu {
             }
 
             0xC000..=0xFFFF => {
-                let mut result = self.ram[address as usize - 0x8000];
+                let result = match address {
+                    JOYPAD_REG => self.read_joypad_reg(self.ram[address as usize - 0x8000]),
+                    _ => self.ram[address as usize - 0x8000]
+                };
+
+                // For debugging
                 if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
                     println!("Get {:#06X}: {:#06X}", address, result);
                 }
+
                 result
             }
         }
     }
 
-    pub(crate) fn read_16(&self, address: u16, endian: Endianness) -> u16 {
+    pub(crate) fn read_16(&mut self, address: u16, endian: Endianness) -> u16 {
         let lsb: u8 = self.read_8(address);
         let msb: u8 = self.read_8(address + 1);
 
@@ -122,7 +132,7 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn read_buffer(&self, start: u16, end: u16) -> Vec<u8> {
+    pub(crate) fn read_buffer(&mut self, start: u16, end: u16) -> Vec<u8> {
         let mut result = vec![0; end as usize - start as usize];
         for address in start..end {
             result[address as usize - start as usize] = self.read_8(address);
@@ -199,10 +209,12 @@ impl Mmu {
             0xC000..=0xFFFF => {
                 let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
 
-                self.ram[adjusted_address] = match address {
-                    DIV_REG_ADDRESS => 0,      // All writes to timer DIV register reset it to 0
+                let value = match address {
+                    DIV_REG_ADDRESS => 0,       // All writes to timer DIV register reset it to 0
+                    JOYPAD_REG => self.ram[adjusted_address] | (value & 0xF0), // Bottom nibble is read only
                     _ => value
                 };
+                self.ram[adjusted_address] = value;
 
                 if address == DMA_REG {
                     if self.oam_dma_source_address.is_none() {
@@ -210,6 +222,7 @@ impl Mmu {
                     }
                 }
 
+                // For debugging
                 if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
                     println!("Set {:#06X} = {:#06X}", address, value);
                 }
@@ -239,5 +252,17 @@ impl Mmu {
         let bootrom = read(BOOTROM_FILEPATH).unwrap();
         let size = min(bootrom.len(), 0x100);
         self.rom[0..size].clone_from_slice(&bootrom[..size]);
+    }
+
+    fn read_joypad_reg(&mut self, reg_value: u8) -> u8 {
+        let mut adjusted_value = reg_value & 0xF0;
+
+        // accumulative(?)
+        for input in &self.input_queue {
+            adjusted_value &= Input::read_joypad_input(input, reg_value);
+        }
+        self.input_queue = vec![]; // clear input queue
+
+        0
     }
 }

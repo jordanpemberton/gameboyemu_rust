@@ -92,7 +92,7 @@ impl Console {
             Some(ref mut debugger) => {
                 debugger.peek(
                     Option::from(&self.cpu),
-                    Option::from(&self.mmu),
+                    Option::from(&mut self.mmu),
                     Option::from(&self.timer),
                     Option::from(vec![
                         ("Expected cycles per update", CYCLES_PER_REFRESH.to_string().as_str()),
@@ -112,7 +112,8 @@ impl Console {
     }
 
     fn input_polling(&mut self) -> bool {
-        let callbacks = self.input.poll();
+        let callbacks = self.input.poll(&mut self.mmu);
+
         for callback in callbacks {
             match callback {
                 Callback::DebugBreak => {
@@ -120,7 +121,7 @@ impl Console {
                         Some(ref mut debugger) => {
                             debugger.break_or_cont(
                                 Option::from(&self.cpu),
-                                Option::from(&self.mmu),
+                                Option::from(&mut self.mmu),
                                 Option::from(&self.timer),
                                 Option::from(vec![]));
                         }
@@ -132,7 +133,7 @@ impl Console {
                         Some(ref mut debugger) => {
                             debugger.peek(
                                 Option::from(&self.cpu),
-                                Option::from(&self.mmu),
+                                Option::from(&mut self.mmu),
                                 Option::from(&self.timer),
                                 Option::from(vec![]));
                         }
@@ -160,39 +161,39 @@ impl Console {
                 | Callback::InputKeySelect
                 | Callback::InputKeyA
                 | Callback::InputKeyB => {
-                    let mut value = self.mmu.read_8(mmu::JOYPAD_REG);
-                    let enabled_bit_value = 1;
-                    let enabled = (value & (1 << 4)) >> 4 == enabled_bit_value;
-                    if enabled {
-                        let bit_mask = 1 << (match callback {
-                            Callback::InputKeyStart => 3,
-                            Callback::InputKeySelect => 2,
-                            Callback::InputKeyB => 1,
-                            Callback::InputKeyA | _ => 0,
-                        });
-                        value |= bit_mask;
-                        self.mmu.write_8(mmu::JOYPAD_REG, value);
+                    // let mut value = self.mmu.read_8(mmu::JOYPAD_REG);
+                    // let enabled_bit_value = 1;
+                    // let enabled = (value & (1 << 4)) >> 4 == enabled_bit_value;
+                    // if enabled {
+                    //     let bit_mask = 1 << (match callback {
+                    //         Callback::InputKeyStart => 3,
+                    //         Callback::InputKeySelect => 2,
+                    //         Callback::InputKeyB => 1,
+                    //         Callback::InputKeyA | _ => 0,
+                    //     });
+                    //     value |= bit_mask;
+                    //     // self.mmu.write_8(mmu::JOYPAD_REG, value);
                         self.cpu.interrupts.request(InterruptRegBit::Joypad, &mut self.mmu);
-                    }
+                    // }
                 }
                 Callback::InputKeyUp
                 | Callback::InputKeyDown
                 | Callback::InputKeyLeft
                 | Callback::InputKeyRight => {
-                    let mut value = self.mmu.read_8(mmu::JOYPAD_REG);
-                    let enabled_bit_value = 1;
-                    let enabled = (value & (1 << 5)) >> 5 == enabled_bit_value;
-                    if enabled {
-                        let bit_mask = 1 << (match callback {
-                            Callback::InputKeyDown => 3,
-                            Callback::InputKeyUp => 2,
-                            Callback::InputKeyLeft => 1,
-                            Callback::InputKeyRight | _ => 0,
-                        });
-                        value |= bit_mask;
-                        self.mmu.write_8(mmu::JOYPAD_REG, value);
+                //     let mut value = self.mmu.read_8(mmu::JOYPAD_REG);
+                //     let enabled_bit_value = 1;
+                //     let enabled = (value & (1 << 5)) >> 5 == enabled_bit_value;
+                //     if enabled {
+                //         let bit_mask = 1 << (match callback {
+                //             Callback::InputKeyDown => 3,
+                //             Callback::InputKeyUp => 2,
+                //             Callback::InputKeyLeft => 1,
+                //             Callback::InputKeyRight | _ => 0,
+                //         });
+                //         value |= bit_mask;
+                //         // self.mmu.write_8(mmu::JOYPAD_REG, value);
                         self.cpu.interrupts.request(InterruptRegBit::Joypad, &mut self.mmu);
-                    }
+                //     }
                 }
             }
         }

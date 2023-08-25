@@ -30,7 +30,7 @@ impl Debugger {
         self.enabled && self.active
     }
 
-    pub(crate) fn break_or_cont(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
+    pub(crate) fn break_or_cont(&mut self, cpu: Option<&Cpu>, mmu: Option<&mut Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
         if self.enabled {
             self.active = !self.active;
             if self.active {
@@ -39,7 +39,7 @@ impl Debugger {
         }
     }
 
-    pub(crate) fn peek(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
+    pub(crate) fn peek(&mut self, cpu: Option<&Cpu>, mmu: Option<&mut Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
         if self.enabled {
             self.dump(cpu, mmu, timer, locals);
         }
@@ -92,7 +92,7 @@ impl Debugger {
 
     // Option 2, Example: "A: 0C F: 40 B: 06 C: FF D: C8 E: 46 H: 8A L: 74 SP: DFF7 PC: 00:C762 (13 A9 22 22)"
     // (to check against blargg test logging)
-    pub(crate) fn print_cpu_exec_op2(cpu: &mut Cpu, mmu: &Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
+    pub(crate) fn print_cpu_exec_op2(cpu: &mut Cpu, mmu: &mut Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
         println!(
             "A: {:02X} F: {:02X} B: {:02X} C: {:02X} \
                     D: {:02X} E: {:02X} H: {:02X} L: {:02X} \
@@ -115,7 +115,7 @@ impl Debugger {
         );
     }
 
-    fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
+    fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&mut Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
         if let Some(_cpu) = cpu {
             self.dump_cpu_state(_cpu);
         }
@@ -146,7 +146,7 @@ impl Debugger {
         self.dump_key_value_pairs(vec![("Timer", format!("\n{}", timer).as_str())]);
     }
 
-    fn dump_mmu_state(&self, mmu: &Mmu) {
+    fn dump_mmu_state(&self, mmu: &mut Mmu) {
         let cols: usize = 16;
 
         let mut vram_values_str = String::new();
