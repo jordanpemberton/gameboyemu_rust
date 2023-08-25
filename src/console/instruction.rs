@@ -920,7 +920,7 @@ impl Instruction {
         self .cycles
     }
 
-    /// SWAP
+    /// SWAP -- Swaps high and low nibbles
     fn swap(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], source: Src) -> i16 {
         let mut value = Instruction::get_source_value_8(cpu, mmu, args, source);
         value = ((value & 0xF0) >> 4) | ((value & 0x0F) << 4);

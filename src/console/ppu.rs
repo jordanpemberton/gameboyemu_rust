@@ -1,5 +1,6 @@
 use std::cmp::min;
 use crate::console::interrupts::{InterruptRegBit, Interrupts};
+use crate::console::mmu;
 use crate::console::mmu::Mmu;
 use crate::console::register::Register;
 use crate::console::sprite_attribute::SpriteAttribute;
@@ -7,19 +8,6 @@ use crate::console::tilemap;
 use crate::console::tilemap::TileMap;
 
 const DEBUG_COLOR_I: u8 = 12;
-
-const LCD_CONTROL_REG: u16 = 0xFF40;
-pub(crate) const LCD_STATUS_REG: u16 = 0xFF41;
-const SCY_REG: u16 = 0xFF42;
-const SCX_REG: u16 = 0xFF43;
-const LY_REG: u16 = 0xFF44;
-pub(crate) const LYC_REG: u16 = 0xFF45;
-const DMA_REG: u16 = 0xFF46;
-const BGP_REG: u16 = 0xFF47;
-const OBP0_REG: u16 = 0xFF48;
-const OBP1_REG: u16 = 0xFF49;
-const WY_REG: u16 = 0xFF4A;
-const WX_REG: u16 = 0xFF4B;
 
 // From Michael Steil, Ultimate Game Boy Talk
 // (Gekkio (Mooneye) has HBlank=50 and OAM=21)
@@ -188,8 +176,8 @@ impl Ppu {
             obp1: 0,
             wy: 0,
             wx: 0,
-            lcd_control: Register::new(mmu, LCD_CONTROL_REG),
-            lcd_status: Register::new(mmu, LCD_STATUS_REG),
+            lcd_control: Register::new(mmu, mmu::LCD_CONTROL_REG),
+            lcd_status: Register::new(mmu, mmu::LCD_STATUS_REG),
             sprite_attributes: [SpriteAttribute::new(&[0; 4]); 40],
             lcd: Lcd::new(in_debug_mode),
         }
@@ -272,16 +260,16 @@ impl Ppu {
     }
 
     fn refresh_from_mem(&mut self, mmu: &mut Mmu) {
-        self.scy = mmu.read_8(SCY_REG);
-        self.scx = mmu.read_8(SCX_REG);
-        self.ly = mmu.read_8(LY_REG);
-        self.lyc = mmu.read_8(LYC_REG);
-        self.dma = mmu.read_8(DMA_REG);
-        self.bgp = mmu.read_8(BGP_REG);
-        self.obp0 = mmu.read_8(OBP0_REG);
-        self.obp1 = mmu.read_8(OBP1_REG);
-        self.wy = mmu.read_8(WY_REG);
-        self.wx = mmu.read_8(WX_REG);
+        self.scy = mmu.read_8(mmu::SCY_REG);
+        self.scx = mmu.read_8(mmu::SCX_REG);
+        self.ly = mmu.read_8(mmu::LY_REG);
+        self.lyc = mmu.read_8(mmu::LYC_REG);
+        self.dma = mmu.read_8(mmu::DMA_REG);
+        self.bgp = mmu.read_8(mmu::BGP_REG);
+        self.obp0 = mmu.read_8(mmu::OBP0_REG);
+        self.obp1 = mmu.read_8(mmu::OBP1_REG);
+        self.wy = mmu.read_8(mmu::WY_REG);
+        self.wx = mmu.read_8(mmu::WX_REG);
         self.lcd_control.read_from_mem(mmu);
         self.lcd_status.read_from_mem(mmu);
     }
@@ -305,7 +293,7 @@ impl Ppu {
             self.ly = 0;
         }
 
-        mmu.write_8(LY_REG, self.ly);
+        mmu.write_8(mmu::LY_REG, self.ly);
     }
 
     fn increment_ly(&mut self, mmu: &mut Mmu) {
@@ -315,7 +303,7 @@ impl Ppu {
             self.ly = 0;
         }
 
-        mmu.write_8(LY_REG, self.ly);
+        mmu.write_8(mmu::LY_REG, self.ly);
     }
 
     fn set_stat_mode(&mut self, mmu: &mut Mmu, mode: StatMode) {
@@ -332,12 +320,11 @@ impl Ppu {
     }
 
     fn oam_search(&mut self, mmu: &mut Mmu) {
-        if self.ly == 0
-        {
+        if self.ly == 0 {
             self.lcd_control.read_from_mem(mmu);
             let obj_enabled = self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8);
             if obj_enabled {
-                let attribute_data = mmu.read_buffer(0xFE00, 0xFEA0);
+                let attribute_data = mmu.read_buffer(mmu::OAM_START, mmu::OAM_END + 1);
                 for i in 0..40 {
                     let data = &attribute_data[(i * 4)..(i * 4) + 4];
                     let attr = SpriteAttribute::new(data.try_into().unwrap());

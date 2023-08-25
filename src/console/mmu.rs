@@ -20,12 +20,25 @@ use crate::cartridge::cartridge::Cartridge;
 use crate::cartridge::mbc::Mbc;
 use crate::console::timer::DIV_REG_ADDRESS;
 
-const BOOTROM_FILEPATH: &str = "roms/bootrom/DMG_ROM.bin";
+pub(crate) const OAM_START: u16 = 0xFE00;
+pub(crate) const OAM_END: u16 = 0xFE9F;
+pub(crate) const JOYPAD_REG: u16 = 0xFF00;
+pub(crate) const IF_REG: u16 = 0xFF0F;
+pub(crate) const LCD_CONTROL_REG: u16 = 0xFF40;
+pub(crate) const LCD_STATUS_REG: u16 = 0xFF41;
+pub(crate) const SCY_REG: u16 = 0xFF42;
+pub(crate) const SCX_REG: u16 = 0xFF43;
+pub(crate) const LY_REG: u16 = 0xFF44;
+pub(crate) const LYC_REG: u16 = 0xFF45;
+pub(crate) const DMA_REG: u16 = 0xFF46;
+pub(crate) const BGP_REG: u16 = 0xFF47;
+pub(crate) const OBP0_REG: u16 = 0xFF48;
+pub(crate) const OBP1_REG: u16 = 0xFF49;
+pub(crate) const WY_REG: u16 = 0xFF4A;
+pub(crate) const WX_REG: u16 = 0xFF4B;
+pub(crate) const BANK_REG: u16 = 0xFF50;
 
-pub(crate) const JOYPAD_REG_ADDRESS: u16 = 0xFF00;
-const IF_REG_ADDRESS: u16 = 0xFF0F;
-const OAM_DMA_ADDRESS: u16 = 0xFF46;
-const BANK_REG_ADDRESS: u16 = 0xFF50;
+const BOOTROM_FILEPATH: &str = "roms/bootrom/DMG_ROM.bin";
 
 #[allow(dead_code)]
 #[derive(PartialEq)]
@@ -91,11 +104,10 @@ impl Mmu {
 
             0xC000..=0xFFFF => {
                 let mut result = self.ram[address as usize - 0x8000];
-                if address == IF_REG_ADDRESS {
+                if address == IF_REG {
                     result |= 0xE0; // top 3 bits of IF register will always return 1s.
-                }
-                else if address == JOYPAD_REG_ADDRESS {
-                    // result ^= 0xFF; // invert?
+                } else if address == JOYPAD_REG {
+                    result = !result;
                 }
                 result
             }
@@ -190,18 +202,18 @@ impl Mmu {
                 let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
 
                 self.ram[adjusted_address] = match address {
-                    DIV_REG_ADDRESS => 0,           // All writes to timer DIV register reset it to 0
-                    JOYPAD_REG_ADDRESS => value,    // invert?
+                    DIV_REG_ADDRESS => 0,      // All writes to timer DIV register reset it to 0
+                    JOYPAD_REG => (!value) & 0x2F,
                     _ => value
                 };
 
-                if address == OAM_DMA_ADDRESS {
+                if address == DMA_REG {
                     if self.oam_dma_source_address.is_none() {
                         self.oam_dma_source_address = Option::from((value as u16) << 8);
                     }
                 }
 
-                if self.is_booting && address == BANK_REG_ADDRESS && (value & 1) == 1 {
+                if self.is_booting && address == BANK_REG && (value & 1) == 1 {
                     self.is_booting = false;
                 }
             }
