@@ -16,11 +16,9 @@ Bit 4: Joypad   Interrupt Request (INT $60)  (1=Request)
 
 use std::fmt::{Display, Formatter};
 
+use crate::console::mmu;
 use crate::console::mmu::Mmu;
 use crate::console::register::Register;
-
-const IE_REG_ADDRESS: u16 = 0xFFFF;
-const IF_REG_ADDRESS: u16 = 0xFF0F;
 
 pub(crate) enum InterruptRegBit {
     VBlank = 0,
@@ -40,8 +38,8 @@ impl Interrupts {
     pub(crate) fn new(mmu: &mut Mmu) -> Interrupts {
         Interrupts {
             ime: false,
-            enabled: Register::new(mmu, IE_REG_ADDRESS),
-            requested: Register::new(mmu, IF_REG_ADDRESS),
+            enabled: Register::new(mmu, mmu::IE_REG),
+            requested: Register::new(mmu, mmu::IF_REG),
         }
     }
 

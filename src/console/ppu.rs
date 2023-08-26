@@ -143,16 +143,16 @@ pub(crate) struct Ppu {
     clocks: usize,
 
     // Registers -- in IO RAM
-    scy: u8,    // 0xFF42
-    scx: u8,    // 0xFF43
-    ly: u8,     // 0xFF44
-    lyc: u8,    // 0xFF45
-    dma: u8,    // 0xFF46 — DMA: OAM DMA source address & start
-    bgp: u8,    // 0xFF47
-    obp0: u8,   // 0xFF48 (Non-CGB Mode only)
-    obp1: u8,   // 0xFF49 (Non-CGB Mode only)
-    wy: u8,     // 0xFF4A
-    wx: u8,     // 0xFF4B
+    scy: u8,
+    scx: u8,
+    ly: u8,
+    lyc: u8,
+    dma: u8,
+    bgp: u8,
+    obp0: u8,
+    obp1: u8,
+    wy: u8,
+    wx: u8,
 
     lcd_control: Register,
     lcd_status: Register,

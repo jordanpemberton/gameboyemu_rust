@@ -1,9 +1,9 @@
 use sdl2::{EventPump, Sdl};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use crate::console::mmu;
 use crate::console::mmu::Mmu;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum JoypadInput {
     InputKeyUp,
@@ -60,13 +60,13 @@ impl Input {
                 Event::KeyDown { keycode: Some(Keycode::O), .. } => {
                     callbacks.push(Callback::DebugPrintScreen);
                 }
-                Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
-                    callbacks.push(Callback::InputKeyUp);
-                    mmu.input_queue.push(JoypadInput::InputKeyUp);
-                }
                 Event::KeyDown { keycode: Some(Keycode::Down), .. } => {
                     callbacks.push(Callback::InputKeyDown);
                     mmu.input_queue.push(JoypadInput::InputKeyDown);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
+                    callbacks.push(Callback::InputKeyUp);
+                    mmu.input_queue.push(JoypadInput::InputKeyUp);
                 }
                 Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
                     callbacks.push(Callback::InputKeyLeft);
@@ -76,50 +76,25 @@ impl Input {
                     callbacks.push(Callback::InputKeyRight);
                     mmu.input_queue.push(JoypadInput::InputKeyRight);
                 }
-                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::Z), .. } => {
                     callbacks.push(Callback::InputKeyStart);
                     mmu.input_queue.push(JoypadInput::InputKeyStart);
                 }
-                Event::KeyDown { keycode: Some(Keycode::Z), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::X), .. } => {
                     callbacks.push(Callback::InputKeySelect);
                     mmu.input_queue.push(JoypadInput::InputKeySelect);
                 }
-                Event::KeyDown { keycode: Some(Keycode::X), .. } => {
-                    callbacks.push(Callback::InputKeyA);
-                    mmu.input_queue.push(JoypadInput::InputKeyA);
-                }
-                Event::KeyDown { keycode: Some(Keycode::C), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::S), .. } => {
                     callbacks.push(Callback::InputKeyB);
                     mmu.input_queue.push(JoypadInput::InputKeyB);
+                }
+                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                    callbacks.push(Callback::InputKeyA);
+                    mmu.input_queue.push(JoypadInput::InputKeyA);
                 }
                 _ => { }
             }
         }
         callbacks
-    }
-
-    pub(crate) fn read_joypad_input(input: &JoypadInput, reg_value: u8) -> u8 {
-        let select_action_is_enabled = (reg_value & (1 << 4)) >> 4 == 1;
-        let directional_is_enabled = (reg_value & (1 << 5)) >> 5 == 1;
-
-        let input_bit_value = if select_action_is_enabled {
-            1 << (match input {
-                JoypadInput::InputKeyStart => 3,
-                JoypadInput::InputKeySelect => 2,
-                JoypadInput::InputKeyB => 1,
-                JoypadInput::InputKeyA | _ => 0,
-            })
-        } else if directional_is_enabled {
-            1 << (match input {
-                JoypadInput::InputKeyDown => 3,
-                JoypadInput::InputKeyUp => 2,
-                JoypadInput::InputKeyLeft => 1,
-                JoypadInput::InputKeyRight | _ => 0,
-            })
-        } else {
-            0
-        };
-
-        !input_bit_value
     }
 }

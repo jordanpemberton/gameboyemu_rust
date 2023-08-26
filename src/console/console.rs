@@ -11,7 +11,6 @@ use crate::console::mmu::Mmu;
 use crate::console::ppu::Ppu;
 use crate::console::cpu_registers::{CpuRegIndex};
 use crate::console::interrupts::InterruptRegBit;
-use crate::console::mmu;
 use crate::console::timer::Timer;
 
 const CYCLES_PER_REFRESH: u32 = 69905;
@@ -151,49 +150,15 @@ impl Console {
                     self.debug_peek();
                     return false;
                 }
-                // Bit 5 - P15 Select Action buttons    (0=Select)
-                // Bit 4 - P14 Select Direction buttons (0=Select)
-                // Bit 3 - P13 Input: Down  or Start    (0=Pressed) (Read Only)
-                // Bit 2 - P12 Input: Up    or Select   (0=Pressed) (Read Only)
-                // Bit 1 - P11 Input: Left  or B        (0=Pressed) (Read Only)
-                // Bit 0 - P10 Input: Right or A        (0=Pressed) (Read Only)
                 Callback::InputKeyStart
                 | Callback::InputKeySelect
                 | Callback::InputKeyA
-                | Callback::InputKeyB => {
-                    // let mut value = self.mmu.read_8(mmu::JOYPAD_REG);
-                    // let enabled_bit_value = 1;
-                    // let enabled = (value & (1 << 4)) >> 4 == enabled_bit_value;
-                    // if enabled {
-                    //     let bit_mask = 1 << (match callback {
-                    //         Callback::InputKeyStart => 3,
-                    //         Callback::InputKeySelect => 2,
-                    //         Callback::InputKeyB => 1,
-                    //         Callback::InputKeyA | _ => 0,
-                    //     });
-                    //     value |= bit_mask;
-                    //     // self.mmu.write_8(mmu::JOYPAD_REG, value);
-                        self.cpu.interrupts.request(InterruptRegBit::Joypad, &mut self.mmu);
-                    // }
-                }
-                Callback::InputKeyUp
+                | Callback::InputKeyB
+                | Callback::InputKeyUp
                 | Callback::InputKeyDown
                 | Callback::InputKeyLeft
                 | Callback::InputKeyRight => {
-                //     let mut value = self.mmu.read_8(mmu::JOYPAD_REG);
-                //     let enabled_bit_value = 1;
-                //     let enabled = (value & (1 << 5)) >> 5 == enabled_bit_value;
-                //     if enabled {
-                //         let bit_mask = 1 << (match callback {
-                //             Callback::InputKeyDown => 3,
-                //             Callback::InputKeyUp => 2,
-                //             Callback::InputKeyLeft => 1,
-                //             Callback::InputKeyRight | _ => 0,
-                //         });
-                //         value |= bit_mask;
-                //         // self.mmu.write_8(mmu::JOYPAD_REG, value);
-                        self.cpu.interrupts.request(InterruptRegBit::Joypad, &mut self.mmu);
-                //     }
+                    self.cpu.interrupts.request(InterruptRegBit::Joypad, &mut self.mmu); // TODO where does this happen?
                 }
             }
         }
