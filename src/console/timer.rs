@@ -1,10 +1,6 @@
 use std::fmt::{Display, Formatter};
+use crate::console::mmu;
 use crate::console::mmu::Mmu;
-
-pub(crate) const DIV_REG_ADDRESS: u16 = 0xFF04;
-const TIMA_REG_ADDRESS: u16 = 0xFF05;
-const TMA_REG_ADDRESS: u16 = 0xFF06;
-const TAC_REG_ADDRESS: u16 = 0xFF07;
 
 #[derive(Default)]
 pub(crate) struct Timer {
@@ -39,10 +35,10 @@ impl Timer {
     }
 
     fn refresh_from_mem(&mut self, mmu: &mut Mmu) {
-        self.div = mmu.read_8(DIV_REG_ADDRESS);
-        self.counter = mmu.read_8(TIMA_REG_ADDRESS);
-        self.modulo = mmu.read_8(TMA_REG_ADDRESS);
-        self.control = mmu.read_8(TAC_REG_ADDRESS);
+        self.div = mmu.read_8(mmu::DIV_REG);
+        self.counter = mmu.read_8(mmu::TIMA_REG);
+        self.modulo = mmu.read_8(mmu::TMA_REG);
+        self.control = mmu.read_8(mmu::TAC_REG);
     }
 
     fn is_enabled(&self) -> bool {
@@ -65,7 +61,7 @@ impl Timer {
         // Does anything happen when it overflows /wraps?
         self.div = self.div.wrapping_add(increment_by);
 
-        mmu.write_8(DIV_REG_ADDRESS, self.div);
+        mmu.write_8(mmu::DIV_REG, self.div);
     }
 
     fn inc_counter(&mut self, mmu: &mut Mmu, increment_by: u8) -> bool {
@@ -79,7 +75,7 @@ impl Timer {
             counter
         };
 
-        mmu.write_8(TIMA_REG_ADDRESS, self.counter);
+        mmu.write_8(mmu::TIMA_REG, self.counter);
 
         request_interrupt
     }

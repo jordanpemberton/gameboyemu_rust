@@ -22,10 +22,19 @@ use crate::cartridge::mbc::Mbc;
 use crate::console::input::JoypadInput;
 use crate::console::timer::DIV_REG_ADDRESS;
 
+// OAM
 pub(crate) const OAM_START: u16 = 0xFE00;
 pub(crate) const OAM_END: u16 = 0xFE9F;
+// IO
 pub(crate) const JOYPAD_REG: u16 = 0xFF00;
+// Timer
+pub(crate) const DIV_REG: u16 = 0xFF04;
+pub(crate) const TIMA_REG: u16 = 0xFF05;
+pub(crate) const TMA_REG: u16 = 0xFF06;
+pub(crate) const TAC_REG: u16 = 0xFF07;
+// Interrupts
 pub(crate) const IF_REG: u16 = 0xFF0F;
+// PPU
 pub(crate) const LCD_CONTROL_REG: u16 = 0xFF40;
 pub(crate) const LCD_STATUS_REG: u16 = 0xFF41;
 pub(crate) const SCY_REG: u16 = 0xFF42;
@@ -38,7 +47,9 @@ pub(crate) const OBP0_REG: u16 = 0xFF48;
 pub(crate) const OBP1_REG: u16 = 0xFF49;
 pub(crate) const WY_REG: u16 = 0xFF4A;
 pub(crate) const WX_REG: u16 = 0xFF4B;
+// Banking, MBC
 pub(crate) const BANK_REG: u16 = 0xFF50;
+// Interrupts
 pub(crate) const IE_REG: u16 = 0xFFFF;
 
 const BOOTROM_FILEPATH: &str = "roms/bootrom/DMG_ROM.bin";
@@ -116,9 +127,9 @@ impl Mmu {
                 };
 
                 // For debugging
-                // if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
-                //     println!("Get {:#04X}: {:#04X}", address, result);
-                // }
+                if address == 0xC213 { //address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                    println!("Get {:#04X}: {:#04X}", address, result);
+                }
 
                 result
             }
@@ -227,9 +238,9 @@ impl Mmu {
                 }
 
                 // For debugging
-                // if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
-                //     println!("Set {:#04X} = {:#04X}", address, value);
-                // }
+                if address == 0xC213 { // address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                    println!("Set {:#04X} = {:#04X}", address, value);
+                }
 
                 if self.is_booting && address == BANK_REG && (value & 1) == 1 {
                     self.is_booting = false;
