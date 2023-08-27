@@ -13,10 +13,11 @@ use crate::console::cpu_registers::{CpuRegIndex};
 use crate::console::interrupts::InterruptRegBit;
 use crate::console::timer::Timer;
 
-const CYCLES_PER_REFRESH: u32 = 69905;
+const CYCLES_PER_FRAME: u32 = 69905;
+const FRAMES_PER_SECOND: u32 = 60;
 
 pub(crate) struct Console {
-    average_cycles_per_update: u128,
+    average_cycles_per_frame: u128,
     timer: Timer,
     cpu: Cpu,
     mmu: Mmu,
@@ -54,7 +55,7 @@ impl Console {
             ppu.lcd.height);
 
         Console {
-            average_cycles_per_update: 0,
+            average_cycles_per_frame: 0,
             timer: Timer::default(),
             cpu,
             mmu,
@@ -76,12 +77,11 @@ impl Console {
             self.mmu.is_booting = false;
         }
 
-        const FFS: u64 = 60;
-        let update_duration = Duration::from_millis(1000 / FFS);
+        let frame_duration = Duration::from_millis(1000 / FRAMES_PER_SECOND as u64);
 
-        let (total_cycles, total_updates) = self.main_loop(update_duration);
+        let (total_cycles, total_frames) = self.main_loop(frame_duration);
 
-        self.average_cycles_per_update = total_cycles / total_updates;
+        self.average_cycles_per_frame = total_cycles / total_frames;
         // self.debug_print_screen();
         self.debug_peek();
     }
@@ -94,8 +94,8 @@ impl Console {
                     Option::from(&mut self.mmu),
                     Option::from(&self.timer),
                     Option::from(vec![
-                        ("Expected cycles per update", CYCLES_PER_REFRESH.to_string().as_str()),
-                        ("Average cycles per update", self.average_cycles_per_update.to_string().as_str()),
+                        ("Expected cycles per frame", CYCLES_PER_FRAME.to_string().as_str()),
+                        ("Average cycles per frame", self.average_cycles_per_frame.to_string().as_str()),
                     ]));
             }
             None => {}
@@ -165,11 +165,11 @@ impl Console {
         true
     }
 
-    fn main_loop(&mut self, refresh_duration: Duration) -> (u128, u128) {
-        let mut cycles_this_refresh: u32 = 0;
+    fn main_loop(&mut self, frame_duration: Duration) -> (u128, u128) {
+        let mut cycles_this_frame: u32 = 0;
         let mut total_cycles: u128 = 0;
-        let mut total_refreshes: u128 = 0;
-        let mut next_refresh_time = SystemTime::now().add(refresh_duration);
+        let mut total_frames: u128 = 0;
+        let mut next_refresh_time = SystemTime::now().add(frame_duration);
 
         'mainloop: loop {
             if SystemTime::now() >= next_refresh_time {
@@ -180,16 +180,16 @@ impl Console {
                     break 'mainloop;
                 }
 
-                total_cycles += cycles_this_refresh as u128;
-                total_refreshes += 1;
-                cycles_this_refresh = 0;
-                next_refresh_time = SystemTime::now().add(refresh_duration);
-            } else if cycles_this_refresh >= (CYCLES_PER_REFRESH - 4) {
+                total_cycles += cycles_this_frame as u128;
+                total_frames += 1;
+                cycles_this_frame = 0;
+                next_refresh_time = SystemTime::now().add(frame_duration);
+            } else if cycles_this_frame >= (CYCLES_PER_FRAME - 4) {
                 // Wait till next update
                 continue;
             } else if self.debugger.is_some() && self.debugger.as_mut().unwrap().active {
                 // Currently paused for debugger but keep ticking
-                cycles_this_refresh += 4;
+                cycles_this_frame += 4;
             } else {
                 // TICK (CPU, Interrupts, PPU, Timer)
                 let mut cycles = self.cpu.step(&mut self.mmu);
@@ -208,10 +208,10 @@ impl Console {
                     self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
                 }
 
-                cycles_this_refresh += cycles as u32;
+                cycles_this_frame += cycles as u32;
             }
         }
 
-        (total_cycles, total_refreshes)
+        (total_cycles, total_frames)
     }
 }

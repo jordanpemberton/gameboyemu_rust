@@ -15,6 +15,7 @@
 */
 
 use std::cmp::{max, min};
+use std::collections::HashSet;
 use std::fs::read;
 use crate::cartridge::cartridge::Cartridge;
 use crate::cartridge::mbc::Mbc;
@@ -55,7 +56,7 @@ pub(crate) struct Mmu {
     rom: [u8; 0x8000 as usize],
     ram: [u8; 0x8000 as usize],
     cartridge: Option<Cartridge>,
-    pub(crate) input_queue: Vec<JoypadInput>, // TODO this doesn't belong here
+    pub(crate) active_input: HashSet<JoypadInput>,  // TODO this doesn't belong here
 }
 
 // TODO -- Rewrite Mmu, add handlers, eliminate duplicated code.
@@ -67,7 +68,7 @@ impl Mmu {
             rom: [0; 0x8000],
             ram: [0; 0x8000],
             cartridge,
-            input_queue: vec![],
+            active_input: HashSet::from([]),
         };
         mmu.load_bootrom();
         mmu.ram[(JOYPAD_REG - 0x8000) as usize] = 0x1F;
@@ -115,9 +116,9 @@ impl Mmu {
                 };
 
                 // For debugging
-                if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
-                    println!("Get {:#04X}: {:#04X}", address, result);
-                }
+                // if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                //     println!("Get {:#04X}: {:#04X}", address, result);
+                // }
 
                 result
             }
@@ -211,7 +212,7 @@ impl Mmu {
             0xC000..=0xFFFF => {
                 let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
 
-                let curr_value = self.ram[adjusted_address] & 0x0F;
+                let curr_value = self.ram[adjusted_address];
                 value = match address {
                     DIV_REG_ADDRESS => 0,       // All writes to timer DIV register reset it to 0
                     JOYPAD_REG => (value & 0xF0) | (curr_value & 0x0F), // Bottom nibble is read only
@@ -226,9 +227,9 @@ impl Mmu {
                 }
 
                 // For debugging
-                if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
-                    println!("Set {:#04X} = {:#04X}", address, value);
-                }
+                // if address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                //     println!("Set {:#04X} = {:#04X}", address, value);
+                // }
 
                 if self.is_booting && address == BANK_REG && (value & 1) == 1 {
                     self.is_booting = false;
@@ -257,17 +258,14 @@ impl Mmu {
         self.rom[0..size].clone_from_slice(&bootrom[..size]);
     }
 
-    // TODO rewrite this
+    // TODO rewrite this and relocate
     fn read_joypad_reg(&mut self, reg_value: u8) -> u8 {
         let select_action_is_enabled = (reg_value & (1 << 5)) >> 5 == 0; // "0"==selected
         let directional_is_enabled = (reg_value & (1 << 4)) >> 4 == 0;
 
         let mut active_inputs: u8 = 0x00;
-        let mut to_remove = vec![];
 
-        for i in 0..self.input_queue.len() {
-            let input: &JoypadInput = self.input_queue.get(i).unwrap();
-
+        for input in &self.active_input {
             let selected_input_bit = if select_action_is_enabled {
                 match input {
                     JoypadInput::InputKeyStart => 1 << 3,
@@ -288,17 +286,8 @@ impl Mmu {
                 0
             };
 
-            if selected_input_bit > 0 {
-                to_remove.push(i);
-                active_inputs |= selected_input_bit;
-            }
+            active_inputs |= selected_input_bit;
         }
-
-        // TEMP hack -- Commented out to persist input long enough to have it recognized...
-        // Read input is immediately overwritten upon next read. How are multi reads /polling supposed to not immediately overwrite input?
-        // for i in to_remove {
-        //     self.input_queue.remove(i);
-        // }
 
         active_inputs = !active_inputs;         // flip because "0" == selected
 

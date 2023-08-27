@@ -4,7 +4,7 @@ use sdl2::keyboard::Keycode;
 use crate::console::mmu::Mmu;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub(crate) enum JoypadInput {
     InputKeyUp,
     InputKeyDown,
@@ -62,35 +62,59 @@ impl Input {
                 }
                 Event::KeyDown { keycode: Some(Keycode::Down), .. } => {
                     callbacks.push(Callback::InputKeyDown);
-                    mmu.input_queue.push(JoypadInput::InputKeyDown);
+                    mmu.active_input.insert(JoypadInput::InputKeyDown);
+                }
+                Event::KeyUp { keycode: Some(Keycode::Down), .. } => {
+                    mmu.active_input.remove(&JoypadInput::InputKeyDown);
                 }
                 Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
                     callbacks.push(Callback::InputKeyUp);
-                    mmu.input_queue.push(JoypadInput::InputKeyUp);
+                    mmu.active_input.insert(JoypadInput::InputKeyUp);
+                }
+                Event::KeyUp { keycode: Some(Keycode::Up), .. } => {
+                    mmu.active_input.remove(&JoypadInput::InputKeyUp);
                 }
                 Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
                     callbacks.push(Callback::InputKeyLeft);
-                    mmu.input_queue.push(JoypadInput::InputKeyLeft);
+                    mmu.active_input.insert(JoypadInput::InputKeyLeft);
+                }
+                Event::KeyUp { keycode: Some(Keycode::Left), .. } => {
+                    mmu.active_input.remove(&JoypadInput::InputKeyLeft);
                 }
                 Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
                     callbacks.push(Callback::InputKeyRight);
-                    mmu.input_queue.push(JoypadInput::InputKeyRight);
+                    mmu.active_input.insert(JoypadInput::InputKeyRight);
+                }
+                Event::KeyUp { keycode: Some(Keycode::Right), .. } => {
+                    mmu.active_input.remove(&JoypadInput::InputKeyRight);
                 }
                 Event::KeyDown { keycode: Some(Keycode::Z), .. } => {
                     callbacks.push(Callback::InputKeyStart);
-                    mmu.input_queue.push(JoypadInput::InputKeyStart);
+                    mmu.active_input.insert(JoypadInput::InputKeyStart);
+                }
+                Event::KeyUp { keycode: Some(Keycode::Z), .. } => {
+                    mmu.active_input.remove(&JoypadInput::InputKeyStart);
                 }
                 Event::KeyDown { keycode: Some(Keycode::X), .. } => {
                     callbacks.push(Callback::InputKeySelect);
-                    mmu.input_queue.push(JoypadInput::InputKeySelect);
+                    mmu.active_input.insert(JoypadInput::InputKeySelect);
+                }
+                Event::KeyUp { keycode: Some(Keycode::X), .. } => {
+                    mmu.active_input.remove(&JoypadInput::InputKeySelect);
                 }
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
                     callbacks.push(Callback::InputKeyB);
-                    mmu.input_queue.push(JoypadInput::InputKeyB);
+                    mmu.active_input.insert(JoypadInput::InputKeyB);
+                }
+                Event::KeyUp { keycode: Some(Keycode::S), .. } => {
+                    mmu.active_input.remove(&JoypadInput::InputKeyB);
                 }
                 Event::KeyDown { keycode: Some(Keycode::A), .. } => {
                     callbacks.push(Callback::InputKeyA);
-                    mmu.input_queue.push(JoypadInput::InputKeyA);
+                    mmu.active_input.insert(JoypadInput::InputKeyA);
+                }
+                Event::KeyUp { keycode: Some(Keycode::A), .. } => {
+                    mmu.active_input.remove(&JoypadInput::InputKeyA);
                 }
                 _ => { }
             }
