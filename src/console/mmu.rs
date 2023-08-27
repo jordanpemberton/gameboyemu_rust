@@ -20,7 +20,6 @@ use std::fs::read;
 use crate::cartridge::cartridge::Cartridge;
 use crate::cartridge::mbc::Mbc;
 use crate::console::input::JoypadInput;
-use crate::console::timer::DIV_REG_ADDRESS;
 
 // OAM
 pub(crate) const OAM_START: u16 = 0xFE00;
@@ -225,7 +224,7 @@ impl Mmu {
 
                 let curr_value = self.ram[adjusted_address];
                 value = match address {
-                    DIV_REG_ADDRESS => 0,       // All writes to timer DIV register reset it to 0
+                    DIV_REG => 0,       // All writes to timer DIV register reset it to 0
                     JOYPAD_REG => (value & 0xF0) | (curr_value & 0x0F), // Bottom nibble is read only
                     _ => value
                 };
