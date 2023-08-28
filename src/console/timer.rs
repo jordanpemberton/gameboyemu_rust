@@ -8,6 +8,7 @@ pub(crate) struct Timer {
     counter: u8,     // FF05 — TIMA: Timer counter
     modulo: u8,      // FF06 — TMA: Timer modulo
     control: u8,     // FF07 — TAC: Timer control
+    overflow: bool,
     // Bit  2   - Timer Enable
     // Bits 1-0 - Input Clock Select
     // 00: CPU Clock / 1024 (DMG, SGB2, CGB Single Speed Mode:   4096 Hz, SGB1:   ~4194 Hz, CGB Double Speed Mode:   8192 Hz)
@@ -18,6 +19,7 @@ pub(crate) struct Timer {
 
 impl Timer {
     // returns if timer interrupt requested
+    #[allow(dead_code)]
     pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
         let mut request_interrupt = false;
 
@@ -30,6 +32,30 @@ impl Timer {
         if self.is_enabled() && self.div as u16 >= clocks {
             request_interrupt = self.inc_counter(mmu, cycles);
         }
+
+        request_interrupt
+    }
+
+    pub(crate) fn tick(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
+        let mut request_interrupt = false;
+        self.refresh_from_mem(mmu);
+
+        if self.overflow {
+            self.inc_div(mmu, cycles);
+            self.counter = self.modulo;
+            request_interrupt = true;
+            self.overflow = false;
+        } else if self.is_enabled() && (self.div as u16) < self.selected_clocks() { // ?
+            self.inc_div(mmu, cycles);
+            if self.div as u16 >= self.selected_clocks() {
+                (self.counter, self.overflow) = self.counter.overflowing_add(cycles);
+            }
+        } else {
+            self.inc_div(mmu, cycles);
+        }
+
+        mmu.write_8(mmu::DIV_REG, self.div);
+        mmu.write_8(mmu::TIMA_REG, self.counter);
 
         request_interrupt
     }
@@ -47,15 +73,16 @@ impl Timer {
 
     fn selected_clocks(&self) -> u16 {
         match self.control & 0b0011 {
-            0b00 => 1024,
-            0b01 => 16,
-            0b10 => 64,
-            0b11 => 256,
+            0b00 => 1 << 10, // 1024,   // vs 1<<7, 128?
+            0b01 => 1 << 4,  // 16,     // vs 1<<1, 1?
+            0b10 => 1 << 6,  // 64,     // vs 1<<3, 8?
+            0b11 => 1 << 8,  // 256,    // vs 1<<5, 32?
             _ => unreachable!()
         }
     }
 
     // TODO failing mooneye test acceptance/div_timing
+    #[allow(dead_code)]
     fn inc_div(&mut self, mmu: &mut Mmu, increment_by: u8) {
         // Increment Div (unless STOP instruction was run)
         // Does anything happen when it overflows /wraps?
@@ -64,12 +91,13 @@ impl Timer {
         mmu.write_8(mmu::DIV_REG, self.div);
     }
 
+    #[allow(dead_code)]
     fn inc_counter(&mut self, mmu: &mut Mmu, increment_by: u8) -> bool {
         // Increment counter by selected clock frequency
-        let (counter, request_interrupt) = self.counter.overflowing_add(increment_by);
+        let (counter, overflow) = self.counter.overflowing_add(increment_by);
 
         // If counter overflows, request interrupt and reset counter = modulo
-        self.counter = if request_interrupt {
+        self.counter = if overflow {
             self.modulo
         } else {
             counter
@@ -77,7 +105,7 @@ impl Timer {
 
         mmu.write_8(mmu::TIMA_REG, self.counter);
 
-        request_interrupt
+        overflow
     }
 }
 

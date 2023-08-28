@@ -126,9 +126,9 @@ impl Mmu {
                 };
 
                 // For debugging
-                if address == 0xC213 { //address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
-                    println!("Get {:#04X}: {:#04X}", address, result);
-                }
+                // if address == 0xC213 { //address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                //     println!("Get {:#04X}: {:#04X}", address, result);
+                // }
 
                 result
             }
@@ -237,9 +237,9 @@ impl Mmu {
                 }
 
                 // For debugging
-                if address == 0xC213 { // address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
-                    println!("Set {:#04X} = {:#04X}", address, value);
-                }
+                // if address == 0xC213 { // address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                //     println!("Set {:#04X} = {:#04X}", address, value);
+                // }
 
                 if self.is_booting && address == BANK_REG && (value & 1) == 1 {
                     self.is_booting = false;

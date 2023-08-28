@@ -204,7 +204,7 @@ impl Console {
 
                 self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 
-                if self.timer.step(&mut self.mmu, cycles as u8) {
+                if self.timer.tick(&mut self.mmu, cycles as u8) {
                     self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
                 }
 
