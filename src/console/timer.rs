@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use crate::console::mmu;
 use crate::console::mmu::Mmu;
 
+#[allow(dead_code)]
 #[derive(Default)]
 pub(crate) struct Timer {
     div: u8,         // FF04 — DIV: Divider register
@@ -15,6 +16,8 @@ pub(crate) struct Timer {
     // 01: CPU Clock / 16   (DMG, SGB2, CGB Single Speed Mode: 262144 Hz, SGB1: ~268400 Hz, CGB Double Speed Mode: 524288 Hz)
     // 10: CPU Clock / 64   (DMG, SGB2, CGB Single Speed Mode:  65536 Hz, SGB1:  ~67110 Hz, CGB Double Speed Mode: 131072 Hz)
     // 11: CPU Clock / 256  (DMG, SGB2, CGB Single Speed Mode:  16384 Hz, SGB1:  ~16780 Hz, CGB Double Speed Mode:  32768 Hz)
+    tim_clocks: usize,
+    div_clocks: usize,
 }
 
 impl Timer {
@@ -22,21 +25,62 @@ impl Timer {
     #[allow(dead_code)]
     pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
         let mut request_interrupt = false;
-
         self.refresh_from_mem(mmu);
-
         self.inc_div(mmu, cycles); // TODO fix
-
         let clocks = self.selected_clocks();
-
         if self.is_enabled() && self.div as u16 >= clocks {
             request_interrupt = self.inc_counter(mmu, cycles);
         }
-
         request_interrupt
     }
 
-    pub(crate) fn tick(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
+    #[allow(unused_variables)]
+    pub(crate) fn step_2(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
+        let mut request_interrupt = false;
+        self.refresh_from_mem(mmu);
+        if self.div_clocks < (cycles as usize) {
+            self.div = self.div.wrapping_add(1);
+            let rem = (cycles as usize) - self.div_clocks;
+            self.div_clocks = 256 - rem;
+        } else {
+            self.div_clocks -= cycles as usize
+        }
+        if self.control & 0x04 == 0 {
+            return request_interrupt;
+        }
+        if self.tim_clocks < cycles as usize {
+            let mut rem = (cycles as usize) - self.tim_clocks;
+            loop {
+                let (tim, of) = self.counter.overflowing_add(1);
+                self.counter = tim;
+                if of {
+                    self.counter = self.modulo;
+                    request_interrupt = true;
+                }
+                self.tim_clocks = match self.control & 0x3 { // reset
+                    0x0 => 1024, // 4096Hz = 1024 cpu clocks
+                    0x1 => 16,   // 262144Hz = 16 cpu clocks
+                    0x2 => 64,   // 65536Hz = 64 cpu clocks
+                    0x3 => 256,  // 16384Hz = 256 cpu clocks
+                    _ => unreachable!(),
+                };
+                if rem <= self.tim_clocks {
+                    self.tim_clocks -= rem;
+                    break;
+                }
+                rem -= self.tim_clocks;
+            }
+        } else {
+            self.tim_clocks -= cycles as usize;
+        }
+
+        mmu.write_8(mmu::DIV_REG, self.div);
+        mmu.write_8(mmu::TIMA_REG, self.counter);
+        request_interrupt
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn step_3(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
         let mut request_interrupt = false;
         self.refresh_from_mem(mmu);
 
