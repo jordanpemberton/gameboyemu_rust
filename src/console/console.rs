@@ -192,7 +192,7 @@ impl Console {
                 cycles_this_frame += 4;
             } else {
                 // TICK (CPU, Interrupts, PPU, Timer)
-                let mut cycles = self.cpu.step(&mut self.mmu);
+                let cycles = self.cpu.step(&mut self.mmu);
                 if cycles < 0 {
                     // self.debug_print_screen();
                     self.debug_peek();
@@ -200,7 +200,8 @@ impl Console {
                         cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
                 }
 
-                cycles += self.cpu.check_interrupts(&mut self.mmu);
+                // cycles += // TODO fix cycle adjustment?
+                self.cpu.check_interrupts(&mut self.mmu);
 
                 self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 

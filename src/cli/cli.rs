@@ -20,9 +20,9 @@ struct EmuArgs {
 
 impl EmuArgs {
     fn new() -> EmuArgs {
-        // EmuArgs::parse_args_v1()
+        EmuArgs::parse_args_v1()
         // EmuArgs::parse_args_v2()
-        EmuArgs::parse_args_v3()
+        // EmuArgs::parse_args_v3()
     }
 
     #[allow(dead_code)]
