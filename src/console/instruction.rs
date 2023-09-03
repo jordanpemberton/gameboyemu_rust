@@ -1829,6 +1829,17 @@ impl Instruction {
     /// 1 4
     /// - - - -
     fn op_0076(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        // if cpu.interrupts.peek_interrupts(mmu) {
+        //     if cpu.interrupts.ime {
+        //         // Dispatch interrupts
+        //     } else {
+        //         // cpu exec...?
+        //     }
+        // } else {
+        //     // tick, halt
+        //     cpu.is_halted = true;
+        // }
+
         cpu.is_halted = true;
         self.cycles
     }

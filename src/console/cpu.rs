@@ -33,10 +33,10 @@ impl Cpu {
         }
     }
 
-    pub(crate) fn check_interrupts(&mut self, mmu: &mut Mmu) -> i16 {
+    pub(crate) fn handle_interrupts(&mut self, mmu: &mut Mmu) -> i16 {
         let mut cycles = 0;
         if !self.interrupts.ime {
-            if self.is_halted && self.interrupts.peek_if_has_requests() {
+            if self.is_halted && self.interrupts.peek_requested(mmu) {
                 self.is_halted = false;
             }
         } else {
@@ -125,8 +125,7 @@ impl Cpu {
         let mut instruction = Instruction::get_instruction(opcode);
         let args = self.fetch_args(&instruction, mmu);
 
-        if self.debug_print_on
-        {
+        if self.debug_print_on {
             Debugger::print_cpu_exec(self, mmu, start_pc, opcode, instruction.mnemonic, args.as_slice());
         }
 

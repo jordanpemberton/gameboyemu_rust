@@ -47,37 +47,40 @@ impl Interrupts {
         self.requested.set_bit(mmu, requesting as u8, true);
     }
 
-    pub(crate) fn peek_if_has_requests(&self) -> bool {
+    pub(crate) fn peek_requested(&mut self, mmu: &mut Mmu) -> bool {
+        self.refresh_from_mem(mmu);
         self.requested.value != 0
     }
 
-    pub(crate) fn poll(&mut self, mmu: &mut Mmu) -> u8 {
-        let mut value = 0x00;
-
+    pub(crate) fn peek_interrupts(&mut self, mmu: &mut Mmu) -> u8 {
         self.refresh_from_mem(mmu);
-
         if self.ime {
-            if self.enabled.check_bit(mmu, InterruptRegBit::VBlank as u8) && self.requested.check_bit(mmu, InterruptRegBit::VBlank as u8) {
-                self.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, false);
-                value = 0x40;
-            } else if self.enabled.check_bit(mmu, InterruptRegBit::LcdStat as u8) && self.requested.check_bit(mmu, InterruptRegBit::LcdStat as u8) {
-                self.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, false);
-                value = 0x48;
-            } else if self.enabled.check_bit(mmu, InterruptRegBit::Timer as u8) && self.requested.check_bit(mmu, InterruptRegBit::Timer as u8) {
-                self.requested.set_bit(mmu, InterruptRegBit::Timer as u8, false);
-                value = 0x50;
-            } else if self.enabled.check_bit(mmu, InterruptRegBit::Serial as u8) && self.requested.check_bit(mmu, InterruptRegBit::Serial as u8) {
-                self.requested.set_bit(mmu, InterruptRegBit::Serial as u8, false);
-                value = 0x58;
-            } else if
-                    self.enabled.check_bit(mmu, InterruptRegBit::Joypad as u8) &&
-                    self.requested.check_bit(mmu, InterruptRegBit::Joypad as u8) {
-                self.requested.set_bit(mmu, InterruptRegBit::Joypad as u8, false);
-                value = 0x60;
-            }
+            self.enabled.value & self.requested.value
+        } else {
+            0
         }
+    }
 
-        value
+    pub(crate) fn poll(&mut self, mmu: &mut Mmu) -> u8 {
+        let interrupt = self.peek_interrupts(mmu);
+        if interrupt & (1 << InterruptRegBit::VBlank as u8) == (1 << InterruptRegBit::VBlank as u8) {
+            self.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, false);
+            0x40
+        } else if interrupt & (1 << InterruptRegBit::LcdStat as u8) == (1 << InterruptRegBit::LcdStat as u8) {
+            self.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, false);
+           0x48
+        } else if interrupt & (1 << InterruptRegBit::Timer as u8) == (1 << InterruptRegBit::Timer as u8) {
+            self.requested.set_bit(mmu, InterruptRegBit::Timer as u8, false);
+            0x50
+        } else if interrupt & (1 << InterruptRegBit::Serial as u8) == (1 << InterruptRegBit::Serial as u8) {
+            self.requested.set_bit(mmu, InterruptRegBit::Serial as u8, false);
+            0x58
+        } else if interrupt & (1 << InterruptRegBit::Joypad as u8) == (1 << InterruptRegBit::Joypad as u8) {
+            self.requested.set_bit(mmu, InterruptRegBit::Joypad as u8, false);
+            0x60
+        } else {
+            0
+        }
     }
 
     fn refresh_from_mem(&mut self, mmu: &mut Mmu) {
