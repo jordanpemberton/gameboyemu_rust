@@ -20,139 +20,17 @@ struct EmuArgs {
 
 impl EmuArgs {
     fn new() -> EmuArgs {
-        EmuArgs::parse_args_v1()
-        // EmuArgs::parse_args_v2()
-        // EmuArgs::parse_args_v3()
+        EmuArgs::parse_args()
     }
 
-    #[allow(dead_code)]
-    fn parse_args_v1() -> EmuArgs {
+    fn parse_args() -> EmuArgs {
         let args: Vec<String> = env::args().collect();
         EmuArgs {
             rom_filepath: if args.len() > 1 { args[1].clone() } else { String::new() },
-            skip_boot: if args.len() > 2 { args[2].clone().parse().unwrap() } else { 1 } > 0,
+            skip_boot: if args.len() > 2 { args[2].clone().parse().unwrap() } else { 0 } > 0,
             debug_enabled: if args.len() > 3 { args[3].clone().parse().unwrap() } else { 1 } > 0,
             cpu_instr_log: if args.len() > 4 { args[4].clone().parse().unwrap() } else { 0 } > 0,
             lcd_debug: if args.len() > 5 { args[5].clone().parse().unwrap() } else { 0 } > 0,
-        }
-    }
-
-    #[allow(dead_code)]
-    fn parse_args_v2() -> EmuArgs {
-        let mut args = env::args().skip(1);
-        let mut skip_boot = true;
-        let mut debug_enabled = true;
-        let mut cpu_instr_log = false;
-        let mut lcd_debug = false;
-        let mut rom_filepath = String::new();
-
-        let num_args = 5;
-        let mut i = 0;
-        while i < num_args {
-            if let Some(arg) = args.next() {
-                match &arg[..] {
-                    "--noboot" => {
-                        if let Some(arg) = args.next() {
-                            skip_boot = arg.parse::<u8>().unwrap() > 0;
-                        }
-                    }
-                    "--debug" => {
-                        if let Some(arg) = args.next() {
-                            debug_enabled = arg.parse::<u8>().unwrap() > 0;
-                        }
-                    }
-                    "--cpulog" => {
-                        if let Some(arg) = args.next() {
-                            cpu_instr_log = arg.parse::<u8>().unwrap() > 0;
-                        }
-                    }
-                    "--lcddebug" => {
-                        if let Some(arg) = args.next() {
-                            lcd_debug = arg.parse::<u8>().unwrap() > 0;
-                        }
-                    }
-                    "--rom" => {
-                        if let Some(arg) = args.next() {
-                            rom_filepath = arg;
-                        }
-                    }
-                    _ => {
-                        match i {
-                            0 => { rom_filepath = arg; }
-                            1 => { debug_enabled = arg.parse::<u8>().unwrap() > 0; },
-                            2 => { cpu_instr_log = arg.parse::<u8>().unwrap() > 0; },
-                            3 => { lcd_debug = arg.parse::<u8>().unwrap() > 0; }
-                            _ => { skip_boot = arg.parse::<u8>().unwrap() > 0; },
-                        }
-                    }
-                }
-                i += 1;
-            } else {
-                break;
-            }
-        }
-
-        EmuArgs {
-            skip_boot,
-            debug_enabled,
-            cpu_instr_log,
-            lcd_debug,
-            rom_filepath,
-        }
-    }
-
-    #[allow(dead_code)]
-    fn parse_args_v3() -> EmuArgs {
-        let mut args = env::args().skip(1);
-        let mut skip_boot = true;
-        let mut debug_enabled = true;
-        let mut cpu_instr_log = false;
-        let mut lcd_debug = false;
-        let mut rom_filepath = String::new();
-
-        while let Some(arg) = args.next() {
-            match &arg[..] {
-                "--noboot" => {
-                    if let Some(arg) = args.next() {
-                        skip_boot = arg.parse::<u8>().unwrap() > 0;
-                    }
-                },
-                "--debug" => {
-                    if let Some(arg) = args.next() {
-                        debug_enabled = arg.parse::<u8>().unwrap() > 0;
-                    }
-                },
-                "--cpulog" => {
-                    if let Some(arg) = args.next() {
-                        cpu_instr_log = arg.parse::<u8>().unwrap() > 0;
-                    }
-                },
-                "--lcddebug" => {
-                    if let Some(arg) = args.next() {
-                        lcd_debug = arg.parse::<u8>().unwrap() > 0;
-                    }
-                },
-                "--rom" => {
-                    if let Some(arg) = args.next() {
-                        rom_filepath = arg;
-                    }
-                },
-                _ => {
-                    if arg.starts_with('-') {
-                        println!("Unknown argument {}", arg);
-                    } else {
-                        println!("Unknown positional argument {}", arg);
-                    }
-                }
-            }
-        }
-
-        EmuArgs {
-            skip_boot,
-            debug_enabled,
-            cpu_instr_log,
-            lcd_debug,
-            rom_filepath,
         }
     }
 }

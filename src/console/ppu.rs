@@ -337,9 +337,9 @@ impl Ppu {
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
         self.refresh_from_mem(mmu);
 
-        // TODO Pixel FIFO instead of redrawing line multiple times
+        // TODO Pixel FIFO
         self.draw_background_line(mmu);
-        self.draw_window_line(mmu);
+        // self.draw_window_line(mmu);
         self.draw_sprites_line(mmu);
 
         // for debugging

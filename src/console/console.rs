@@ -14,7 +14,7 @@ use crate::console::interrupts::InterruptRegBit;
 use crate::console::timer::Timer;
 
 const CYCLES_PER_FRAME: u32 = 69905;
-const FRAMES_PER_SECOND: u32 = 60;
+const FRAMES_PER_SECOND: u32 = 30;
 
 pub(crate) struct Console {
     average_cycles_per_frame: u128,
@@ -169,10 +169,14 @@ impl Console {
         let mut cycles_this_frame: u32 = 0;
         let mut total_cycles: u128 = 0;
         let mut total_frames: u128 = 0;
-        let mut next_refresh_time = SystemTime::now().add(frame_duration);
+        let mut last_time = SystemTime::now();
+        let mut next_refresh_time = last_time.add(frame_duration);
 
         'mainloop: loop {
-            if SystemTime::now() >= next_refresh_time {
+            // how to avoid calling every tick?
+            last_time = SystemTime::now();
+
+            if last_time >= next_refresh_time {
                 // Time to draw and poll input
                 self.display.draw(&mut self.ppu);
 
@@ -183,10 +187,10 @@ impl Console {
                 total_cycles += cycles_this_frame as u128;
                 total_frames += 1;
                 cycles_this_frame = 0;
-                next_refresh_time = SystemTime::now().add(frame_duration);
+                next_refresh_time = last_time.add(frame_duration);
             } else if cycles_this_frame >= (CYCLES_PER_FRAME - 4) {
                 // Wait till next update
-                continue;
+                // sleep?
             } else if self.debugger.is_some() && self.debugger.as_mut().unwrap().active {
                 // Currently paused for debugger but keep ticking
                 cycles_this_frame += 4;
