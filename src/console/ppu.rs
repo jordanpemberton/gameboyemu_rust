@@ -72,10 +72,8 @@ enum LcdStatRegBit {
     // Bit 0-1 - Mode Flag
     ModeBit0 = 0,
     ModeBit1 = 1,
-
     // Bit 2 - LYC=LY Flag
     LycEqLy = 2,
-
     // STAT Interrupt bits
     // Bit 3 - Mode 0 HBlank STAT Interrupt source  (1=Enable)
     HBlankInterruptEnabled = 3,
@@ -184,78 +182,78 @@ impl Ppu {
     }
 
     pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
-        self.clocks += cycles as usize;
-
         self.refresh_from_mem(mmu);
 
-        // TODO check incoming interrupt requests /enables
+        if self.lcd_control.check_bit(mmu, LcdControlRegBit::LcdAndPpuEnabled as u8) {
+            self.clocks += cycles as usize;
 
-        let mode_flag = (self.lcd_status.value & 0x03) as usize;
-        let mode = STAT_MODES[mode_flag];
-        let mode_duration = MODE_DURATION[mode_flag];
-        let (mode_y_start, mode_y_end) = MODE_LINE_RANGE[mode_flag];
-        // Force current line ly to align with current mode (hack)
-        if self.ly < mode_y_start || mode_y_end <= self.ly {
-            self.set_ly(mmu, mode_y_start);
-        }
+            let mode_flag = (self.lcd_status.value & 0x03) as usize;
+            let mode = STAT_MODES[mode_flag];
+            let mode_duration = MODE_DURATION[mode_flag];
+            let (mode_y_start, mode_y_end) = MODE_LINE_RANGE[mode_flag];
+            // Force current line ly to align with current mode (hack)
+            if self.ly < mode_y_start || mode_y_end <= self.ly {
+                self.set_ly(mmu, mode_y_start);
+            }
 
-        match *mode {
-            StatMode::OamSearch => {
-                if self.clocks < mode_duration {
-                    self.oam_search(mmu);
-                } else {
-                    self.clocks = 0;
-                    self.set_stat_mode(mmu, StatMode::PixelTransfer);
-                }
-            }
-            StatMode::PixelTransfer => {
-                if self.clocks < mode_duration { // where is correct to check if enabled?
-                    self.pixel_transfer(mmu);
-                } else {
-                    self.clocks = 0;
-                    self.set_stat_mode(mmu, StatMode::HBlank);
-                    if self.lcd_status.check_bit(mmu, LcdStatRegBit::HBlankInterruptEnabled as u8) {
-                        interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
-                    }
-                }
-            }
-            StatMode::HBlank => {
-                if self.clocks < mode_duration {
-                    // wait
-                } else {
-                    self.increment_ly(mmu);
-                    if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
-                        self.set_stat_mode(mmu, StatMode::OamSearch);
-                        if self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8) {
-                            interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
-                        }
+            match *mode {
+                StatMode::OamSearch => {
+                    if self.clocks < mode_duration {
+                        self.oam_search(mmu);
                     } else {
-                        self.set_stat_mode(mmu, StatMode::VBlank);
-                        interrupts.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, true);
-                        if self.lcd_status.check_bit(mmu, LcdStatRegBit::VBlankInterruptEnabled as u8) {
-                            interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
-                        }
-                    }
-                }
-            }
-            StatMode::VBlank => {
-                if self.clocks < mode_duration {
-                    // wait
-                } else {
-                    self.increment_ly(mmu);
-                    if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
                         self.clocks = 0;
-                        self.set_stat_mode(mmu, StatMode::OamSearch);
-                        if self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8) {
+                        self.set_stat_mode(mmu, StatMode::PixelTransfer);
+                    }
+                }
+                StatMode::PixelTransfer => {
+                    if self.clocks < mode_duration {
+                        self.pixel_transfer(mmu);
+                    } else {
+                        self.clocks = 0;
+                        self.set_stat_mode(mmu, StatMode::HBlank);
+                        if self.lcd_status.check_bit(mmu, LcdStatRegBit::HBlankInterruptEnabled as u8) {
                             interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
                         }
                     }
                 }
+                StatMode::HBlank => {
+                    if self.clocks < mode_duration {
+                        // wait
+                    } else {
+                        self.increment_ly(mmu);
+                        if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
+                            self.set_stat_mode(mmu, StatMode::OamSearch);
+                            if self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8) {
+                                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
+                            }
+                        } else {
+                            self.set_stat_mode(mmu, StatMode::VBlank);
+                            interrupts.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, true);
+                            if self.lcd_status.check_bit(mmu, LcdStatRegBit::VBlankInterruptEnabled as u8) {
+                                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
+                            }
+                        }
+                    }
+                }
+                StatMode::VBlank => {
+                    if self.clocks < mode_duration {
+                        // wait
+                    } else {
+                        self.increment_ly(mmu);
+                        if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 as u8 {
+                            self.clocks = 0;
+                            self.set_stat_mode(mmu, StatMode::OamSearch);
+                            if self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8) {
+                                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
+                            }
+                        }
+                    }
+                }
             }
-        }
 
-        if self.ly == self.lyc {
-            self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, true);
+            if self.ly == self.lyc {
+                self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, true);
+            }
         }
     }
 
@@ -339,7 +337,7 @@ impl Ppu {
 
         // TODO Pixel FIFO
         self.draw_background_line(mmu);
-        // self.draw_window_line(mmu);
+        self.draw_window_line(mmu);
         self.draw_sprites_line(mmu);
 
         // for debugging
@@ -358,7 +356,6 @@ impl Ppu {
     #[allow(dead_code)]
     fn draw_background_line(&mut self, mmu: &mut Mmu) {
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
-                // && self.lcd_control.check_bit(mmu, LcdControlRegBit::LcdAndPpuEnabled as u8) { // why is this never enabled...
             self.fill_lcd_row(mmu, DrawMode::Background);
         }
     }

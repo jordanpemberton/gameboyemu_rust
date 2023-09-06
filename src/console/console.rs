@@ -1,4 +1,3 @@
-use std::ops::Add;
 use std::time::{Duration, SystemTime};
 use sdl2::Sdl;
 
@@ -14,7 +13,7 @@ use crate::console::interrupts::InterruptRegBit;
 use crate::console::timer::Timer;
 
 const CYCLES_PER_FRAME: u32 = 69905;
-const FRAMES_PER_SECOND: u32 = 30;
+const FRAMES_PER_SECOND: u32 = 60;
 
 pub(crate) struct Console {
     average_cycles_per_frame: u128,
@@ -165,56 +164,58 @@ impl Console {
         true
     }
 
+    fn main_tick(&mut self) -> i16 {
+        let cycles = self.cpu.step(&mut self.mmu);
+
+        if cycles < 0 {
+            // self.debug_print_screen();
+            self.debug_peek();
+            panic!("Console step attempt failed with status {} at address {:#06X}.",
+                cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
+        }
+
+        // cycles += // TODO fix cycle adjustment?
+        self.cpu.handle_interrupts(&mut self.mmu);
+
+        self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
+
+        if self.timer.step_2(&mut self.mmu, cycles as u8) {
+            self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
+        }
+
+        cycles
+    }
+
     fn main_loop(&mut self, frame_duration: Duration) -> (u128, u128) {
         let mut cycles_this_frame: u32 = 0;
         let mut total_cycles: u128 = 0;
         let mut total_frames: u128 = 0;
         let mut last_time = SystemTime::now();
-        let mut next_refresh_time = last_time.add(frame_duration);
 
         'mainloop: loop {
-            // how to avoid calling every tick?
-            last_time = SystemTime::now();
-
-            if last_time >= next_refresh_time {
-                // Time to draw and poll input
-                self.display.draw(&mut self.ppu);
-
-                if !self.input_polling() {
-                    break 'mainloop;
-                }
-
-                total_cycles += cycles_this_frame as u128;
-                total_frames += 1;
-                cycles_this_frame = 0;
-                next_refresh_time = last_time.add(frame_duration);
-            } else if cycles_this_frame >= (CYCLES_PER_FRAME - 4) {
+            if cycles_this_frame >= (CYCLES_PER_FRAME - 4) && last_time.elapsed().unwrap() < frame_duration {
                 // Wait till next update
-                // sleep?
             } else if self.debugger.is_some() && self.debugger.as_mut().unwrap().active {
                 // Currently paused for debugger but keep ticking
                 cycles_this_frame += 4;
             } else {
-                // TICK (CPU, Interrupts, PPU, Timer)
-                let cycles = self.cpu.step(&mut self.mmu);
+                if last_time.elapsed().unwrap() >= frame_duration {
+                    // Time to draw and poll input
+                    self.display.draw(&mut self.ppu);
 
-                if cycles < 0 {
-                    // self.debug_print_screen();
-                    self.debug_peek();
-                    panic!("Console step attempt failed with status {} at address {:#06X}.",
-                        cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
+                    if !self.input_polling() {
+                        break 'mainloop;
+                    }
+
+                    total_cycles += cycles_this_frame as u128;
+                    total_frames += 1;
+                    cycles_this_frame = 0;
+                    last_time = SystemTime::now();
+                } else {
+                    // TICK
+                    let cycles = self.main_tick();
+                    cycles_this_frame += cycles as u32;
                 }
-
-                // cycles += // TODO fix cycle adjustment?
-                self.cpu.handle_interrupts(&mut self.mmu);
-
-                self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
-
-                if self.timer.step_2(&mut self.mmu, cycles as u8) {
-                    self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
-                }
-
-                cycles_this_frame += cycles as u32;
             }
         }
 

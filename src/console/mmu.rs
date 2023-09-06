@@ -126,7 +126,7 @@ impl Mmu {
                 };
 
                 // For debugging
-                // if address == 0xC213 { //address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                // if address == 0xFF40 {
                 //     println!("Get {:#04X}: {:#04X}", address, result);
                 // }
 
@@ -237,7 +237,7 @@ impl Mmu {
                 }
 
                 // For debugging
-                // if address == 0xC213 { // address == 0xFF00 || address == 0xFF80 || address == 0xFF81 {
+                // if address == 0xFF40 {
                 //     println!("Set {:#04X} = {:#04X}", address, value);
                 // }
 
