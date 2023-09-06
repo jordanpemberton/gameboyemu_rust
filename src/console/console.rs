@@ -16,7 +16,6 @@ const CYCLES_PER_FRAME: u32 = 69905;
 const FRAMES_PER_SECOND: u32 = 60;
 
 pub(crate) struct Console {
-    average_cycles_per_frame: u128,
     timer: Timer,
     cpu: Cpu,
     mmu: Mmu,
@@ -24,6 +23,9 @@ pub(crate) struct Console {
     input: Input,
     display: Display,
     debugger: Option<Debugger>,
+    total_cycles: u128,
+    total_frames: u128,
+    total_runtime: u128,
 }
 
 impl Console {
@@ -54,7 +56,6 @@ impl Console {
             ppu.lcd.height);
 
         Console {
-            average_cycles_per_frame: 0,
             timer: Timer::default(),
             cpu,
             mmu,
@@ -62,6 +63,9 @@ impl Console {
             input,
             display,
             debugger,
+            total_cycles: 0,
+            total_frames: 0,
+            total_runtime: 0,
         }
     }
 
@@ -78,9 +82,8 @@ impl Console {
 
         let frame_duration = Duration::from_millis(1000 / FRAMES_PER_SECOND as u64);
 
-        let (total_cycles, total_frames) = self.main_loop(frame_duration);
+        self.main_loop(frame_duration);
 
-        self.average_cycles_per_frame = total_cycles / total_frames;
         // self.debug_print_screen();
         self.debug_peek();
     }
@@ -93,8 +96,14 @@ impl Console {
                     Option::from(&mut self.mmu),
                     Option::from(&self.timer),
                     Option::from(vec![
+                        ("Total cycles", self.total_cycles.to_string().as_str()),
+                        ("Total frames", self.total_frames.to_string().as_str()),
+                        ("Total runtime (secs)", self.total_runtime.to_string().as_str()),
+                        ("Average cycles per frame", (self.total_cycles / self.total_frames).to_string().as_str()),
                         ("Expected cycles per frame", CYCLES_PER_FRAME.to_string().as_str()),
-                        ("Average cycles per frame", self.average_cycles_per_frame.to_string().as_str()),
+                        ("Average frames per second", (self.total_frames /
+                            if self.total_runtime > 0 { self.total_runtime } else { 1 } ).to_string().as_str()),
+                        ("Expected frames per second", FRAMES_PER_SECOND.to_string().as_str()),
                     ]));
             }
             None => {}
@@ -145,8 +154,6 @@ impl Console {
                     }
                 }
                 Callback::Exit => {
-                    // self.debug_print_screen();
-                    self.debug_peek();
                     return false;
                 }
                 Callback::InputKeyStart
@@ -186,10 +193,9 @@ impl Console {
         cycles
     }
 
-    fn main_loop(&mut self, frame_duration: Duration) -> (u128, u128) {
+    fn main_loop(&mut self, frame_duration: Duration) {
+        let start_time = SystemTime::now();
         let mut cycles_this_frame: u32 = 0;
-        let mut total_cycles: u128 = 0;
-        let mut total_frames: u128 = 0;
         let mut last_time = SystemTime::now();
 
         'mainloop: loop {
@@ -207,8 +213,8 @@ impl Console {
                         break 'mainloop;
                     }
 
-                    total_cycles += cycles_this_frame as u128;
-                    total_frames += 1;
+                    self.total_cycles += cycles_this_frame as u128;
+                    self.total_frames += 1;
                     cycles_this_frame = 0;
                     last_time = SystemTime::now();
                 } else {
@@ -219,6 +225,7 @@ impl Console {
             }
         }
 
-        (total_cycles, total_frames)
+        let runtime = start_time.elapsed().unwrap();
+        self.total_runtime = runtime.as_secs() as u128;
     }
 }
