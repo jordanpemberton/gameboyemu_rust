@@ -10,20 +10,52 @@ pub(crate) struct Timer {
     modulo: u8,      // FF06 — TMA: Timer modulo
     control: u8,     // FF07 — TAC: Timer control
     overflow: bool,
-    // Bit  2   - Timer Enable
-    // Bits 1-0 - Input Clock Select
-    // 00: CPU Clock / 1024 (DMG, SGB2, CGB Single Speed Mode:   4096 Hz, SGB1:   ~4194 Hz, CGB Double Speed Mode:   8192 Hz)
-    // 01: CPU Clock / 16   (DMG, SGB2, CGB Single Speed Mode: 262144 Hz, SGB1: ~268400 Hz, CGB Double Speed Mode: 524288 Hz)
-    // 10: CPU Clock / 64   (DMG, SGB2, CGB Single Speed Mode:  65536 Hz, SGB1:  ~67110 Hz, CGB Double Speed Mode: 131072 Hz)
-    // 11: CPU Clock / 256  (DMG, SGB2, CGB Single Speed Mode:  16384 Hz, SGB1:  ~16780 Hz, CGB Double Speed Mode:  32768 Hz)
-    tim_clocks: usize,
-    div_clocks: usize,
+    tima_clocks: u16,
+    div_clocks: u8,
 }
 
 impl Timer {
-    // returns if timer interrupt requested
+    #[allow(unused_variables)]
+    pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool { // passes all blargg CPU tests
+        let mut request_interrupt = false;
+        self.refresh_from_mem(mmu);
+
+        // Increment DIV
+        if self.div_clocks < cycles {
+            self.div = self.div.wrapping_add(1);
+            let remainder = cycles - self.div_clocks;
+            self.div_clocks = (0u8).wrapping_sub(remainder);
+        } else {
+            self.div_clocks -= cycles;
+        }
+        mmu.write_8(mmu::DIV_REG, self.div);
+
+        if self.is_enabled() {
+            if self.tima_clocks < cycles as u16 {
+                let mut remainder = cycles as u16 - self.tima_clocks;
+
+                // Increment counter (TIMA)
+                loop {
+                    request_interrupt |= self.inc_counter(mmu, 1);
+                    self.tima_clocks = self.selected_clocks();
+
+                    if remainder <= self.tima_clocks {
+                        self.tima_clocks -= remainder;
+                        break;
+                    } else {
+                        remainder -= self.tima_clocks;
+                    }
+                }
+            } else {
+                self.tima_clocks -= cycles as u16;
+            }
+        }
+
+        request_interrupt
+    }
+
     #[allow(dead_code)]
-    pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
+    pub(crate) fn step_2(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {  // Fails blargg CPU test 2 (#5)
         let mut request_interrupt = false;
         self.refresh_from_mem(mmu);
         self.inc_div(mmu, cycles); // TODO fix
@@ -34,53 +66,8 @@ impl Timer {
         request_interrupt
     }
 
-    #[allow(unused_variables)]
-    pub(crate) fn step_2(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
-        let mut request_interrupt = false;
-        self.refresh_from_mem(mmu);
-        if self.div_clocks < (cycles as usize) {
-            self.div = self.div.wrapping_add(1);
-            let rem = (cycles as usize) - self.div_clocks;
-            self.div_clocks = 256 - rem;
-        } else {
-            self.div_clocks -= cycles as usize
-        }
-        if self.control & 0x04 == 0 {
-            return request_interrupt;
-        }
-        if self.tim_clocks < cycles as usize {
-            let mut rem = (cycles as usize) - self.tim_clocks;
-            loop {
-                let (tim, of) = self.counter.overflowing_add(1);
-                self.counter = tim;
-                if of {
-                    self.counter = self.modulo;
-                    request_interrupt = true;
-                }
-                self.tim_clocks = match self.control & 0x3 { // reset
-                    0x0 => 1024, // 4096Hz = 1024 cpu clocks
-                    0x1 => 16,   // 262144Hz = 16 cpu clocks
-                    0x2 => 64,   // 65536Hz = 64 cpu clocks
-                    0x3 => 256,  // 16384Hz = 256 cpu clocks
-                    _ => unreachable!(),
-                };
-                if rem <= self.tim_clocks {
-                    self.tim_clocks -= rem;
-                    break;
-                }
-                rem -= self.tim_clocks;
-            }
-        } else {
-            self.tim_clocks -= cycles as usize;
-        }
-
-        mmu.write_8(mmu::DIV_REG, self.div);
-        mmu.write_8(mmu::TIMA_REG, self.counter);
-        request_interrupt
-    }
-
     #[allow(dead_code)]
-    pub(crate) fn step_3(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
+    pub(crate) fn step_3(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {  // Fails blargg CPU test 2 (#5)
         let mut request_interrupt = false;
         self.refresh_from_mem(mmu);
 
@@ -91,14 +78,13 @@ impl Timer {
             self.overflow = false;
         } else if self.is_enabled() && (self.div as u16) < self.selected_clocks() { // ?
             self.inc_div(mmu, cycles);
-            if self.div as u16 >= self.selected_clocks() {
+            if self.div as u16 >= self.selected_clocks() { // TODO, dead branch
                 (self.counter, self.overflow) = self.counter.overflowing_add(cycles);
             }
         } else {
             self.inc_div(mmu, cycles);
         }
 
-        mmu.write_8(mmu::DIV_REG, self.div);
         mmu.write_8(mmu::TIMA_REG, self.counter);
 
         request_interrupt
@@ -111,16 +97,22 @@ impl Timer {
         self.control = mmu.read_8(mmu::TAC_REG);
     }
 
+    // Control (FF07) Bit 2 = Timer Enable
     fn is_enabled(&self) -> bool {
         self.control & 0b0100 == 0b0100
     }
 
+    // Control (FF07) Bits 1-0 = Input Clock Select
+    // 00: CPU Clock / 1024 (DMG, SGB2, CGB Single Speed Mode:   4096 Hz, SGB1:   ~4194 Hz, CGB Double Speed Mode:   8192 Hz)
+    // 01: CPU Clock / 16   (DMG, SGB2, CGB Single Speed Mode: 262144 Hz, SGB1: ~268400 Hz, CGB Double Speed Mode: 524288 Hz)
+    // 10: CPU Clock / 64   (DMG, SGB2, CGB Single Speed Mode:  65536 Hz, SGB1:  ~67110 Hz, CGB Double Speed Mode: 131072 Hz)
+    // 11: CPU Clock / 256  (DMG, SGB2, CGB Single Speed Mode:  16384 Hz, SGB1:  ~16780 Hz, CGB Double Speed Mode:  32768 Hz)
     fn selected_clocks(&self) -> u16 {
         match self.control & 0b0011 {
-            0b00 => 1 << 10, // 1024,   // vs 1<<7, 128?
-            0b01 => 1 << 4,  // 16,     // vs 1<<1, 1?
-            0b10 => 1 << 6,  // 64,     // vs 1<<3, 8?
-            0b11 => 1 << 8,  // 256,    // vs 1<<5, 32?
+            0b00 => 1024,
+            0b01 => 16,
+            0b10 => 64,
+            0b11 => 256,
             _ => unreachable!()
         }
     }
@@ -128,10 +120,7 @@ impl Timer {
     // TODO failing mooneye test acceptance/div_timing
     #[allow(dead_code)]
     fn inc_div(&mut self, mmu: &mut Mmu, increment_by: u8) {
-        // Increment Div (unless STOP instruction was run)
-        // Does anything happen when it overflows /wraps?
         self.div = self.div.wrapping_add(increment_by);
-
         mmu.write_8(mmu::DIV_REG, self.div);
     }
 

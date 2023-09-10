@@ -1,4 +1,5 @@
-use std::time::{Duration, SystemTime};
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 use sdl2::Sdl;
 
 use crate::cartridge::cartridge::Cartridge;
@@ -12,8 +13,8 @@ use crate::console::cpu_registers::{CpuRegIndex};
 use crate::console::interrupts::InterruptRegBit;
 use crate::console::timer::Timer;
 
-const CYCLES_PER_FRAME: u32 = 69905;
-const FRAMES_PER_SECOND: u32 = 60;
+const CYCLES_PER_FRAME: u64 = 69905;
+const FRAMES_PER_SECOND: u64 = 30;
 
 pub(crate) struct Console {
     timer: Timer,
@@ -23,6 +24,7 @@ pub(crate) struct Console {
     input: Input,
     display: Display,
     debugger: Option<Debugger>,
+    // perf
     total_cycles: u128,
     total_frames: u128,
     total_runtime: u128,
@@ -80,9 +82,7 @@ impl Console {
             self.mmu.is_booting = false;
         }
 
-        let frame_duration = Duration::from_millis(1000 / FRAMES_PER_SECOND as u64);
-
-        self.main_loop(frame_duration);
+        self.main_loop();
 
         // self.debug_print_screen();
         self.debug_peek();
@@ -186,46 +186,46 @@ impl Console {
 
         self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 
-        if self.timer.step_2(&mut self.mmu, cycles as u8) {
+        if self.timer.step(&mut self.mmu, cycles as u8) {
             self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
         }
 
         cycles
     }
 
-    fn main_loop(&mut self, frame_duration: Duration) {
-        let start_time = SystemTime::now();
-        let mut cycles_this_frame: u32 = 0;
-        let mut last_time = SystemTime::now();
+    fn main_loop(&mut self) {
+        let frame_duration = Duration::from_millis(1000 / FRAMES_PER_SECOND);
+        let start_time = Instant::now();
+        let mut cycles_this_frame: u64 = 0;
+        let mut frame_start_time = Instant::now();
 
         'mainloop: loop {
-            if cycles_this_frame >= (CYCLES_PER_FRAME - 4) && last_time.elapsed().unwrap() < frame_duration {
-                // Wait till next update
-            } else if self.debugger.is_some() && self.debugger.as_mut().unwrap().active {
-                // Currently paused for debugger but keep ticking
-                cycles_this_frame += 4;
+            if (frame_start_time.elapsed() < frame_duration && cycles_this_frame > CYCLES_PER_FRAME)
+                    || (self.debugger.is_some() && self.debugger.as_mut().unwrap().active) {
+                // WAIT
+                sleep(Duration::new(0, 1_000));
+                continue;
+            }
+
+            if frame_start_time.elapsed() < frame_duration {
+                // MAIN TICK
+                cycles_this_frame += self.main_tick() as u64;
             } else {
-                if last_time.elapsed().unwrap() >= frame_duration {
-                    // Time to draw and poll input
-                    self.display.draw(&mut self.ppu);
+                // DRAW + POLL
+                self.display.draw(&mut self.ppu);
+                self.total_frames += 1;
 
-                    if !self.input_polling() {
-                        break 'mainloop;
-                    }
-
-                    self.total_cycles += cycles_this_frame as u128;
-                    self.total_frames += 1;
-                    cycles_this_frame = 0;
-                    last_time = SystemTime::now();
-                } else {
-                    // TICK
-                    let cycles = self.main_tick();
-                    cycles_this_frame += cycles as u32;
+                if !self.input_polling() {
+                    break 'mainloop;
                 }
+
+                self.total_cycles += cycles_this_frame as u128;
+                frame_start_time = Instant::now();
+                cycles_this_frame = 0;
             }
         }
 
-        let runtime = start_time.elapsed().unwrap();
+        let runtime = start_time.elapsed();
         self.total_runtime = runtime.as_secs() as u128;
     }
 }
