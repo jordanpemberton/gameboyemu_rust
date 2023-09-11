@@ -14,7 +14,7 @@ use crate::console::interrupts::InterruptRegBit;
 use crate::console::timer::Timer;
 
 const CYCLES_PER_FRAME: u64 = 69905;
-const FRAMES_PER_SECOND: u64 = 30;
+const FRAMES_PER_SECOND: u64 = 60;
 
 pub(crate) struct Console {
     timer: Timer,
@@ -194,22 +194,24 @@ impl Console {
     }
 
     fn main_loop(&mut self) {
-        let frame_duration = Duration::from_millis(1000 / FRAMES_PER_SECOND);
+        let frame_duration = Duration::from_millis(1000 / FRAMES_PER_SECOND); // Why is it always so slow?
         let start_time = Instant::now();
         let mut cycles_this_frame: u64 = 0;
         let mut frame_start_time = Instant::now();
+        let sleep_duration = Duration::from_nanos(100);
 
         'mainloop: loop {
-            if (frame_start_time.elapsed() < frame_duration && cycles_this_frame > CYCLES_PER_FRAME)
-                    || (self.debugger.is_some() && self.debugger.as_mut().unwrap().active) {
-                // WAIT
-                sleep(Duration::new(0, 1_000));
-                continue;
-            }
-
-            if frame_start_time.elapsed() < frame_duration {
-                // MAIN TICK
-                cycles_this_frame += self.main_tick() as u64;
+            if self.debugger.is_some() && self.debugger.as_mut().unwrap().active {
+                // PAUSED FOR DEBUGGER
+                cycles_this_frame += 4; // this allows input polling
+            } else if frame_start_time.elapsed() < frame_duration {
+                if cycles_this_frame < CYCLES_PER_FRAME {
+                    // MAIN TICK
+                    cycles_this_frame += self.main_tick() as u64;
+                } else {
+                    // WAIT
+                    // sleep(sleep_duration);
+                }
             } else {
                 // DRAW + POLL
                 self.display.draw(&mut self.ppu);
