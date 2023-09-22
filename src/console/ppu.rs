@@ -337,7 +337,7 @@ impl Ppu {
 
         // TODO Pixel FIFO
         self.draw_background_line(mmu);
-        self.draw_window_line(mmu);
+        // self.draw_window_line(mmu);
         self.draw_sprites_line(mmu);
 
         // for debugging
@@ -418,7 +418,7 @@ impl Ppu {
     }
 
     #[allow(dead_code)]
-    fn fill_lcd_row(&mut self, mmu: &mut Mmu, mode: DrawMode) {
+    fn fill_lcd_row(&mut self, mmu: &mut Mmu, mode: DrawMode) { // TOO SLOW
         let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8);
         let tilemap_at_9c00_bit = match mode {
             DrawMode::Window => LcdControlRegBit::WindowTilemapIsAt9C00,
@@ -431,12 +431,12 @@ impl Ppu {
         };
         let (y_offset, x_offset, x_start) = if self.in_debug_mode {
             match mode {
-                DrawMode::Window => (self.wy, 0, self.wx.wrapping_sub(7)), // TODO fix
+                // DrawMode::Window => (self.wy, 0, self.wx.wrapping_sub(7)), // TODO fix
                 DrawMode::Background | _ => (0, 0, 0),
             }
         } else {
             match mode {
-                DrawMode::Window => (self.wy, 0, self.wx.wrapping_sub(7)), // TODO fix
+                // DrawMode::Window => (self.wy, 0, self.wx.wrapping_sub(7)), // TODO fix
                 DrawMode::Background | _ => (self.scy, self.scx, 0),
             }
         };
@@ -475,7 +475,7 @@ impl Ppu {
                         DrawMode::Background => 0,
                         DrawMode::Window => 4,
                         DrawMode::Sprites => 8,
-                    }
+                    };
                 }
             }
         }

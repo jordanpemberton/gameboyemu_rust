@@ -171,7 +171,7 @@ impl Console {
         true
     }
 
-    fn main_tick(&mut self) -> i16 {
+    fn main_tick(&mut self) -> u16 {
         let cycles = self.cpu.step(&mut self.mmu);
 
         if cycles < 0 {
@@ -190,10 +190,10 @@ impl Console {
             self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
         }
 
-        cycles
+        cycles as u16
     }
 
-    fn main_loop(&mut self) {
+    fn _main_loop(&mut self) {
         let frame_duration = Duration::from_millis(1000 / FRAMES_PER_SECOND); // Why is it always so slow?
         let start_time = Instant::now();
         let mut cycles_this_frame: u64 = 0;
@@ -210,7 +210,7 @@ impl Console {
                     cycles_this_frame += self.main_tick() as u64;
                 } else {
                     // WAIT
-                    // sleep(sleep_duration);
+                    sleep(sleep_duration);
                 }
             } else {
                 // DRAW + POLL
@@ -229,5 +229,26 @@ impl Console {
 
         let runtime = start_time.elapsed();
         self.total_runtime = runtime.as_secs() as u128;
+    }
+
+    fn main_loop(&mut self) {
+        let mut is_running = true;
+        let start_time = Instant::now();
+        let mut cycles_this_frame = 0;
+
+        while is_running {
+            if cycles_this_frame >= CYCLES_PER_FRAME {
+                self.display.draw(&mut self.ppu);
+                is_running = self.input_polling();
+
+                self.total_frames += 1;
+                self.total_cycles += cycles_this_frame as u128;
+                cycles_this_frame = 0;
+            } else {
+                cycles_this_frame += self.main_tick() as u64;
+            }
+        }
+
+        self.total_runtime = start_time.elapsed().as_secs() as u128;
     }
 }
