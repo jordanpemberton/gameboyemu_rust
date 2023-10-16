@@ -4,7 +4,11 @@ use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
 use crate::console::ppu::{Lcd, Ppu};
 
-const COLORS: [Color; 13] = [
+pub(crate) const DEBUG_COLOR_A: u8 = 12;
+pub(crate) const DEBUG_COLOR_B: u8 = 13;
+pub(crate) const DEBUG_COLOR_C: u8 = 14;
+
+const COLORS: [Color; 15] = [
     Color::RGB(0, 0, 0),
     Color::RGB(255, 255, 0),
     Color::RGB(255, 0, 255),
@@ -21,6 +25,8 @@ const COLORS: [Color; 13] = [
     Color::RGB(0, 128, 128),
 
     Color::RGB(255, 0, 0),
+    Color::RGB(255, 255, 0),
+    Color::RGB(255, 255, 255),
 ];
 
 fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, window_title: &str) -> WindowCanvas {

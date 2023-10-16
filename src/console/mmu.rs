@@ -60,6 +60,11 @@ pub(crate) enum Endianness {
     LITTLE,
 }
 
+pub(crate) trait Memory {
+    fn read_8(&mut self, address: u16) -> u8;
+    fn write_8(&mut self, address: u16, value: u8);
+}
+
 pub(crate) struct Mmu {
     pub(crate) is_booting: bool,
     pub(crate) oam_dma_source_address: Option<u16>,
