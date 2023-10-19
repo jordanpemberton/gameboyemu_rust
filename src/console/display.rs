@@ -4,10 +4,6 @@ use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
 use crate::console::ppu::{Lcd, Ppu};
 
-pub(crate) const DEBUG_COLOR_A: u8 = 12;
-pub(crate) const DEBUG_COLOR_B: u8 = 13;
-pub(crate) const DEBUG_COLOR_C: u8 = 14;
-
 const COLORS: [Color; 15] = [
     Color::RGB(0, 0, 0),
     Color::RGB(255, 255, 0),

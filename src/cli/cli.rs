@@ -14,7 +14,6 @@ struct EmuArgs {
     skip_boot: bool,
     debug_enabled: bool,
     cpu_instr_log: bool,
-    lcd_debug: bool,
     rom_filepath: String,
 }
 
@@ -30,7 +29,6 @@ impl EmuArgs {
             skip_boot: if args.len() > 2 { args[2].clone().parse().unwrap() } else { 0 } > 0,
             debug_enabled: if args.len() > 3 { args[3].clone().parse().unwrap() } else { 1 } > 0,
             cpu_instr_log: if args.len() > 4 { args[4].clone().parse().unwrap() } else { 0 } > 0,
-            lcd_debug: if args.len() > 5 { args[5].clone().parse().unwrap() } else { 0 } > 0,
         }
     }
 }
@@ -103,8 +101,8 @@ fn disassemble_rom(filepath: &str) {
     disassembler::disassemble_to_output_file(&cartridge.data, path.as_str());
 }
 
-fn run_rom(args: &EmuArgs) { //rom_filepath: &str, skip_boot: bool, debug_enabled: bool, cpu_instr_log: bool, lcd_debug: bool) {
-    let window_scale = if args.lcd_debug { 4 } else { 7 };
+fn run_rom(args: &EmuArgs) {
+    let window_scale = 7;
 
     if args.rom_filepath.trim().is_empty() {
         disassemble_rom(BOOTROM_FILEPATH);
@@ -113,7 +111,6 @@ fn run_rom(args: &EmuArgs) { //rom_filepath: &str, skip_boot: bool, debug_enable
             window_scale,
             args.debug_enabled,
             args.cpu_instr_log,
-            args.lcd_debug,
             None
         );
         gamboy.run(false);
@@ -125,7 +122,6 @@ fn run_rom(args: &EmuArgs) { //rom_filepath: &str, skip_boot: bool, debug_enable
             window_scale,
             args.debug_enabled,
             args.cpu_instr_log,
-            args.lcd_debug,
             Some(cartridge)
         );
         gamboy.run(args.skip_boot);

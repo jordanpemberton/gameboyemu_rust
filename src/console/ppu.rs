@@ -1,5 +1,5 @@
 use crate::console::interrupts::{InterruptRegBit, Interrupts};
-use crate::console::{display, mmu};
+use crate::console::mmu;
 use crate::console::mmu::{Memory, Mmu};
 use crate::console::register::Register;
 use crate::console::sprite_attribute::SpriteAttribute;
@@ -100,9 +100,9 @@ pub(crate) struct Lcd {
 }
 
 impl Lcd {
-    pub(crate) fn new(in_debug_mode: bool) -> Lcd {
-        let width: usize = if in_debug_mode { 32 * 8 } else { 160 };
-        let height: usize = if in_debug_mode { 32 * 8 } else { 144 };
+    pub(crate) fn new() -> Lcd {
+        let width: usize = 160;
+        let height: usize = 144;
 
         Lcd {
             width,
@@ -113,8 +113,6 @@ impl Lcd {
 }
 
 pub(crate) struct Ppu {
-    in_debug_mode: bool,
-
     clocks: usize,
 
     // Registers in IO RAM, 0xFF40..=0xFF4B
@@ -164,9 +162,8 @@ impl Memory for Ppu {
 }
 
 impl Ppu {
-    pub(crate) fn new(mmu: &mut Mmu, in_debug_mode: bool) -> Ppu {
+    pub(crate) fn new(mmu: &mut Mmu) -> Ppu {
         Ppu {
-            in_debug_mode,
             clocks: 0,
             scy: 0,
             scx: 0,
@@ -182,7 +179,7 @@ impl Ppu {
             lcd_status: Register::new(mmu, mmu::LCD_STATUS_REG),
             vram: [0; 0x1000],
             sprite_attributes: [SpriteAttribute::new(&[0; 4]); 40],
-            lcd: Lcd::new(in_debug_mode),
+            lcd: Lcd::new(),
         }
     }
 
@@ -348,11 +345,7 @@ impl Ppu {
 
     fn draw_background_line(&mut self, mmu: &mut Mmu) {
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8) {
-            if self.in_debug_mode {
-                self.debug_fill_lcd_row(mmu, DrawMode::Background);
-            } else {
-                self.fill_lcd_row(mmu, DrawMode::Background);
-            }
+            self.fill_lcd_row(mmu, DrawMode::Background);
         }
     }
 
@@ -360,12 +353,8 @@ impl Ppu {
     fn draw_window_line(&mut self, mmu: &mut Mmu) {
         let is_dmg = true;  // TODO
         if (is_dmg && self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8))
-            || (!is_dmg && self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowEnabled as u8)) {
-            if self.in_debug_mode {
-                self.debug_fill_lcd_row(mmu, DrawMode::Window);
-            } else {
-                self.fill_lcd_row(mmu, DrawMode::Window);
-            }
+                || (!is_dmg && self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowEnabled as u8)) {
+            self.fill_lcd_row(mmu, DrawMode::Window);
         }
     }
 
@@ -414,82 +403,6 @@ impl Ppu {
                             }
                         }
                     }
-                }
-            }
-        }
-    }
-
-    fn debug_fill_lcd_row(&mut self, mmu: &mut Mmu, mode: DrawMode) { // TOO SLOW
-        let palette = Ppu::read_palette(self.bgp);
-
-        // Debug border lines
-        let y0 = self.scy;
-        let y1 = self.scy.wrapping_add(143u8);
-        if self.ly == y0 || self.ly == y1 {
-                let x0 = self.scx as usize;
-                let x1 = self.scx.wrapping_add(160u8) as usize;
-                for x in 0..self.lcd.width {
-                    let color = if x == x0 {
-                        display::DEBUG_COLOR_B
-                    } else if x == x1 {
-                        display::DEBUG_COLOR_C
-                    } else {
-                        display::DEBUG_COLOR_A
-                    };
-                    self.lcd.data[self.ly as usize][x] = color;
-                }
-                return;
-            }
-
-        let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8);
-        let tilemap_at_9c00_bit = match mode {
-            DrawMode::Window => LcdControlRegBit::WindowTilemapIsAt9C00,
-            DrawMode::Background | _ => LcdControlRegBit::BackgroundTilemapIsAt9C00,
-        } as u8;
-        let background_tilemap_address = if self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit) {
-            0x9C00
-        } else {
-            0x9800
-        };
-        let (y_offset, x_offset, x_start) = match mode {
-            DrawMode::Window => (self.wy, 0, self.wx.wrapping_sub(7)), // TODO fix
-            DrawMode::Background | _ => (0, 0, 0),
-        };
-        let lcd_row = self.ly.wrapping_sub(y_offset) as usize;
-        let tilemap_row = (self.ly / 8) as usize;
-        let tile_row = (self.ly % 8) as usize;
-
-        if lcd_row < self.lcd.height {
-            for x in x_start as usize..self.lcd.width {
-                let lcd_col = (x as u8).wrapping_sub(x_offset) as usize; // TODO fix
-                if lcd_col >= self.lcd.width { break; }
-                let tilemap_col = x / 8;
-                let tile_col = x % 8;
-
-                let tile_index_address = (tilemap_row * 32 + tilemap_col) + background_tilemap_address;
-                let tile_index = mmu.read_8(tile_index_address as u16) as i32;
-
-                let mut tile_address = if index_mode_8000 {
-                    0x8000 + tile_index * 16
-                } else {
-                    let tile_index = (tile_index as i8) as i32; // signed
-                    0x9000 + tile_index * 16
-                } as usize;
-                tile_address += tile_row * 2;
-
-                let tile_byte1 = mmu.read_8(tile_address as u16);
-                let tile_byte2 = mmu.read_8((tile_address + 1) as u16);
-
-                let low = ((tile_byte1 << tile_col) >> 7) << 1;
-                let high = (tile_byte2 << tile_col) >> 7;
-                let color = high + low;
-
-                if mode == DrawMode::Background || color > 0 { // TODO priority, transparency
-                    self.lcd.data[lcd_row][lcd_col] = palette[color as usize] + match mode {
-                        DrawMode::Background => 0,
-                        DrawMode::Window => 4,
-                        DrawMode::Sprites => 8,
-                    };
                 }
             }
         }

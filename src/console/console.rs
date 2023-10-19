@@ -36,11 +36,10 @@ impl Console {
             window_scale: u32,
             debug: bool,
             cpu_debug_print: bool,
-            debug_mode_display: bool,
             cartridge: Option<Cartridge>) -> Console {
         let mut mmu = Mmu::new(cartridge);
         let cpu = Cpu::new(&mut mmu, cpu_debug_print);
-        let ppu = Ppu::new(&mut mmu, debug_mode_display);
+        let ppu = Ppu::new(&mut mmu);
         let mut sdl_context: Sdl = sdl2::init().unwrap();
         let input = Input::new(&mut sdl_context);
 
