@@ -14,4 +14,3 @@ mod interrupts;
 mod ppu;
 mod register;
 mod sprite_attribute;
-mod tilemap;
