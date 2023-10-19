@@ -171,6 +171,10 @@ impl Console {
     }
 
     fn main_tick(&mut self) -> u16 {
+        if self.debugger.is_some() && self.debugger.as_mut().unwrap().active {
+            return 4;
+        }
+
         let cycles = self.cpu.step(&mut self.mmu);
 
         if cycles < 0 {
