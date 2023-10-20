@@ -345,11 +345,9 @@ impl Ppu {
         }
     }
 
-    #[allow(dead_code)]
     fn draw_window_line(&mut self, mmu: &mut Mmu) {
-        let is_dmg = true;  // TODO
-        if (is_dmg && self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8))
-                || (!is_dmg && self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowEnabled as u8)) {
+        if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8)
+                && self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowEnabled as u8) {
             self.draw_background_or_window_line(mmu, DrawMode::Window);
         }
     }
@@ -439,24 +437,32 @@ impl Ppu {
         };
 
         let y = self.ly as usize;
-        let y_offset = self.scy as usize;
-        let x_offset = self.scx as usize;
+        let y_offset = match mode {
+            DrawMode::Window => self.wy,
+            DrawMode::Background | _ => self.scy
+        } as usize;
+        let x_offset = match mode {
+            DrawMode::Window => self.wx + 7,
+            DrawMode::Background | _ => self.scx
+        } as usize;
+
         let tilemap_row = (y + y_offset) / 8;
         let tile_row = (y + y_offset) % 8;
+        let tile_index_base_address = background_tilemap_address + tilemap_row * 32;
+        let tilemap_base_address: i32 = if index_mode_8000 { 0x8000 } else { 0x9000 };
 
         for x in 0..self.lcd.width {
             let tilemap_col = (x + x_offset) / 8;
             let tile_col = (x + x_offset) % 8;
 
-            let tile_index_address = background_tilemap_address + tilemap_row * 32 + tilemap_col;
+            let tile_index_address = tile_index_base_address + tilemap_col;
             let tile_index = mmu.read_8(tile_index_address as u16) as i32;
-            let mut tile_address = if index_mode_8000 {
-                0x8000 + tile_index * 16
+            let tile_address_offset = if index_mode_8000 {
+                tile_index * 16
             } else {
-                let tile_index = (tile_index as i8) as i32; // signed
-                0x9000 + tile_index * 16
-            } as usize;
-            tile_address += tile_row * 2;
+                (tile_index as i8) as i32 * 16 // signed
+            };
+            let tile_address = (tilemap_base_address + tile_address_offset) as usize + tile_row * 2;
 
             let tile_byte1 = mmu.read_8(tile_address as u16);
             let tile_byte2 = mmu.read_8((tile_address + 1) as u16);
