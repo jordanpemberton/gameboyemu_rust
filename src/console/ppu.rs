@@ -444,7 +444,7 @@ impl Ppu {
         let y = self.ly as i32;
         let y_offset = match mode {
             DrawMode::Window => -(self.wy as i32),
-            DrawMode::Background | _ => self.scy as i32
+            DrawMode::Background | _ => self.scy as i32 // TODO doesn't work with Blargg tests?
         };
         let x_offset = match mode {
             DrawMode::Window => -(self.wx as i32 - 7),

@@ -1,8 +1,3 @@
-// #![allow(dead_code)]
-// #![allow(non_snake_case)]
-// #![allow(unreachable_patterns)]
-// #![allow(unused_variables)]
-
 use std::collections::HashSet;
 use crate::console::instruction::{Instruction};
 use crate::console::mmu;
