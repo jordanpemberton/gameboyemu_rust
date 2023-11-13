@@ -423,6 +423,11 @@ impl Ppu {
     }
 
     fn draw_background_or_window_line(&mut self, mmu: &mut Mmu, mode: DrawMode) { // TOO SLOW
+        if mode == DrawMode::Window &&
+            (self.wy >= self.ly || self.wx >= self.lcd.width as u8 + 7) {
+            return;
+        }
+
         let palette = Ppu::read_palette(self.bgp);
 
         let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8);
@@ -430,30 +435,30 @@ impl Ppu {
             DrawMode::Window => LcdControlRegBit::WindowTilemapIsAt9C00,
             DrawMode::Background | _ => LcdControlRegBit::BackgroundTilemapIsAt9C00,
         } as u8;
-        let background_tilemap_address = if self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit) {
+        let tilemap_address = if self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit) {
             0x9C00
         } else {
             0x9800
         };
 
-        let y = self.ly as usize;
+        let y = self.ly as i32;
         let y_offset = match mode {
-            DrawMode::Window => self.wy,
-            DrawMode::Background | _ => self.scy
-        } as usize;
+            DrawMode::Window => -(self.wy as i32),
+            DrawMode::Background | _ => self.scy as i32
+        };
         let x_offset = match mode {
-            DrawMode::Window => self.wx + 7,
-            DrawMode::Background | _ => self.scx
-        } as usize;
+            DrawMode::Window => -(self.wx as i32 - 7),
+            DrawMode::Background | _ => self.scx as i32
+        };
 
-        let tilemap_row = (y + y_offset) / 8;
-        let tile_row = (y + y_offset) % 8;
-        let tile_index_base_address = background_tilemap_address + tilemap_row * 32;
+        let tilemap_row = (y + y_offset) as usize / 8;
+        let tile_row = (y + y_offset) as usize % 8;
+        let tile_index_base_address = tilemap_address + tilemap_row * 32;
         let tilemap_base_address: i32 = if index_mode_8000 { 0x8000 } else { 0x9000 };
 
-        for x in 0..self.lcd.width {
-            let tilemap_col = (x + x_offset) / 8;
-            let tile_col = (x + x_offset) % 8;
+        for x in 0..self.lcd.width as i32 {
+            let tilemap_col = (x + x_offset) as usize / 8;
+            let tile_col = (x + x_offset) as usize % 8;
 
             let tile_index_address = tile_index_base_address + tilemap_col;
             let tile_index = mmu.read_8(tile_index_address as u16) as i32;
@@ -472,7 +477,7 @@ impl Ppu {
             let color = high + low;
 
             if mode == DrawMode::Background || color > 0 { // TODO priority, transparency
-                self.lcd.data[y][x] = palette[color as usize] + match mode {
+                self.lcd.data[y as usize][x as usize] = palette[color as usize] + match mode {
                     DrawMode::Window => 4,
                     DrawMode::Background | _ => 0,
                 };
