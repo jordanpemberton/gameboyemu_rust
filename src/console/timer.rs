@@ -2,48 +2,41 @@ use std::fmt::{Display, Formatter};
 use crate::console::mmu;
 use crate::console::mmu::Mmu;
 
+const DIV_SPEED: u16 = 256; // 16384Hz = 256 cpu clocks
+
 #[allow(dead_code)]
+#[derive(Default)]
 pub(crate) struct Timer {
-    div: u8,        // FF04 — DIV: Divider register
-    tima: u8,       // FF05 — TIMA: Timer counter
-    tma: u8,        // FF06 — TMA: Timer modulo
-    tac: u8,        // FF07 — TAC: Timer control
-    div_clocks: u8, // 16384Hz = 256 cpu clocks
+    div: u8,         // FF04 — DIV: Divider register
+    tima: u8,        // FF05 — TIMA: Timer counter
+    tma: u8,         // FF06 — TMA: Timer modulo
+    tac: u8,         // FF07 — TAC: Timer control
+    div_clocks: u16,
     tima_clocks: u16,
     overflow: bool,
     is_in_stop_mode: bool,
 }
 
 impl Timer {
-    fn new() -> Timer {
-        Timer {
-            div: 0,
-            tima: 0,
-            tma: 0,
-            tac: 0,
-            div_clocks: 0,
-            tima_clocks: 0,
-            overflow: false,
-            is_in_stop_mode: false,
-        }
-    }
-
     #[allow(unused_variables)]
     pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool { // passes all blargg CPU tests
         let mut request_interrupt = false;
         self.refresh_from_mem(mmu);
 
         if !self.is_in_stop_mode {
-            let is_time_to_increment_div = true; // TODO
+            let is_time_to_increment_div = self.div_clocks >= DIV_SPEED;
             if is_time_to_increment_div {
+                self.div_clocks = 0;
                 self.div = self.div.wrapping_add(1);
             }
+            self.div_clocks += cycles as u16;
         }
 
         if self.tac & 0b0100 == 0b0100 {
             // Increment TIMA at the rate specified by TAC
-            let is_time_to_increment_tima = true; // TODO
+            let is_time_to_increment_tima = self.tima_clocks >= self.selected_clocks();
             if is_time_to_increment_tima {
+                self.tima_clocks = 0;
                 let (result, overflow) = self.tima.overflowing_add(1);
                 self.tima = result;
                 if overflow {
@@ -51,6 +44,7 @@ impl Timer {
                     request_interrupt = true;
                 }
             }
+            self.tima_clocks += cycles as u16;
         }
 
         request_interrupt
