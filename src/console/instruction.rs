@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::console::alu;
+use crate::console::{alu, mmu};
 use crate::console::cpu::{Cpu, PREFIX_BYTE};
 use crate::console::mmu::{Endianness, Mmu};
 use crate::console::cpu_registers::{Flags, CpuRegIndex};
@@ -1057,6 +1057,7 @@ impl Instruction {
     /// 2 4
     /// - - - -
     fn op_0010(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
+        mmu.write_8(mmu::DIV_REG, 0);
         self.cycles
     }
 
