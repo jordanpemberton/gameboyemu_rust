@@ -47,6 +47,8 @@ impl Timer {
             self.tima_clocks += cycles as u16;
         }
 
+        self.update_mem(mmu);
+
         request_interrupt
     }
 
@@ -55,6 +57,13 @@ impl Timer {
         self.tima = mmu.read_8(mmu::TIMA_REG);
         self.tma = mmu.read_8(mmu::TMA_REG);
         self.tac = mmu.read_8(mmu::TAC_REG);
+    }
+
+    fn update_mem(&mut self, mmu: &mut Mmu) {
+        mmu.write_8(mmu::DIV_REG, self.div);
+        mmu.write_8(mmu::TIMA_REG, self.tima);
+        mmu.write_8(mmu::TMA_REG, self.tma);
+        mmu.write_8(mmu::TAC_REG, self.tac);
     }
 
     fn selected_clocks(&self) -> u16 {
