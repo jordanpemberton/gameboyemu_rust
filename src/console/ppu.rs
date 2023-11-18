@@ -435,7 +435,7 @@ impl Ppu {
             DrawMode::Window => LcdControlRegBit::WindowTilemapIsAt9C00,
             DrawMode::Background | _ => LcdControlRegBit::BackgroundTilemapIsAt9C00,
         } as u8;
-        let tilemap_address = if self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit) {
+        let tilemap_address: u16 = if self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit) {
             0x9C00
         } else {
             0x9800
@@ -444,33 +444,33 @@ impl Ppu {
         let y = self.ly as i32;
         let y_offset = match mode {
             DrawMode::Window => -(self.wy as i32),
-            DrawMode::Background | _ => self.scy as i32, // TODO doesn't work with Blargg tests?
+            DrawMode::Background | _ => self.scy as i32,
         };
         let x_offset = match mode {
             DrawMode::Window => -(self.wx as i32 - 7),
             DrawMode::Background | _ => self.scx as i32
         };
 
-        let tilemap_row = (y + y_offset) as usize / 8;
-        let tile_row = (y + y_offset) as usize % 8;
-        let tile_index_base_address = tilemap_address + tilemap_row * 32;
+        let tilemap_row = (y + y_offset) as u8 / 8;
+        let tile_row = (y + y_offset) as u8 % 8;
+        let tile_index_base_address = tilemap_address + tilemap_row as u16 * 32;
         let tilemap_base_address: i32 = if index_mode_8000 { 0x8000 } else { 0x9000 };
 
         for x in 0..self.lcd.width as i32 {
-            let tilemap_col = (x + x_offset) as usize / 8;
-            let tile_col = (x + x_offset) as usize % 8;
+            let tilemap_col = (x + x_offset) as u8 / 8;
+            let tile_col = (x + x_offset) as u8 % 8;
 
-            let tile_index_address = tile_index_base_address + tilemap_col;
-            let tile_index = mmu.read_8(tile_index_address as u16) as i32;
-            let tile_address_offset = if index_mode_8000 {
-                tile_index * 16
+            let tile_index_address = tile_index_base_address + tilemap_col as u16;
+            let tile_index = mmu.read_8(tile_index_address);
+            let tile_address_offset: i32 = if index_mode_8000 {
+                tile_index as i32 * 16
             } else {
                 (tile_index as i8) as i32 * 16 // signed
             };
-            let tile_address = (tilemap_base_address + tile_address_offset) as usize + tile_row * 2;
+            let tile_address = (tilemap_base_address + tile_address_offset) + tile_row as i32 * 2;
 
             let tile_byte1 = mmu.read_8(tile_address as u16);
-            let tile_byte2 = mmu.read_8((tile_address + 1) as u16);
+            let tile_byte2 = mmu.read_8(tile_address as u16 + 1);
 
             let low = ((tile_byte1 << tile_col) >> 7) << 1;
             let high = (tile_byte2 << tile_col) >> 7;
