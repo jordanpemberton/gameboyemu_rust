@@ -88,32 +88,32 @@ impl Input {
                 Event::KeyUp { keycode: Some(Keycode::Right), .. } => {
                     mmu.active_input.remove(&JoypadInput::InputKeyRight);
                 }
-                Event::KeyDown { keycode: Some(Keycode::Z), .. } => {
-                    callbacks.push(Callback::InputKeyStart);
-                    mmu.active_input.insert(JoypadInput::InputKeyStart);
-                }
-                Event::KeyUp { keycode: Some(Keycode::Z), .. } => {
-                    mmu.active_input.remove(&JoypadInput::InputKeyStart);
-                }
-                Event::KeyDown { keycode: Some(Keycode::X), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
                     callbacks.push(Callback::InputKeySelect);
                     mmu.active_input.insert(JoypadInput::InputKeySelect);
                 }
-                Event::KeyUp { keycode: Some(Keycode::X), .. } => {
+                Event::KeyUp { keycode: Some(Keycode::A), .. } => {
                     mmu.active_input.remove(&JoypadInput::InputKeySelect);
                 }
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+                    callbacks.push(Callback::InputKeyStart);
+                    mmu.active_input.insert(JoypadInput::InputKeyStart);
+                }
+                Event::KeyUp { keycode: Some(Keycode::S), .. } => {
+                    mmu.active_input.remove(&JoypadInput::InputKeyStart);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Z), .. } => {
                     callbacks.push(Callback::InputKeyB);
                     mmu.active_input.insert(JoypadInput::InputKeyB);
                 }
-                Event::KeyUp { keycode: Some(Keycode::S), .. } => {
+                Event::KeyUp { keycode: Some(Keycode::Z), .. } => {
                     mmu.active_input.remove(&JoypadInput::InputKeyB);
                 }
-                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::X), .. } => {
                     callbacks.push(Callback::InputKeyA);
                     mmu.active_input.insert(JoypadInput::InputKeyA);
                 }
-                Event::KeyUp { keycode: Some(Keycode::A), .. } => {
+                Event::KeyUp { keycode: Some(Keycode::X), .. } => {
                     mmu.active_input.remove(&JoypadInput::InputKeyA);
                 }
                 _ => { }
