@@ -19,7 +19,7 @@ pub(crate) struct Timer {
 
 impl Timer {
     #[allow(unused_variables)]
-    pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool { // passes all blargg CPU tests
+    pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
         let mut request_interrupt = false;
         self.refresh_from_mem(mmu);
 
@@ -36,7 +36,7 @@ impl Timer {
             // Increment TIMA at the rate specified by TAC
             let is_time_to_increment_tima = self.tima_clocks >= self.selected_clocks();
             if is_time_to_increment_tima {
-                self.tima_clocks = 0;
+                self.tima_clocks = self.tima_clocks - self.selected_clocks();
                 let (result, overflow) = self.tima.overflowing_add(1);
                 self.tima = result;
                 if overflow {
