@@ -44,6 +44,7 @@ impl Timer {
                     request_interrupt = true;
                 }
             }
+            // TODO - TIMA uses DIV /internal clock (which can be reset to 0), see mooneye acceptance/timer/div_write.gb
             self.tima_clocks += cycles as u16;
         }
 
