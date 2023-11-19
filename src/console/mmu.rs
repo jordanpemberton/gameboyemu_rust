@@ -158,6 +158,17 @@ impl Mmu {
         result
     }
 
+    // TEMP HACK
+    pub(crate) fn write_8_force(&mut self, address: u16, value: u8) {
+        match address {
+            DIV_REG => {
+                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                self.ram[adjusted_address] = value;
+            }
+            _ => { }
+        }
+    }
+
     // noinspection RsNonExhaustiveMatch -- u16 range covered
     pub(crate) fn write_8(&mut self, address: u16, mut value: u8) {
         match address {
@@ -229,7 +240,7 @@ impl Mmu {
 
                 let curr_value = self.ram[adjusted_address];
                 value = match address {
-                    DIV_REG => 0,       // All writes to timer DIV register reset it to 0
+                    DIV_REG => 0,       // All writes to timer DIV register reset it to 0 -- BUG! need to be able to increment DIV!
                     JOYPAD_REG => (value & 0xF0) | (curr_value & 0x0F), // Bottom nibble is read only
                     _ => value
                 };
@@ -240,11 +251,6 @@ impl Mmu {
                         self.oam_dma_source_address = Option::from((value as u16) << 8);
                     }
                 }
-
-                // For debugging
-                // if address == 0xFF40 {
-                //     println!("Set {:#04X} = {:#04X}", address, value);
-                // }
 
                 if self.is_booting && address == BANK_REG && (value & 1) == 1 {
                     self.is_booting = false;

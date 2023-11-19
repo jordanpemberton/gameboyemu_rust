@@ -26,7 +26,7 @@ impl Timer {
         if !self.is_in_stop_mode {
             let is_time_to_increment_div = self.div_clocks >= DIV_SPEED;
             if is_time_to_increment_div {
-                self.div_clocks = 0;
+                self.div_clocks = self.div_clocks - DIV_SPEED;
                 self.div = self.div.wrapping_add(1);
             }
             self.div_clocks += cycles as u16;
@@ -60,7 +60,7 @@ impl Timer {
     }
 
     fn update_mem(&mut self, mmu: &mut Mmu) {
-        mmu.write_8(mmu::DIV_REG, self.div);
+        mmu.write_8_force(mmu::DIV_REG, self.div);
         mmu.write_8(mmu::TIMA_REG, self.tima);
         mmu.write_8(mmu::TMA_REG, self.tma);
         mmu.write_8(mmu::TAC_REG, self.tac);
