@@ -4,25 +4,40 @@ use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
 use crate::console::ppu::{Lcd, Ppu};
 
+const WHITE: Color = Color::RGB(255, 255, 255);
+const GRAY_LT: Color = Color::RGB(170, 170, 170);
+const GRAY_DK: Color = Color::RGB(85, 85, 85);
+const BLACK: Color = Color::RGB(0, 0, 0);
+
+const PINK_LT: Color = Color::RGB(255, 128, 128);
+const BLUE_LT: Color = Color::RGB(64, 191, 255);
+const RED: Color = Color::RGB(255, 0, 0);
+
+const YELLOW: Color = Color::RGB(255, 255, 0);
+
 const COLORS: [Color; 15] = [
-    Color::RGB(0, 0, 0),
-    Color::RGB(255, 255, 0),
-    Color::RGB(255, 0, 255),
-    Color::RGB(0, 255, 255),
+    // Background
+    WHITE,
+    GRAY_LT,
+    GRAY_DK,
+    BLACK,
 
-    Color::RGB(0, 0, 0),
-    Color::RGB(128, 255, 0),
-    Color::RGB(128, 0, 255),
-    Color::RGB(0, 128, 255),
+    // Window
+    WHITE,
+    BLUE_LT,
+    PINK_LT,
+    BLACK,
 
-    Color::RGB(0, 0, 0),
-    Color::RGB(128, 128, 0),
-    Color::RGB(128, 0, 128),
-    Color::RGB(0, 128, 128),
+    // Sprites
+    WHITE,
+    Color::RGB(BLUE_LT.r / 4 * 3, BLUE_LT.g / 4 * 3, BLUE_LT.b),
+    Color::RGB(PINK_LT.r, PINK_LT.g / 4 * 3, PINK_LT.b / 4 * 3),
+    BLACK,
 
-    Color::RGB(255, 0, 0),
-    Color::RGB(255, 255, 0),
-    Color::RGB(255, 255, 255),
+    // Debugging
+    RED,
+    YELLOW,
+    WHITE,
 ];
 
 fn create_sdl_canvas(sdl_context: &Sdl, window_width: u32, window_height: u32, window_title: &str) -> WindowCanvas {
