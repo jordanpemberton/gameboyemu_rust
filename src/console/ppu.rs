@@ -134,6 +134,7 @@ pub(crate) struct Ppu {
     pub(crate) lcd: Lcd,
 }
 
+// TODO /WIP
 impl Memory for Ppu {
     fn read_8(&mut self, address: u16) -> u8 {
         match address {
@@ -203,7 +204,7 @@ impl Ppu {
                         self.oam_search(mmu);
                     } else {
                         self.clocks = 0;
-                        self.set_stat_mode(mmu, StatMode::PixelTransfer);
+                        self.set_stat_mode(mmu, StatMode::PixelTransfer, Option::None, interrupts);
                     }
                 }
                 StatMode::PixelTransfer => {
@@ -211,10 +212,7 @@ impl Ppu {
                         self.pixel_transfer(mmu);
                     } else {
                         self.clocks = 0;
-                        self.set_stat_mode(mmu, StatMode::HBlank);
-                        if self.lcd_status.check_bit(mmu, LcdStatRegBit::HBlankInterruptEnabled as u8) {
-                            interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
-                        }
+                        self.set_stat_mode(mmu, StatMode::HBlank, Option::from(LcdStatRegBit::HBlankInterruptEnabled), interrupts);
                     }
                 }
                 StatMode::HBlank => {
@@ -223,16 +221,10 @@ impl Ppu {
                     } else {
                         self.increment_ly(mmu);
                         if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
-                            self.set_stat_mode(mmu, StatMode::OamSearch);
-                            if self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8) {
-                                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
-                            }
+                            self.set_stat_mode(mmu, StatMode::OamSearch, Option::from(LcdStatRegBit::OamInterruptEnabled), interrupts);
                         } else {
-                            self.set_stat_mode(mmu, StatMode::VBlank);
+                            self.set_stat_mode(mmu, StatMode::VBlank, Option::from(LcdStatRegBit::VBlankInterruptEnabled), interrupts);
                             interrupts.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, true);
-                            if self.lcd_status.check_bit(mmu, LcdStatRegBit::VBlankInterruptEnabled as u8) {
-                                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
-                            }
                         }
                     }
                 }
@@ -243,17 +235,17 @@ impl Ppu {
                         self.increment_ly(mmu);
                         if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
                             self.clocks = 0;
-                            self.set_stat_mode(mmu, StatMode::OamSearch);
-                            if self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8) {
-                                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
-                            }
+                            self.set_stat_mode(mmu, StatMode::OamSearch, Option::from(LcdStatRegBit::OamInterruptEnabled), interrupts);
                         }
                     }
                 }
             }
 
+            // TODO relocate?
             if self.ly == self.lyc {
                 self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, true);
+            } else {
+                self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, false);
             }
         }
     }
@@ -305,7 +297,7 @@ impl Ppu {
         mmu.write_8(mmu::LY_REG, self.ly);
     }
 
-    fn set_stat_mode(&mut self, mmu: &mut Mmu, mode: StatMode) {
+    fn set_stat_mode(&mut self, mmu: &mut Mmu, mode: StatMode, statRegBit: Option<LcdStatRegBit>, interrupts: &mut Interrupts) {
         let x = match mode {
             StatMode::HBlank => 0,
             StatMode::VBlank => 1,
@@ -316,6 +308,12 @@ impl Ppu {
         let bit1 = (x & 0x02) == 0x02;
         self.lcd_status.set_bit(mmu, LcdStatRegBit::ModeBit0 as u8, bit0);
         self.lcd_status.set_bit(mmu, LcdStatRegBit::ModeBit1 as u8, bit1);
+
+        if let Some(regBit) = statRegBit {
+            if self.lcd_status.check_bit(mmu, regBit as u8) {
+                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true);
+            }
+        }
     }
 
     fn oam_search(&mut self, mmu: &mut Mmu) {

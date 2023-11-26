@@ -72,6 +72,8 @@ pub(crate) struct Mmu {
     ram: [u8; 0x8000 as usize],
     cartridge: Option<Cartridge>,
     pub(crate) active_input: HashSet<JoypadInput>,  // TODO this doesn't belong here
+    _debug_address: u16,
+    _debug_value: u8,
 }
 
 // TODO -- Rewrite Mmu, add handlers, eliminate duplicated code.
@@ -84,6 +86,8 @@ impl Mmu {
             ram: [0; 0x8000],
             cartridge,
             active_input: HashSet::from([]),
+            _debug_address: LCD_CONTROL_REG,
+            _debug_value: 0,
         };
         mmu.load_bootrom();
         mmu.ram[(JOYPAD_REG - 0x8000) as usize] = 0x1F;
@@ -130,10 +134,11 @@ impl Mmu {
                     _ => self.ram[address as usize - 0x8000]
                 };
 
-                // For debugging
-                // if address == 0xFF40 {
-                //     println!("Get {:#04X}: {:#04X}", address, result);
-                // }
+                // For debugging because conditional breakpoints are unuseably slow
+                if address == self._debug_address && result != self._debug_value {
+                    self._debug_value = result;
+                    println!("(GET) [{:#06X}] = {:#04X}", self._debug_address, self._debug_value);
+                }
 
                 result
             }
@@ -158,11 +163,12 @@ impl Mmu {
         result
     }
 
-    // TEMP HACK
+    // TEMP HACK to allow special write behavior
     pub(crate) fn write_8_force(&mut self, address: u16, value: u8) {
+        let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+
         match address {
             DIV_REG => {
-                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
                 self.ram[adjusted_address] = value;
             }
             _ => { }
@@ -238,22 +244,49 @@ impl Mmu {
             0xC000..=0xFFFF => {
                 let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
 
-                let curr_value = self.ram[adjusted_address];
-                value = match address {
-                    DIV_REG => 0,       // All writes to timer DIV register reset it to 0 -- BUG! need to be able to increment DIV!
-                    JOYPAD_REG => (value & 0xF0) | (curr_value & 0x0F), // Bottom nibble is read only
-                    _ => value
-                };
-                self.ram[adjusted_address] = value;
+                match address {
+                    LCD_CONTROL_REG => {
+                        // Bit 7 can only be cleared during VBlank STAT mode
+                        // TOD rewrite Mmu to make this type of thing nicer...
+                        let stat = self.ram[(LCD_STATUS_REG as usize - 0x8000) & (self.ram.len() - 1)];
+                        if stat & 0x03 == 0x01 { // vblank == mode 1
+                            self.ram[adjusted_address] = value;
+                        } else {
+                            let curr_value = self.ram[adjusted_address];
+                            self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
+                        }
+                    }
+                    DIV_REG => {
+                        // Writes to timer DIV register reset it to 0
+                        self.ram[adjusted_address] = 0;
+                    }
+                    JOYPAD_REG => {
+                        // Bottom nibble is read only
+                        let curr_value = self.ram[adjusted_address];
+                        self.ram[adjusted_address] = (value & 0xF0) | (curr_value & 0x0F);
+                    }
+                    DMA_REG => {
+                        self.ram[adjusted_address] = value;
+                        if self.oam_dma_source_address.is_none() {
+                            self.oam_dma_source_address = Option::from((value as u16) << 8);
+                        }
 
-                if address == DMA_REG {
-                    if self.oam_dma_source_address.is_none() {
-                        self.oam_dma_source_address = Option::from((value as u16) << 8);
+                    }
+                    BANK_REG => {
+                        self.ram[adjusted_address] = value;
+                        if self.is_booting && (value & 1) == 1 {
+                            self.is_booting = false;
+                        }
+                    }
+                    _ => {
+                        self.ram[adjusted_address] = value;
                     }
                 }
 
-                if self.is_booting && address == BANK_REG && (value & 1) == 1 {
-                    self.is_booting = false;
+                // For debugging because conditional breakpoints are unuseably slow
+                if address == self._debug_address && self.ram[adjusted_address] != self._debug_value {
+                    self._debug_value = self.ram[adjusted_address];
+                    println!("(SET to {:#04X}) [{:#06X}] = {:#04X}", value, self._debug_address, self._debug_value);
                 }
             }
         }
