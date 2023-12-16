@@ -157,7 +157,32 @@ impl Memory for Ppu {
 
     #[allow(unused_variables)]
     fn write_8(&mut self, address: u16, value: u8) {
-        todo!()
+        let address = (address as usize - 0x8000) & (0x8000 - 1);
+        match address {
+            LCD_CONTROL_REG => {
+                // Bit 7 can only be cleared during VBlank STAT mode
+                let stat_mode = self.get_stat_mode();
+                if stat_mode == StatMode::VBlank {
+                    self.lcd_control.value = value;
+                } else {
+                    let curr_value = self.lcd_control.value;
+                    self.lcd_control.value = value | (curr_value & 0x80); // Don't clear bit 7
+                }
+            }
+            LCD_STATUS_REG => self.lcd_status.value = value,
+            SCY_REG => self.scy = value,
+            SCX_REG => self.scx = value,
+            LY_REG => self.ly = value,
+            LYC_REG => self.lyc = value,
+            DMA_REG => self.dma = value,
+            BGP_REG => self.bgp = value,
+            OBP0_REG => self.obp0 = value,
+            OBP1_REG => self.obp1 = value,
+            WY_REG => self.wy = value,
+            WX_REG => self.wx = value,
+            0x8000..=0x9FFF => self.vram[address as usize - 0x8000] = value,
+            _ => panic!("Address {:} is not available to PPU", address)
+        }
     }
 }
 
@@ -295,6 +320,12 @@ impl Ppu {
         }
 
         mmu.write_8(mmu::LY_REG, self.ly);
+    }
+
+    fn get_stat_mode(&self) -> &StatMode {
+        let mode_flag = (self.lcd_status.value & 0x03) as usize;
+        let stat_mode = STAT_MODES[mode_flag];
+        stat_mode
     }
 
     fn set_stat_mode(&mut self, mmu: &mut Mmu, mode: StatMode, statRegBit: Option<LcdStatRegBit>, interrupts: &mut Interrupts) {
