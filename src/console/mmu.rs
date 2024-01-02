@@ -71,7 +71,6 @@ pub(crate) struct Mmu {
     _debug_value: u8,
 }
 
-// TODO -- Rewrite Mmu, add handlers, eliminate duplicated code.
 impl Mmu {
     pub(crate) fn new(cartridge: Option<Cartridge>) -> Mmu {
         let mut mmu = Mmu {

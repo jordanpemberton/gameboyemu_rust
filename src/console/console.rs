@@ -37,6 +37,7 @@ impl Console {
             debug: bool,
             cpu_debug_print: bool,
             cartridge: Option<Cartridge>) -> Console {
+        let timer = Timer::new();
         let mmu = Mmu::new(cartridge);
         let cpu = Cpu::new(cpu_debug_print);
         let ppu = Ppu::new();
@@ -57,7 +58,7 @@ impl Console {
             ppu.lcd.height);
 
         Console {
-            timer: Timer::default(),
+            timer,
             cpu,
             mmu,
             ppu,

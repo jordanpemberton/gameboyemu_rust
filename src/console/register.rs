@@ -19,6 +19,11 @@ impl Register {
         mmu.write_8(self.address, value);
     }
 
+    // TEMP HACK
+    pub(crate) fn write_force(&mut self, mmu: &mut Mmu, value: u8) {
+        mmu.write_8_force(self.address, value);
+    }
+
     pub(crate) fn check_bit(&mut self, mmu: &mut Mmu, bit: u8) -> bool {
         let value = self.read(mmu);
         self.read(mmu);

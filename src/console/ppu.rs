@@ -101,8 +101,6 @@ impl Lcd {
 #[allow(dead_code)]
 pub(crate) struct Ppu {
     clocks: usize,
-
-    // Registers in IO RAM, 0xFF40..=0xFF4B
     scy: Register,
     scx: Register,
     ly: Register,
