@@ -98,23 +98,23 @@ impl Lcd {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) struct Ppu {
     clocks: usize,
 
     // Registers in IO RAM, 0xFF40..=0xFF4B
     scy: Register,
-    scx: u8,
-    ly: u8,
-    lyc: u8,
-    dma: u8,
-    bgp: u8,
-    obp0: u8,
-    obp1: u8,
-    wy: u8,
-    wx: u8,
+    scx: Register,
+    ly: Register,
+    lyc: Register,
+    dma: Register,
+    bgp: Register,
+    obp0: Register,
+    obp1: Register,
+    wy: Register,
+    wx: Register,
     lcd_control: Register,
     lcd_status: Register,
-
     sprite_attributes: [SpriteAttribute; 40],
     pub(crate) lcd: Lcd,
 }
@@ -124,15 +124,15 @@ impl Ppu {
         Ppu {
             clocks: 0,
             scy: Register::new(mmu::SCY_REG),
-            scx: 0,
-            ly: 0,
-            lyc: 0,
-            dma: 0,
-            bgp: 0,
-            obp0: 0,
-            obp1: 0,
-            wy: 0,
-            wx: 0,
+            scx: Register::new(mmu::SCX_REG),
+            ly: Register::new(mmu::LY_REG),
+            lyc: Register::new(mmu::LYC_REG),
+            dma: Register::new(mmu::DMA_REG),
+            bgp: Register::new(mmu::BGP_REG),
+            obp0: Register::new(mmu::OBP0_REG),
+            obp1: Register::new(mmu::OBP1_REG),
+            wy: Register::new(mmu::WY_REG),
+            wx: Register::new(mmu::WX_REG),
             lcd_control: Register::new(mmu::LCD_CONTROL_REG),
             lcd_status: Register::new(mmu::LCD_STATUS_REG),
             sprite_attributes: [SpriteAttribute::new(&[0; 4]); 40],
@@ -141,8 +141,6 @@ impl Ppu {
     }
 
     pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
-        self.refresh_from_mem(mmu);
-
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::LcdAndPpuEnabled as u8) {
             self.clocks += cycles as usize;
 
@@ -151,7 +149,7 @@ impl Ppu {
             let mode_duration = MODE_DURATION[mode_flag];
             let (mode_y_start, mode_y_end) = MODE_LINE_RANGE[mode_flag];
             // Force current line ly to align with current mode (hack)
-            if self.ly < mode_y_start || mode_y_end <= self.ly {
+            if self.ly.read(mmu) < mode_y_start || mode_y_end <= self.ly.read(mmu) {
                 self.set_ly(mmu, mode_y_start);
             }
 
@@ -177,7 +175,7 @@ impl Ppu {
                         // wait
                     } else {
                         self.increment_ly(mmu);
-                        if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
+                        if self.ly.read(mmu) < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
                             self.set_stat_mode(mmu, StatMode::OamSearch, Option::from(LcdStatRegBit::OamInterruptEnabled), interrupts);
                         } else {
                             self.set_stat_mode(mmu, StatMode::VBlank, Option::from(LcdStatRegBit::VBlankInterruptEnabled), interrupts);
@@ -190,7 +188,7 @@ impl Ppu {
                         // wait
                     } else {
                         self.increment_ly(mmu);
-                        if self.ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
+                        if self.ly.read(mmu) < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
                             self.clocks = 0;
                             self.set_stat_mode(mmu, StatMode::OamSearch, Option::from(LcdStatRegBit::OamInterruptEnabled), interrupts);
                         }
@@ -199,26 +197,12 @@ impl Ppu {
             }
 
             // TODO relocate?
-            if self.ly == self.lyc {
+            if self.ly.read(mmu) == self.lyc.read(mmu) {
                 self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, true);
             } else {
                 self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, false);
             }
         }
-    }
-
-    fn refresh_from_mem(&mut self, mmu: &mut Mmu) {
-        self.scx = mmu.read_8(mmu::SCX_REG);
-        self.ly = mmu.read_8(mmu::LY_REG);
-        self.lyc = mmu.read_8(mmu::LYC_REG);
-        self.dma = mmu.read_8(mmu::DMA_REG);
-        self.bgp = mmu.read_8(mmu::BGP_REG);
-        self.obp0 = mmu.read_8(mmu::OBP0_REG);
-        self.obp1 = mmu.read_8(mmu::OBP1_REG);
-        self.wy = mmu.read_8(mmu::WY_REG);
-        self.wx = mmu.read_8(mmu::WX_REG);
-        self.lcd_control.read(mmu);
-        self.lcd_status.read(mmu);
     }
 
     fn read_palette(byte: u8) -> [u8; 4] {
@@ -235,22 +219,17 @@ impl Ppu {
     }
 
     fn set_ly(&mut self, mmu: &mut Mmu, value: u8) {
-        self.ly = value;
-        if self.ly >= MODE_LINE_RANGE[StatMode::VBlank as usize].1 {
-            self.ly = 0;
+        if value < MODE_LINE_RANGE[StatMode::VBlank as usize].1 {
+            self.ly.write(mmu, value);
+        } else {
+            self.ly.write(mmu, 0);
         }
-
-        mmu.write_8(mmu::LY_REG, self.ly);
     }
 
     fn increment_ly(&mut self, mmu: &mut Mmu) {
-        self.ly += 1;
         self.clocks = 0;
-        if self.ly >= MODE_LINE_RANGE[StatMode::VBlank as usize].1 {
-            self.ly = 0;
-        }
-
-        mmu.write_8(mmu::LY_REG, self.ly);
+        let ly = self.ly.read(mmu).wrapping_add(1);
+        self.set_ly(mmu, ly);
     }
 
     #[allow(dead_code)]
@@ -280,7 +259,7 @@ impl Ppu {
     }
 
     fn oam_search(&mut self, mmu: &mut Mmu) {
-        if self.ly == 0 {
+        if self.ly.read(mmu) == 0 {
             self.lcd_control.read(mmu);
             let obj_enabled = self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8);
             if obj_enabled {
@@ -331,7 +310,7 @@ impl Ppu {
     fn draw_sprites_line(&mut self, mmu: &mut Mmu) {
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8) {
             let tiledata_address: usize = 0x8000;
-            let y = self.ly;
+            let y = self.ly.read(mmu);
 
             for attr in self.sprite_attributes {
                 let is_16_sprite = self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8);
@@ -339,7 +318,7 @@ impl Ppu {
                 let sprite_height: u8 = if is_16_sprite { 16 } else { 8 };
 
                 if sprite_top_y <= y && y < sprite_top_y + sprite_height {
-                    let palette = Ppu::read_palette(self.bgp); // TODO Check attr.palette_is_obp1 to get palette
+                    let palette = Ppu::read_palette(self.bgp.read(mmu)); // TODO Check attr.palette_is_obp1 to get palette
 
                     let mut tile_row_n = (y - sprite_top_y) as usize;
                     if attr.flip_y {
@@ -385,11 +364,11 @@ impl Ppu {
 
     fn draw_background_or_window_line(&mut self, mmu: &mut Mmu, mode: DrawMode) { // TOO SLOW
         if mode == DrawMode::Window &&
-            (self.wy >= self.ly || self.wx >= self.lcd.width as u8 + 7) {
+            (self.wy.read(mmu) >= self.ly.read(mmu) || self.wx.read(mmu) >= self.lcd.width as u8 + 7) {
             return;
         }
 
-        let palette = Ppu::read_palette(self.bgp);
+        let palette = Ppu::read_palette(self.bgp.read(mmu));
 
         let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8);
         let tilemap_at_9c00_bit = match mode {
@@ -402,14 +381,14 @@ impl Ppu {
             0x9800
         };
 
-        let y = self.ly as i32;
+        let y = self.ly.read(mmu) as i32;
         let y_offset = match mode {
-            DrawMode::Window => -(self.wy as i32),
+            DrawMode::Window => -(self.wy.read(mmu) as i32),
             DrawMode::Background | _ => self.scy.read(mmu) as i32,
         };
         let x_offset = match mode {
-            DrawMode::Window => -(self.wx as i32 - 7),
-            DrawMode::Background | _ => self.scx as i32
+            DrawMode::Window => -(self.wx.read(mmu) as i32 - 7),
+            DrawMode::Background | _ => self.scx.read(mmu) as i32
         };
 
         let tilemap_row = (y + y_offset) as u8 / 8;
