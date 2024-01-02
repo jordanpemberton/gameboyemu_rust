@@ -1,21 +1,8 @@
 use crate::console::interrupts::{InterruptRegBit, Interrupts};
 use crate::console::mmu;
-use crate::console::mmu::{Memory, Mmu};
+use crate::console::mmu::Mmu;
 use crate::console::register::Register;
 use crate::console::sprite_attribute::SpriteAttribute;
-
-pub(crate) const LCD_CONTROL_REG: u16 = 0xFF40;
-pub(crate) const LCD_STATUS_REG: u16 = 0xFF41;
-pub(crate) const SCY_REG: u16 = 0xFF42;
-pub(crate) const SCX_REG: u16 = 0xFF43;
-pub(crate) const LY_REG: u16 = 0xFF44;
-pub(crate) const LYC_REG: u16 = 0xFF45;
-pub(crate) const DMA_REG: u16 = 0xFF46;
-pub(crate) const BGP_REG: u16 = 0xFF47;
-pub(crate) const OBP0_REG: u16 = 0xFF48;
-pub(crate) const OBP1_REG: u16 = 0xFF49;
-pub(crate) const WY_REG: u16 = 0xFF4A;
-pub(crate) const WX_REG: u16 = 0xFF4B;
 
 // From Michael Steil, Ultimate Game Boy Talk
 // (Gekkio (Mooneye) has HBlank=50 and OAM=21)
@@ -115,7 +102,7 @@ pub(crate) struct Ppu {
     clocks: usize,
 
     // Registers in IO RAM, 0xFF40..=0xFF4B
-    scy: u8,
+    scy: Register,
     scx: u8,
     ly: u8,
     lyc: u8,
@@ -127,70 +114,16 @@ pub(crate) struct Ppu {
     wx: u8,
     lcd_control: Register,
     lcd_status: Register,
-    // VRAM, 0x8000..=0x9FFF
-    vram: [u8; 0x1000],
 
     sprite_attributes: [SpriteAttribute; 40],
     pub(crate) lcd: Lcd,
 }
 
-// TODO /WIP
-impl Memory for Ppu {
-    fn read_8(&mut self, address: u16) -> u8 {
-        match address {
-            LCD_CONTROL_REG => self.lcd_control.value,
-            LCD_STATUS_REG => self.lcd_status.value,
-            SCY_REG => self.scy,
-            SCX_REG => self.scx,
-            LY_REG => self.ly,
-            LYC_REG => self.lyc,
-            DMA_REG => self.dma,
-            BGP_REG => self.bgp,
-            OBP0_REG => self.obp0,
-            OBP1_REG => self.obp1,
-            WY_REG => self.wy,
-            WX_REG => self.wx,
-            0x8000..=0x9FFF => self.vram[address as usize - 0x8000],
-            _ => panic!("Address {:} is not available to PPU", address)
-        }
-    }
-
-    #[allow(unused_variables)]
-    fn write_8(&mut self, address: u16, value: u8) {
-        let address = (address as usize - 0x8000) & (0x8000 - 1);
-        match address {
-            LCD_CONTROL_REG => {
-                // Bit 7 can only be cleared during VBlank STAT mode
-                let stat_mode = self.get_stat_mode();
-                if stat_mode == StatMode::VBlank {
-                    self.lcd_control.value = value;
-                } else {
-                    let curr_value = self.lcd_control.value;
-                    self.lcd_control.value = value | (curr_value & 0x80); // Don't clear bit 7
-                }
-            }
-            LCD_STATUS_REG => self.lcd_status.value = value,
-            SCY_REG => self.scy = value,
-            SCX_REG => self.scx = value,
-            LY_REG => self.ly = value,
-            LYC_REG => self.lyc = value,
-            DMA_REG => self.dma = value,
-            BGP_REG => self.bgp = value,
-            OBP0_REG => self.obp0 = value,
-            OBP1_REG => self.obp1 = value,
-            WY_REG => self.wy = value,
-            WX_REG => self.wx = value,
-            0x8000..=0x9FFF => self.vram[address as usize - 0x8000] = value,
-            _ => panic!("Address {:} is not available to PPU", address)
-        }
-    }
-}
-
 impl Ppu {
-    pub(crate) fn new(mmu: &mut Mmu) -> Ppu {
+    pub(crate) fn new() -> Ppu {
         Ppu {
             clocks: 0,
-            scy: 0,
+            scy: Register::new(mmu::SCY_REG),
             scx: 0,
             ly: 0,
             lyc: 0,
@@ -200,9 +133,8 @@ impl Ppu {
             obp1: 0,
             wy: 0,
             wx: 0,
-            lcd_control: Register::new(mmu, mmu::LCD_CONTROL_REG),
-            lcd_status: Register::new(mmu, mmu::LCD_STATUS_REG),
-            vram: [0; 0x1000],
+            lcd_control: Register::new(mmu::LCD_CONTROL_REG),
+            lcd_status: Register::new(mmu::LCD_STATUS_REG),
             sprite_attributes: [SpriteAttribute::new(&[0; 4]); 40],
             lcd: Lcd::new(),
         }
@@ -214,7 +146,7 @@ impl Ppu {
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::LcdAndPpuEnabled as u8) {
             self.clocks += cycles as usize;
 
-            let mode_flag = (self.lcd_status.value & 0x03) as usize;
+            let mode_flag = (self.lcd_status.read(mmu) & 0x03) as usize;
             let mode = STAT_MODES[mode_flag];
             let mode_duration = MODE_DURATION[mode_flag];
             let (mode_y_start, mode_y_end) = MODE_LINE_RANGE[mode_flag];
@@ -229,7 +161,7 @@ impl Ppu {
                         self.oam_search(mmu);
                     } else {
                         self.clocks = 0;
-                        self.set_stat_mode(mmu, StatMode::PixelTransfer, Option::None, interrupts);
+                        self.set_stat_mode(mmu, StatMode::PixelTransfer, None, interrupts);
                     }
                 }
                 StatMode::PixelTransfer => {
@@ -276,7 +208,6 @@ impl Ppu {
     }
 
     fn refresh_from_mem(&mut self, mmu: &mut Mmu) {
-        self.scy = mmu.read_8(mmu::SCY_REG);
         self.scx = mmu.read_8(mmu::SCX_REG);
         self.ly = mmu.read_8(mmu::LY_REG);
         self.lyc = mmu.read_8(mmu::LYC_REG);
@@ -286,8 +217,8 @@ impl Ppu {
         self.obp1 = mmu.read_8(mmu::OBP1_REG);
         self.wy = mmu.read_8(mmu::WY_REG);
         self.wx = mmu.read_8(mmu::WX_REG);
-        self.lcd_control.read_from_mem(mmu);
-        self.lcd_status.read_from_mem(mmu);
+        self.lcd_control.read(mmu);
+        self.lcd_status.read(mmu);
     }
 
     fn read_palette(byte: u8) -> [u8; 4] {
@@ -322,8 +253,9 @@ impl Ppu {
         mmu.write_8(mmu::LY_REG, self.ly);
     }
 
-    fn get_stat_mode(&self) -> &StatMode {
-        let mode_flag = (self.lcd_status.value & 0x03) as usize;
+    #[allow(dead_code)]
+    fn get_stat_mode(&mut self, mmu: &mut Mmu) -> &StatMode {
+        let mode_flag = (self.lcd_status.read(mmu) & 0x03) as usize;
         let stat_mode = STAT_MODES[mode_flag];
         stat_mode
     }
@@ -349,7 +281,7 @@ impl Ppu {
 
     fn oam_search(&mut self, mmu: &mut Mmu) {
         if self.ly == 0 {
-            self.lcd_control.read_from_mem(mmu);
+            self.lcd_control.read(mmu);
             let obj_enabled = self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8);
             if obj_enabled {
                 let attribute_data = mmu.read_buffer(mmu::OAM_START, mmu::OAM_END + 1);
@@ -473,7 +405,7 @@ impl Ppu {
         let y = self.ly as i32;
         let y_offset = match mode {
             DrawMode::Window => -(self.wy as i32),
-            DrawMode::Background | _ => self.scy as i32,
+            DrawMode::Background | _ => self.scy.read(mmu) as i32,
         };
         let x_offset = match mode {
             DrawMode::Window => -(self.wx as i32 - 7),

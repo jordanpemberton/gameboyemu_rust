@@ -18,11 +18,11 @@ pub(crate) struct Cpu {
 }
 
 impl Cpu {
-    pub(crate) fn new(mmu: &mut Mmu, debug_print: bool) -> Cpu {
+    pub(crate) fn new(debug_print: bool) -> Cpu {
         Cpu {
             is_halted: false,
             registers: CpuRegisters::new(),
-            interrupts: Interrupts::new(mmu),
+            interrupts: Interrupts::new(),
             visited: HashSet::from([]),
             debug_print_on: debug_print,
         }

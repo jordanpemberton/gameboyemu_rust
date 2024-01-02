@@ -37,9 +37,9 @@ impl Console {
             debug: bool,
             cpu_debug_print: bool,
             cartridge: Option<Cartridge>) -> Console {
-        let mut mmu = Mmu::new(cartridge);
-        let cpu = Cpu::new(&mut mmu, cpu_debug_print);
-        let ppu = Ppu::new(&mut mmu);
+        let mmu = Mmu::new(cartridge);
+        let cpu = Cpu::new(cpu_debug_print);
+        let ppu = Ppu::new();
         let mut sdl_context: Sdl = sdl2::init().unwrap();
         let input = Input::new(&mut sdl_context);
 
