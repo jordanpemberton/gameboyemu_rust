@@ -1,4 +1,3 @@
-use std::fmt::{Display, Formatter};
 use crate::console::mmu;
 use crate::console::mmu::Mmu;
 use crate::console::register::Register;
@@ -66,6 +65,21 @@ impl Timer {
         request_interrupt
     }
 
+    pub(crate) fn as_str(&mut self, mmu: &mut Mmu) -> String {
+        format!(
+            "\tDIV:             {:#04X}\n\
+             \tTIMA (counter):  {:#04X}\n\
+             \tTMA (modulo):    {:#04X}\n\
+             \tTAC (control):   {:#04X}\n\
+             \tis_in_stop_mode: {}",
+            self.div.read(mmu),
+            self.tima.read(mmu),
+            self.tma.read(mmu),
+            self.tac.read(mmu),
+            self.is_in_stop_mode
+        )
+    }
+
     fn selected_clocks(&self, tac: u8) -> u16 {
         match tac & 0b0011 {
             0b00 => 1024,
@@ -74,22 +88,5 @@ impl Timer {
             0b11 => 256,
             _ => unreachable!()
         }
-    }
-}
-
-impl Display for Timer {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "TODO"
-            // "\tDIV:             {:#04X}\n\
-            //  \tTIMA (counter):  {:#04X}\n\
-            //  \tTMA (modulo):    {:#04X}\n\
-            //  \tTAC (control):   {:#04X}\n\
-            //  \tis_in_stop_mode: {}",
-            // self.div,
-            // self.tima,
-            // self.tma,
-            // self.tac,
-            // self.is_in_stop_mode
-        )
     }
 }

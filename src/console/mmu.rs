@@ -67,7 +67,7 @@ pub(crate) struct Mmu {
     ram: [u8; 0x8000usize],
     cartridge: Option<Cartridge>,
     pub(crate) active_input: HashSet<JoypadInput>,  // TODO this doesn't belong here
-    _debug_address: u16,
+    _debug_address: Option<u16>,
     _debug_value: u8,
 }
 
@@ -80,7 +80,7 @@ impl Mmu {
             ram: [0; 0x8000],
             cartridge,
             active_input: HashSet::from([]),
-            _debug_address: LCD_CONTROL_REG,
+            _debug_address: None, // Option::from(LCD_CONTROL_REG),
             _debug_value: 0,
         };
         mmu.load_bootrom();
@@ -129,9 +129,11 @@ impl Mmu {
                 };
 
                 // For debugging because conditional breakpoints are unuseably slow
-                if address == self._debug_address && result != self._debug_value {
-                    self._debug_value = result;
-                    println!("(GET) [{:#06X}] = {:#04X}", self._debug_address, self._debug_value);
+                if let Some(debug_address) = self._debug_address {
+                    if address == debug_address && result != self._debug_value {
+                        self._debug_value = result;
+                        println!("(GET) [{:#06X}] = {:#04X}", debug_address, self._debug_value);
+                    }
                 }
 
                 result
@@ -278,9 +280,11 @@ impl Mmu {
                 }
 
                 // For debugging because conditional breakpoints are unuseably slow
-                if address == self._debug_address && self.ram[adjusted_address] != self._debug_value {
-                    self._debug_value = self.ram[adjusted_address];
-                    println!("(SET to {:#04X}) [{:#06X}] = {:#04X}", value, self._debug_address, self._debug_value);
+                if let Some(debug_address) = self._debug_address {
+                    if address == debug_address && self.ram[adjusted_address] != self._debug_value {
+                        self._debug_value = self.ram[adjusted_address];
+                        println!("(SET to {:#04X}) [{:#06X}] = {:#04X}", value, debug_address, self._debug_value);
+                    }
                 }
             }
         }

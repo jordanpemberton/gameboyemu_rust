@@ -92,9 +92,9 @@ impl Console {
         match self.debugger {
             Some(ref mut debugger) => {
                 debugger.peek(
-                    Option::from(&self.cpu),
+                    Option::from(&mut self.cpu),
                     Option::from(&mut self.mmu),
-                    Option::from(&self.timer),
+                    Option::from(&mut self.timer),
                     Option::from(vec![
                         ("Total cycles", self.total_cycles.to_string().as_str()),
                         ("Total frames", self.total_frames.to_string().as_str()),
@@ -127,9 +127,9 @@ impl Console {
                     match self.debugger {
                         Some(ref mut debugger) => {
                             debugger.break_or_cont(
-                                Option::from(&self.cpu),
+                                Option::from(&mut self.cpu),
                                 Option::from(&mut self.mmu),
-                                Option::from(&self.timer),
+                                Option::from(&mut self.timer),
                                 Option::from(vec![]));
                         }
                         None => {}
@@ -139,9 +139,9 @@ impl Console {
                     match self.debugger {
                         Some(ref mut debugger) => {
                             debugger.peek(
-                                Option::from(&self.cpu),
+                                Option::from(&mut self.cpu),
                                 Option::from(&mut self.mmu),
-                                Option::from(&self.timer),
+                                Option::from(&mut self.timer),
                                 Option::from(vec![]));
                         }
                         None => {}

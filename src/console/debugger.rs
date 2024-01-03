@@ -30,7 +30,7 @@ impl Debugger {
         self.enabled && self.active
     }
 
-    pub(crate) fn break_or_cont(&mut self, cpu: Option<&Cpu>, mmu: Option<&mut Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
+    pub(crate) fn break_or_cont(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&mut Mmu>, timer: Option<&mut Timer>, locals: Option<Vec<(&str, &str)>>) {
         if self.enabled {
             self.active = !self.active;
             if self.active {
@@ -39,7 +39,7 @@ impl Debugger {
         }
     }
 
-    pub(crate) fn peek(&mut self, cpu: Option<&Cpu>, mmu: Option<&mut Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
+    pub(crate) fn peek(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&mut Mmu>, timer: Option<&mut Timer>, locals: Option<Vec<(&str, &str)>>) {
         if self.enabled {
             self.dump(cpu, mmu, timer, locals);
         }
@@ -53,7 +53,7 @@ impl Debugger {
         for y in 0..ppu.lcd.height {
             print!("|");
             for x in 0..ppu.lcd.width {
-                let color = ppu.lcd.data[y as usize][x as usize];
+                let color = ppu.lcd.data[y][x];
                 match color % 4 {
                     3 => print!("@"),
                     2 => print!("+"),
@@ -115,16 +115,19 @@ impl Debugger {
         );
     }
 
-    fn dump(&mut self, cpu: Option<&Cpu>, mmu: Option<&mut Mmu>, timer: Option<&Timer>, locals: Option<Vec<(&str, &str)>>) {
-        if let Some(_cpu) = cpu {
-            self.dump_cpu_state(_cpu);
-        }
+    fn dump(&mut self, cpu: Option<&mut Cpu>, mmu: Option<&mut Mmu>, timer: Option<&mut Timer>, locals: Option<Vec<(&str, &str)>>) {
         if let Some(_mmu) = mmu {
             self.dump_mmu_state(_mmu);
+
+            if let Some(_timer) = timer {
+                self.dump_timer_state(_timer, _mmu);
+            }
+
+            if let Some(_cpu) = cpu {
+                self.dump_cpu_state(_cpu, _mmu);
+            }
         }
-        if let Some(_timer) = timer {
-            self.dump_timer_state(_timer);
-        }
+
         if let Some(_locals) = locals {
             self.dump_key_value_pairs(_locals);
         }
@@ -136,14 +139,14 @@ impl Debugger {
         }
     }
 
-    fn dump_cpu_state(&self, cpu: &Cpu) {
+    fn dump_cpu_state(&self, cpu: &mut Cpu, mmu: &mut Mmu) {
         self.dump_key_value_pairs(vec![("Cpu.is_halted", format!("\t{}", cpu.is_halted).as_str())]);
         self.dump_key_value_pairs(vec![("Cpu.registers", format!("\n{}", cpu.registers).as_str())]);
-        self.dump_key_value_pairs(vec![("Cpu.interrupts", format!("\t{}", cpu.interrupts).as_str())]);
+        self.dump_key_value_pairs(vec![("Cpu.interrupts", format!("\t{}", cpu.interrupts.as_str(mmu)).as_str())]);
     }
 
-    fn dump_timer_state(&self, timer: &Timer) {
-        self.dump_key_value_pairs(vec![("Timer", format!("\n{}", timer).as_str())]);
+    fn dump_timer_state(&self, timer: &mut Timer, mmu: &mut Mmu) {
+        self.dump_key_value_pairs(vec![("Timer", format!("\n{}", timer.as_str(mmu)).as_str())]);
     }
 
     fn dump_mmu_state(&self, mmu: &mut Mmu) {
