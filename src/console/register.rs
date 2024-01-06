@@ -36,4 +36,12 @@ impl Register {
         value |= if set { 1 << bit } else { 0 };
         self.write(mmu, value);
     }
+
+    // TEMP HACK
+    pub(crate) fn set_bit_force(&mut self, mmu: &mut Mmu, bit: u8, set: bool) {
+        let mut value = self.read(mmu);
+        value ^= value & (1 << bit);
+        value |= if set { 1 << bit } else { 0 };
+        self.write_force(mmu, value);
+    }
 }

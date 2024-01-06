@@ -196,9 +196,9 @@ impl Ppu {
 
             // TODO relocate?
             if self.ly.read(mmu) == self.lyc.read(mmu) {
-                self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, true);
+                self.lcd_status.set_bit_force(mmu, LcdStatRegBit::LycEqLy as u8, true);
             } else {
-                self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, false);
+                self.lcd_status.set_bit_force(mmu, LcdStatRegBit::LycEqLy as u8, false);
             }
         }
     }
@@ -218,9 +218,9 @@ impl Ppu {
 
     fn set_ly(&mut self, mmu: &mut Mmu, value: u8) {
         if value < MODE_LINE_RANGE[StatMode::VBlank as usize].1 {
-            self.ly.write(mmu, value);
+            self.ly.write_force(mmu, value);
         } else {
-            self.ly.write(mmu, 0);
+            self.ly.write_force(mmu, 0);
         }
     }
 
@@ -246,8 +246,8 @@ impl Ppu {
         };
         let bit0 = (x & 0x01) == 0x01;
         let bit1 = (x & 0x02) == 0x02;
-        self.lcd_status.set_bit(mmu, LcdStatRegBit::ModeBit0 as u8, bit0);
-        self.lcd_status.set_bit(mmu, LcdStatRegBit::ModeBit1 as u8, bit1);
+        self.lcd_status.set_bit_force(mmu, LcdStatRegBit::ModeBit0 as u8, bit0);
+        self.lcd_status.set_bit_force(mmu, LcdStatRegBit::ModeBit1 as u8, bit1);
 
         if let Some(regBit) = statRegBit {
             if self.lcd_status.check_bit(mmu, regBit as u8) {

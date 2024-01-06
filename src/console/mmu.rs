@@ -80,7 +80,7 @@ impl Mmu {
             ram: [0; 0x8000],
             cartridge,
             active_input: HashSet::from([]),
-            _debug_address: Option::from(IF_REG),
+            _debug_address: Option::from(LCD_STATUS_REG),
             _debug_value: 0,
         };
         mmu.load_bootrom();
@@ -164,13 +164,18 @@ impl Mmu {
         let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
 
         match address {
-            DIV_REG => {
+            DIV_REG
+            | LCD_STATUS_REG
+            | LY_REG => {
                 self.ram[adjusted_address] = value;
             }
-            _ => { }
+            _ => {
+                println!("Force writing to address {:#06X} is not implemented.", address);
+            }
         }
     }
 
+    // TODO Handle read-only mem /write permissions /handlers
     // noinspection RsNonExhaustiveMatch -- u16 range covered
     pub(crate) fn write_8(&mut self, address: u16, value: u8) {
         match address {
@@ -237,29 +242,43 @@ impl Mmu {
                 }
             }
 
+            // TODO Add handlers for read-only memory
             0xC000..=0xFFFF => {
                 let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
 
                 match address {
+                    // Timer
+                    DIV_REG => {
+                        // Writes to timer DIV register reset it to 0
+                        self.ram[adjusted_address] = 0;
+                    }
+
+                    // IO
+                    JOYPAD_REG => {
+                        // Bottom nibble is read only
+                        let curr_value = self.ram[adjusted_address];
+                        self.ram[adjusted_address] = (value & 0xF0) | (curr_value & 0x0F);
+                    }
+
+                    // PPU
+                    LY_REG => {
+                        // Read-only
+                    }
+                    LCD_STATUS_REG => {
+                        // Bits 0,1,2 are read-only (only PPU can update)
+                        let curr_value = self.ram[adjusted_address];
+                        self.ram[adjusted_address] = (value & 0xF8) | (curr_value & 0x07);
+                    }
                     LCD_CONTROL_REG => {
                         // Bit 7 can only be cleared during VBlank STAT mode
-                        // TOD rewrite Mmu to make this type of thing nicer...
+                        // TODO rewrite Mmu to make this type of thing nicer...
                         let stat = self.ram[(LCD_STATUS_REG as usize - 0x8000) & (self.ram.len() - 1)];
-                        if stat & 0x03 == 0x01 { // vblank == mode 1
+                        if stat & 0x03 == 0x01 { // VBlank PPU STAT == mode 1
                             self.ram[adjusted_address] = value;
                         } else {
                             let curr_value = self.ram[adjusted_address];
                             self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
                         }
-                    }
-                    DIV_REG => {
-                        // Writes to timer DIV register reset it to 0
-                        self.ram[adjusted_address] = 0;
-                    }
-                    JOYPAD_REG => {
-                        // Bottom nibble is read only
-                        let curr_value = self.ram[adjusted_address];
-                        self.ram[adjusted_address] = (value & 0xF0) | (curr_value & 0x0F);
                     }
                     DMA_REG => {
                         self.ram[adjusted_address] = value;
@@ -268,12 +287,15 @@ impl Mmu {
                         }
 
                     }
+
+                    // BANKING
                     BANK_REG => {
                         self.ram[adjusted_address] = value;
                         if self.is_booting && (value & 1) == 1 {
                             self.is_booting = false;
                         }
                     }
+
                     _ => {
                         self.ram[adjusted_address] = value;
                     }
