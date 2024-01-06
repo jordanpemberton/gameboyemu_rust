@@ -248,6 +248,7 @@ impl CpuRegisters {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn test() {
         let mut regs = CpuRegisters::new();
         regs.tests();

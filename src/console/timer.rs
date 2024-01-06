@@ -34,23 +34,29 @@ impl Timer {
     pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
         let mut request_interrupt = false;
 
+        // Increment DIV if not in stop mode
         if !self.is_in_stop_mode {
             let is_time_to_increment_div = self.div_clocks >= DIV_SPEED;
             if is_time_to_increment_div {
                 self.div_clocks = self.div_clocks - DIV_SPEED;
+
                 let div = self.div.read(mmu).wrapping_add(1);
                 self.div.write_force(mmu, div);  // TEMP Force write DIV reg
             }
+
             self.div_clocks += cycles as u16;
         }
 
+        // Increment TIMA according to TAC
         let tac = self.tac.read(mmu);
         if tac & 0b0100 == 0b0100 {
             // Increment TIMA at the rate specified by TAC
             let selected_clocks = self.selected_clocks(tac);
+
             let is_time_to_increment_tima = self.tima_clocks >= selected_clocks;
             if is_time_to_increment_tima {
                 self.tima_clocks = self.tima_clocks - selected_clocks;
+
                 let (mut result, overflow) = self.tima.read(mmu).overflowing_add(1);
                 if overflow {
                     result = self.tma.read(mmu);
@@ -58,6 +64,7 @@ impl Timer {
                 }
                 self.tima.write(mmu, result);
             }
+
             // TODO - TIMA uses DIV /internal clock (which can be reset to 0), see mooneye acceptance/timer/div_write.gb
             self.tima_clocks += cycles as u16;
         }

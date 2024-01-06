@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use crate::cartridge::cartridge::Cartridge;
 use crate::console::console::Console;
 use crate::console::disassembler;
-use crate::console::cpu_registers::CpuRegisters;
 
 const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/dmg.bin";
 const ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/";
@@ -13,7 +12,7 @@ const ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/";
 struct EmuArgs {
     skip_boot: bool,
     debug_enabled: bool,
-    cpu_instr_log: bool,
+    print_cpu_instrs: bool,
     rom_filepath: String,
 }
 
@@ -28,7 +27,7 @@ impl EmuArgs {
             rom_filepath: if args.len() > 1 { args[1].clone() } else { String::new() },
             skip_boot: if args.len() > 2 { args[2].clone().parse().unwrap() } else { 0 } > 0,
             debug_enabled: if args.len() > 3 { args[3].clone().parse().unwrap() } else { 1 } > 0,
-            cpu_instr_log: if args.len() > 4 { args[4].clone().parse().unwrap() } else { 0 } > 0,
+            print_cpu_instrs: if args.len() > 4 { args[4].clone().parse().unwrap() } else { 0 } > 0,
         }
     }
 }
@@ -110,7 +109,7 @@ fn run_rom(args: &EmuArgs) {
             "GAMBOY",
             window_scale,
             args.debug_enabled,
-            args.cpu_instr_log,
+            args.print_cpu_instrs,
             None
         );
         gamboy.run(false);
@@ -121,7 +120,7 @@ fn run_rom(args: &EmuArgs) {
             "GAMBOY",
             window_scale,
             args.debug_enabled,
-            args.cpu_instr_log,
+            args.print_cpu_instrs,
             Some(cartridge)
         );
         gamboy.run(args.skip_boot);
@@ -129,8 +128,6 @@ fn run_rom(args: &EmuArgs) {
 }
 
 pub(crate) fn run() {
-    CpuRegisters::test();
-
     let mut args = EmuArgs::new();
 
     if String::is_empty(&args.rom_filepath) {

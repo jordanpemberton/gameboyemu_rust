@@ -51,7 +51,7 @@ pub(crate) const BANK_REG: u16 = 0xFF50;
 // Interrupts
 pub(crate) const IE_REG: u16 = 0xFFFF;
 
-const BOOTROM_FILEPATH: &str = "roms/bootrom/DMG_ROM.bin";
+const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/dmg.bin";
 
 #[allow(dead_code)]
 #[derive(PartialEq)]
@@ -80,7 +80,7 @@ impl Mmu {
             ram: [0; 0x8000],
             cartridge,
             active_input: HashSet::from([]),
-            _debug_address: None, // Option::from(LCD_CONTROL_REG),
+            _debug_address: Option::from(IF_REG),
             _debug_value: 0,
         };
         mmu.load_bootrom();

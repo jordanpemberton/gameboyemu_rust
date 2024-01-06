@@ -5,17 +5,28 @@ use std::path::Path;
 use crate::cartridge::cartridge_header::CartridgeHeader;
 use crate::cartridge::mbc::Mbc;
 
-#[allow(dead_code)]
+// Allows reading bootram file like a cartridge.
+const MIN_CARTRIDGE_SIZE: usize = 0x2000;
+
 pub(crate) struct Cartridge {
-    pub(crate) header: Option<CartridgeHeader>,
+    #[allow(dead_code)]
+    pub(crate) header: Option<CartridgeHeader>, // TODO use header
     pub(crate) mbc: Mbc,
     pub(crate) data: Vec<u8>,
 }
 
 impl Cartridge {
     pub(crate) fn new(filepath: &Path) -> Cartridge {
-        let data = read(filepath).expect(format!("Failed to read from {:?}", filepath).as_str());
-        let header = CartridgeHeader::new(&data[..min(0x150, data.len())]);
+        let mut data = read(filepath).expect(format!("Failed to read from {:?}", filepath).as_str());
+        if data.len() < MIN_CARTRIDGE_SIZE {
+            let mut new_data = vec![0; MIN_CARTRIDGE_SIZE];
+            new_data[..data.len()].copy_from_slice(&data);
+            data = new_data;
+        }
+
+        let header_bytes = &data[..min(0x150, data.len())];
+        let header = CartridgeHeader::new(&header_bytes);
+
         let mbc = Mbc::new(data.as_slice());
 
         Cartridge {
