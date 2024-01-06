@@ -244,10 +244,9 @@ impl Ppu {
             StatMode::OamSearch => 2,
             StatMode::PixelTransfer => 3,
         };
-        let bit0 = (x & 0x01) == 0x01;
-        let bit1 = (x & 0x02) == 0x02;
-        self.lcd_status.set_bit_force(mmu, LcdStatRegBit::ModeBit0 as u8, bit0);
-        self.lcd_status.set_bit_force(mmu, LcdStatRegBit::ModeBit1 as u8, bit1);
+        let curr_value = self.lcd_status.read(mmu);
+        let new_value = (curr_value & 0xFC) | x;
+        self.lcd_status.write_force(mmu, new_value);
 
         if let Some(regBit) = statRegBit {
             if self.lcd_status.check_bit(mmu, regBit as u8) {

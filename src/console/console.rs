@@ -11,6 +11,7 @@ use crate::console::mmu::Mmu;
 use crate::console::ppu::Ppu;
 use crate::console::cpu_registers::{CpuRegIndex};
 use crate::console::interrupts::InterruptRegBit;
+use crate::console::mmu;
 use crate::console::timer::Timer;
 
 const CYCLES_PER_FRAME: u64 = 69905;
@@ -79,6 +80,7 @@ impl Console {
             self.cpu.registers.set_word(CpuRegIndex::HL, 0x014D);
             self.cpu.registers.set_word(CpuRegIndex::SP, 0xFFFE);
             self.cpu.registers.set_word(CpuRegIndex::PC, 0x0100);
+            self.mmu.write_8(mmu::LCD_CONTROL_REG, 0x91); // Enable LCD
             self.mmu.is_booting = false;
         }
 
