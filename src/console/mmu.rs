@@ -80,7 +80,7 @@ impl Mmu {
             ram: [0; 0x8000],
             cartridge,
             active_input: HashSet::from([]),
-            _debug_address: Option::from(LCD_STATUS_REG),
+            _debug_address: None, // Option::from(LCD_STATUS_REG),
             _debug_value: 0,
         };
         mmu.load_bootrom();

@@ -58,6 +58,7 @@ impl Timer {
                 self.tima_clocks = self.tima_clocks - selected_clocks;
 
                 let (mut result, overflow) = self.tima.read(mmu).overflowing_add(1);
+                // If TIMA overflows, set to TMA and request interrupt
                 if overflow {
                     result = self.tma.read(mmu);
                     request_interrupt = true;
