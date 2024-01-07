@@ -62,7 +62,7 @@ pub(crate) enum Endianness {
 
 pub(crate) struct Mmu {
     pub(crate) is_booting: bool,
-    pub(crate) oam_dma_source_address: Option<u16>,
+    pub(crate) oam_dma_src_addr: Option<u16>,
     rom: [u8; 0x8000usize],
     ram: [u8; 0x8000usize],
     cartridge: Option<Cartridge>,
@@ -75,12 +75,12 @@ impl Mmu {
     pub(crate) fn new(cartridge: Option<Cartridge>) -> Mmu {
         let mut mmu = Mmu {
             is_booting: true,
-            oam_dma_source_address: None,
+            oam_dma_src_addr: None,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
             cartridge,
             active_input: HashSet::from([]),
-            _debug_address: None, // Option::from(LCD_STATUS_REG),
+            _debug_address: Option::from(0xFF80), //DMA_REG),
             _debug_value: 0,
         };
         mmu.load_bootrom();
@@ -282,10 +282,7 @@ impl Mmu {
                     }
                     DMA_REG => {
                         self.ram[adjusted_address] = value;
-                        if self.oam_dma_source_address.is_none() {
-                            self.oam_dma_source_address = Option::from((value as u16) << 8);
-                        }
-
+                        self.oam_dma_src_addr = Option::from((value as u16) << 8);
                     }
 
                     // BANKING

@@ -35,7 +35,8 @@ enum DrawMode {
     Window,
 }
 
-enum StatMode {
+#[derive(PartialEq)]
+pub(crate) enum StatMode {
     HBlank = 0,
     VBlank = 1,
     OamSearch = 2,
@@ -138,6 +139,28 @@ impl Ppu {
         }
     }
 
+    // TODO Fix OAM DMA timing (mooneye acceptance/add_sp_e_timing, jp_timing)
+    pub(crate) fn oam_dma(&mut self, mmu: &mut Mmu) {
+        let stat_mode = self.get_stat_mode(mmu);
+        if *stat_mode == StatMode::VBlank || *stat_mode == StatMode::OamSearch {
+            return;
+        }
+
+        if let Some(mut src_address) = mmu.oam_dma_src_addr {
+            let value = mmu.read_8(src_address);
+            let oam_address = mmu::OAM_START | (src_address & 0xFF);
+            mmu.write_8(oam_address, value);
+
+            // Increment source address
+            src_address += 1;
+            mmu.oam_dma_src_addr = if (src_address & 0xFF) > 0x9F {
+                None // Stop
+            } else {
+                Option::from(src_address)
+            };
+        }
+    }
+
     pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::LcdAndPpuEnabled as u8) {
             self.clocks += cycles as usize;
@@ -230,7 +253,6 @@ impl Ppu {
         self.set_ly(mmu, ly);
     }
 
-    #[allow(dead_code)]
     fn get_stat_mode(&mut self, mmu: &mut Mmu) -> &StatMode {
         let mode_flag = (self.lcd_status.read(mmu) & 0x03) as usize;
         let stat_mode = STAT_MODES[mode_flag];

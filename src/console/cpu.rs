@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use crate::console::instruction::{Instruction};
-use crate::console::mmu;
 use crate::console::mmu::Mmu;
 use crate::console::cpu_registers::{CpuRegIndex, CpuRegisters};
 use crate::console::debugger::Debugger;
@@ -49,7 +48,6 @@ impl Cpu {
         if self.is_halted {
             4
         } else {
-            self.oam_dma(mmu); // TODO Fix OAM DMA timing (mooneye acceptance/add_sp_e_timing)
             self.execute_instruction(mmu)
         }
     }
@@ -98,19 +96,6 @@ impl Cpu {
         }
 
         args
-    }
-
-    fn oam_dma(&mut self, mmu: &mut Mmu) {
-        if let Some(mut src_address) = mmu.oam_dma_source_address {
-            let value = mmu.read_8(src_address);
-            mmu.write_8(mmu::OAM_START | (src_address & 0xFF), value);
-            src_address += 1;
-            mmu.oam_dma_source_address = if (src_address & 0xFF) > 0x9F {
-                None
-            } else {
-                Option::from(src_address)
-            };
-        }
     }
 
     fn execute_instruction(&mut self, mmu: &mut Mmu) -> i16 {

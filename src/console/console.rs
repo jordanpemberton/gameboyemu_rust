@@ -178,6 +178,10 @@ impl Console {
             return 4;
         }
 
+        // PPU - OAM DMA transfer
+        self.ppu.oam_dma(&mut self.mmu);
+
+        // CPU - step (execute instruction)
         let cycles = self.cpu.step(&mut self.mmu);
 
         if cycles < 0 {
@@ -187,9 +191,12 @@ impl Console {
                 cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
         }
 
-        // cycles += // TODO fix cycle adjustment?
+        // CPU - interrupts
+        // TODO Do cycles need to be incremented /adjusted here?
         self.cpu.handle_interrupts(&mut self.mmu);
 
+        // PPU - step
+        // TODO Is this suppost to occur before CPU step?
         self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 
         if self.timer.step(&mut self.mmu, cycles as u8) {
