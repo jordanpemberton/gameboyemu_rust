@@ -2,31 +2,35 @@ use crate::console::mmu;
 use crate::console::mmu::Mmu;
 use crate::console::register::Register;
 
-const DIV_SPEED: u16 = 256; // 16384Hz = 256 cpu clocks
+// const DIV_SPEED: u16 = 256; // 16384Hz = 256 cpu clocks
 
 #[allow(dead_code)]
 pub(crate) struct Timer {
-    div: Register,         // FF04 — DIV: Divider register
-    tima: Register,        // FF05 — TIMA: Timer counter
-    tma: Register,         // FF06 — TMA: Timer modulo
-    tac: Register,         // FF07 — TAC: Timer control
-    div_clocks: u16,
+    // Internally, SYSCLK is a 16 bit divider, incremented each clock tick (every 1 or 4 cycles?).
     tima_clocks: u16,
     overflow: bool,
     is_in_stop_mode: bool,
+
+    // The DIV IO register only exposes the upper 8 bits of SYSCLK,
+    // so its exposed value increases every 256 cycles.
+    div: Register,         // FF04 — DIV: Divider register
+    // TIMA uses the internal value of the SYSCLK divider (?),
+    // increments every 16, 64, 256 or 1024 clock cycles depending on the frequency set in the TAC register.
+    tima: Register,        // FF05 — TIMA: Timer counter
+    tma: Register,         // FF06 — TMA: Timer modulo
+    tac: Register,         // FF07 — TAC: Timer control
 }
 
 impl Timer {
     pub(crate) fn new() -> Timer {
         Timer {
+            tima_clocks: 0,
+            overflow: false,
+            is_in_stop_mode: false,
             div: Register::new(mmu::DIV_REG),
             tima: Register::new(mmu::TIMA_REG),
             tma: Register::new(mmu::TMA_REG),
             tac: Register::new(mmu::TAC_REG),
-            div_clocks: 0,
-            tima_clocks: 0,
-            overflow: false,
-            is_in_stop_mode: false,
         }
     }
 
@@ -34,39 +38,39 @@ impl Timer {
     pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
         let mut request_interrupt = false;
 
-        // Increment DIV if not in stop mode
+        // If internal clock was reset, reset tima_clocks
+        if mmu.sysclock == 0 {
+            self.tima_clocks = 0;
+        }
+
+        // Increment internal clock /DIV if not in stop mode
         if !self.is_in_stop_mode {
-            let is_time_to_increment_div = self.div_clocks >= DIV_SPEED;
-            if is_time_to_increment_div {
-                self.div_clocks = self.div_clocks - DIV_SPEED;
-
-                let div = self.div.read(mmu).wrapping_add(1);
-                self.div.write_force(mmu, div);  // TEMP Force write DIV reg
-            }
-
-            self.div_clocks += cycles as u16;
+            mmu.sysclock = mmu.sysclock.wrapping_add(cycles as u16);
+            self.div.write_force(mmu, (mmu.sysclock >> 4) as u8); // DIV increments every 256 clocks
         }
 
         // Increment TIMA according to TAC
         let tac = self.tac.read(mmu);
-        if tac & 0b0100 == 0b0100 {
+        let tima_incr_is_enabled = tac & 0b0100 == 0b0100;
+        if tima_incr_is_enabled {
             // Increment TIMA at the rate specified by TAC
             let selected_clocks = self.selected_clocks(tac);
 
             let is_time_to_increment_tima = self.tima_clocks >= selected_clocks;
             if is_time_to_increment_tima {
+                // Reset tima_clocks
                 self.tima_clocks = self.tima_clocks - selected_clocks;
 
                 let (mut result, overflow) = self.tima.read(mmu).overflowing_add(1);
-                // If TIMA overflows, set to TMA and request interrupt
+                // If TIMA overflows, set TIMA to TMA and request interrupt
                 if overflow {
                     result = self.tma.read(mmu);
                     request_interrupt = true;
                 }
+
                 self.tima.write(mmu, result);
             }
 
-            // TODO - TIMA uses DIV /internal clock (which can be reset to 0), see mooneye acceptance/timer/div_write.gb
             self.tima_clocks += cycles as u16;
         }
 

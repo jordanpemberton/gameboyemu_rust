@@ -61,27 +61,32 @@ pub(crate) enum Endianness {
 }
 
 pub(crate) struct Mmu {
+    pub(crate) sysclock: u16, // Incremented by Timer, TODO relocate?
     pub(crate) is_booting: bool,
     pub(crate) oam_dma_src_addr: Option<u16>,
+    pub(crate) active_input: HashSet<JoypadInput>,  // TODO this doesn't belong here
+    cartridge: Option<Cartridge>,
+    debug_address: Option<u16>,
+    debug_value: u8,
     rom: [u8; 0x8000usize],
     ram: [u8; 0x8000usize],
-    cartridge: Option<Cartridge>,
-    pub(crate) active_input: HashSet<JoypadInput>,  // TODO this doesn't belong here
-    _debug_address: Option<u16>,
-    _debug_value: u8,
 }
 
+// TODO -- inaccessible memory in certain contexts.
+// While the PPU is accessing some video-related memory, that memory is inaccessible to the CPU
+// (writes are ignored, and reads return garbage values, usually $FF).
 impl Mmu {
     pub(crate) fn new(cartridge: Option<Cartridge>) -> Mmu {
         let mut mmu = Mmu {
+            sysclock: 0,
             is_booting: true,
             oam_dma_src_addr: None,
+            active_input: HashSet::from([]),
+            cartridge,
+            debug_address: Option::from(0xFFE1),
+            debug_value: 0,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
-            cartridge,
-            active_input: HashSet::from([]),
-            _debug_address: Option::from(0xFF80), //DMA_REG),
-            _debug_value: 0,
         };
         mmu.load_bootrom();
         mmu.ram[(JOYPAD_REG - 0x8000) as usize] = 0x1F;
@@ -91,7 +96,7 @@ impl Mmu {
 
     // noinspection RsNonExhaustiveMatch -- u16 range covered
     pub(crate) fn read_8(&mut self, address: u16) -> u8 {
-        match address {
+        let result = match address {
             0x0000..=0x00FF if self.is_booting => {
                 self.rom[address as usize]
             }
@@ -109,36 +114,34 @@ impl Mmu {
             }
 
             0x8000..=0x9FFF => {
-                let result = self.ram[address as usize - 0x8000];
-                result
+                self.ram[address as usize - 0x8000]
             }
 
             0xA000..=0xBFFF => {
-                let result = if let Some(cartridge) = &self.cartridge {
+                if let Some(cartridge) = &self.cartridge {
                     cartridge.read_8_a000_bfff(address)
                 } else {
                     self.ram[address as usize - 0x8000]
-                };
-                result
+                }
             }
 
             0xC000..=0xFFFF => {
-                let result = match address {
+                match address {
                     JOYPAD_REG => self.read_joypad_reg(self.ram[address as usize - 0x8000]),
                     _ => self.ram[address as usize - 0x8000]
-                };
-
-                // For debugging because conditional breakpoints are unuseably slow
-                if let Some(debug_address) = self._debug_address {
-                    if address == debug_address && result != self._debug_value {
-                        self._debug_value = result;
-                        println!("(GET) [{:#06X}] = {:#04X}", debug_address, self._debug_value);
-                    }
                 }
+            }
+        };
 
-                result
+        // For debugging because conditional breakpoints are unuseably slow
+        if let Some(debug_address) = self.debug_address {
+            if address == debug_address && result != self.debug_value {
+                self.debug_value = result;
+                // println!("(GET) [{:#06X}] = {:#04X}", debug_address, self.debug_value);
             }
         }
+
+        result
     }
 
     pub(crate) fn read_16(&mut self, address: u16, endian: Endianness) -> u16 {
@@ -165,12 +168,20 @@ impl Mmu {
 
         match address {
             DIV_REG
-            | LCD_STATUS_REG
-            | LY_REG => {
+                | LCD_STATUS_REG
+                | LY_REG => {
                 self.ram[adjusted_address] = value;
             }
             _ => {
                 println!("Force writing to address {:#06X} is not implemented.", address);
+            }
+        }
+
+        // For debugging because conditional breakpoints are unuseably slow
+        if let Some(debug_address) = self.debug_address {
+            if address == debug_address && self.ram[adjusted_address] != self.debug_value {
+                self.debug_value = self.ram[adjusted_address];
+                println!("(FORCE SET to {:#04X}) [{:#06X}] = {:#04X}", value, debug_address, self.debug_value);
             }
         }
     }
@@ -178,6 +189,8 @@ impl Mmu {
     // TODO Handle read-only mem /write permissions /handlers
     // noinspection RsNonExhaustiveMatch -- u16 range covered
     pub(crate) fn write_8(&mut self, address: u16, value: u8) {
+        let mut adjusted_address = address as usize;
+
         match address {
             0x0000..=0x1FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
@@ -229,7 +242,7 @@ impl Mmu {
 
             // TODO only write to wrtie-able RAM
             0x8000..=0x9FFF => {
-                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
                 self.ram[adjusted_address] = value;
             }
 
@@ -237,20 +250,33 @@ impl Mmu {
                 if let Some(cartridge) = &mut self.cartridge {
                     cartridge.write_8_a000_bfff(address, value);
                 } else {
-                    let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                    adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
                     self.ram[adjusted_address] = value;
                 }
             }
 
             // TODO Add handlers for read-only memory
             0xC000..=0xFFFF => {
-                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
 
                 match address {
+                    // TEMP DEBUG Dr Mario
+                    // 0xFFE1 => {
+                    //     self.ram[adjusted_address] = 0x07;
+                        // 00=(frozen) title,
+                        // 07=nautilus
+                        // 08=fish
+                        // 09=shows sprites
+                        // 0A=can make pills appear (wait),
+                        // 0B=(frozen) settings memu,
+                        // 01,02,03,04,05,0C,0D,0E,0F=nothing
+                    // }
+
                     // Timer
                     DIV_REG => {
                         // Writes to timer DIV register reset it to 0
                         self.ram[adjusted_address] = 0;
+                        self.sysclock = 0; // Internal clock is also reset
                     }
 
                     // IO
@@ -297,14 +323,14 @@ impl Mmu {
                         self.ram[adjusted_address] = value;
                     }
                 }
+            }
+        }
 
-                // For debugging because conditional breakpoints are unuseably slow
-                if let Some(debug_address) = self._debug_address {
-                    if address == debug_address && self.ram[adjusted_address] != self._debug_value {
-                        self._debug_value = self.ram[adjusted_address];
-                        println!("(SET to {:#04X}) [{:#06X}] = {:#04X}", value, debug_address, self._debug_value);
-                    }
-                }
+        // For debugging because conditional breakpoints are unuseably slow
+        if let Some(debug_address) = self.debug_address {
+            if address == debug_address && self.ram[adjusted_address] != self.debug_value {
+                self.debug_value = self.ram[adjusted_address];
+                println!("(SET to {:#04X}) [{:#06X}] = {:#04X}", value, debug_address, self.debug_value);
             }
         }
     }

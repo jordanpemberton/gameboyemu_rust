@@ -59,6 +59,8 @@ enum LcdControlRegBit {
     // 6	Window tile map area	0=9800-9BFF, 1=9C00-9FFF
     WindowTilemapIsAt9C00 = 6,
     // 7	LCD and PPU enable	0=Off, 1=On
+    // This bit controls whether the LCD is on and the PPU is active.
+    // Setting it to 0 turns both off, which grants immediate and full access to VRAM, OAM, etc. TODO
     LcdAndPpuEnabled = 7,
 }
 
