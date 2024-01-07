@@ -182,7 +182,8 @@ impl Console {
         self.ppu.oam_dma(&mut self.mmu);
 
         // CPU - step (execute instruction)
-        let cycles = self.cpu.step(&mut self.mmu);
+        #[allow(unused_mut)]
+        let mut cycles = self.cpu.step(&mut self.mmu);
 
         if cycles < 0 {
             // self.debug_print_screen();
@@ -193,12 +194,14 @@ impl Console {
 
         // CPU - interrupts
         // TODO Do cycles need to be incremented /adjusted here?
-        self.cpu.handle_interrupts(&mut self.mmu);
+        // cycles +=
+            self.cpu.handle_interrupts(&mut self.mmu);
 
         // PPU - step
-        // TODO Is this suppost to occur before CPU step?
+        // TODO Is this suppost to occur before CPU step /instruction?
         self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 
+        // TIMER
         if self.timer.step(&mut self.mmu, cycles as u8) {
             self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
         }
@@ -206,6 +209,28 @@ impl Console {
         cycles as u16
     }
 
+    fn main_loop(&mut self) {
+        let mut is_running = true;
+        let start_time = Instant::now();
+        let mut cycles_this_frame = 0;
+
+        while is_running {
+            if cycles_this_frame >= CYCLES_PER_FRAME {
+                self.display.draw(&mut self.ppu);
+                is_running = self.input_polling();
+
+                self.total_frames += 1;
+                self.total_cycles += cycles_this_frame as u128;
+                cycles_this_frame = 0;
+            } else {
+                cycles_this_frame += self.main_tick() as u64;
+            }
+        }
+
+        self.total_runtime = start_time.elapsed().as_secs() as u128;
+    }
+
+    // TODO Correct speed /framerate
     fn _main_loop(&mut self) {
         let frame_duration = Duration::from_millis(1000 / FRAMES_PER_SECOND); // Why is it always so slow?
         let start_time = Instant::now();
@@ -242,26 +267,5 @@ impl Console {
 
         let runtime = start_time.elapsed();
         self.total_runtime = runtime.as_secs() as u128;
-    }
-
-    fn main_loop(&mut self) {
-        let mut is_running = true;
-        let start_time = Instant::now();
-        let mut cycles_this_frame = 0;
-
-        while is_running {
-            if cycles_this_frame >= CYCLES_PER_FRAME {
-                self.display.draw(&mut self.ppu);
-                is_running = self.input_polling();
-
-                self.total_frames += 1;
-                self.total_cycles += cycles_this_frame as u128;
-                cycles_this_frame = 0;
-            } else {
-                cycles_this_frame += self.main_tick() as u64;
-            }
-        }
-
-        self.total_runtime = start_time.elapsed().as_secs() as u128;
     }
 }
