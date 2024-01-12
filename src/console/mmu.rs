@@ -83,7 +83,8 @@ impl Mmu {
             oam_dma_src_addr: None,
             active_input: HashSet::from([]),
             cartridge,
-            debug_address: Option::from(0xFFE1),
+            debug_address: Option::from(IF_REG),
+            // drmario gamestatus:0xFFE1
             debug_value: 0,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
@@ -137,7 +138,7 @@ impl Mmu {
         if let Some(debug_address) = self.debug_address {
             if address == debug_address && result != self.debug_value {
                 self.debug_value = result;
-                // println!("(GET) [{:#06X}] = {:#04X}", debug_address, self.debug_value);
+                println!("(GET) [{:#06X}] = {:#04X}", debug_address, self.debug_value);
             }
         }
 
@@ -261,7 +262,7 @@ impl Mmu {
 
                 match address {
                     // TEMP DEBUG Dr Mario
-                    // 0xFFE1 => {
+                    // 0xFFE1 => { // game status
                     //     self.ram[adjusted_address] = 0x07;
                         // 00=(frozen) title,
                         // 07=nautilus

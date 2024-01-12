@@ -6,10 +6,10 @@ use crate::console::register::Register;
 
 #[allow(dead_code)]
 pub(crate) struct Timer {
-    // Internally, SYSCLK is a 16 bit divider, incremented each clock tick (every 1 or 4 cycles?).
+    // Internally, SYSCLK is a 16 bit divider, incremented each "clock tick" (every cpu clock cycle?)
     tima_clocks: u16,
     overflow: bool,
-    is_in_stop_mode: bool,
+    is_in_stop_mode: bool, // TODO implement
 
     // The DIV IO register only exposes the upper 8 bits of SYSCLK,
     // so its exposed value increases every 256 cycles.
@@ -38,25 +38,28 @@ impl Timer {
     pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
         let mut request_interrupt = false;
 
-        // If internal clock was reset, reset tima_clocks
+        // If internal clock was reset, reset tima_clocks also
         if mmu.sysclock == 0 {
             self.tima_clocks = 0;
         }
 
-        // Increment internal clock /DIV if not in stop mode
-        if !self.is_in_stop_mode {
-            mmu.sysclock = mmu.sysclock.wrapping_add(cycles as u16);
-            self.div.write_force(mmu, (mmu.sysclock >> 4) as u8); // DIV increments every 256 clocks
+        if self.is_in_stop_mode {
+            return request_interrupt;
         }
+
+        // Increment internal/system clock /DIV
+        mmu.sysclock = mmu.sysclock.wrapping_add(cycles as u16);
+        self.div.write_force(mmu, (mmu.sysclock >> 8) as u8); // DIV = botttom 8 or sysclock, increments every 256 clocks
 
         // Increment TIMA according to TAC
         let tac = self.tac.read(mmu);
         let tima_incr_is_enabled = tac & 0b0100 == 0b0100;
+
         if tima_incr_is_enabled {
             // Increment TIMA at the rate specified by TAC
             let selected_clocks = self.selected_clocks(tac);
-
             let is_time_to_increment_tima = self.tima_clocks >= selected_clocks;
+
             if is_time_to_increment_tima {
                 // Reset tima_clocks
                 self.tima_clocks = self.tima_clocks - selected_clocks;
@@ -88,7 +91,7 @@ impl Timer {
             self.tima.read(mmu),
             self.tma.read(mmu),
             self.tac.read(mmu),
-            self.is_in_stop_mode
+            self.is_in_stop_mode,
         )
     }
 
