@@ -38,8 +38,8 @@ impl Cpu {
             if value > 0 {
                 Instruction::call(self, mmu, value as u16);
                 self.interrupts.ime = false;
+                cycles = 16; // TODO
             }
-            cycles = 16;
         }
         cycles
     }

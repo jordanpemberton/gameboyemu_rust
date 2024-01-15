@@ -195,8 +195,7 @@ impl Console {
 
         // CPU - interrupts
         // TODO Do cycles need to be incremented /adjusted here?
-        // self.cycles +=
-        self.cpu.handle_interrupts(&mut self.mmu);
+        self.cycles += self.cpu.handle_interrupts(&mut self.mmu);
 
         // PPU - step
         // TODO Is this suppost to occur before CPU step /instruction?
