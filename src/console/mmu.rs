@@ -83,8 +83,7 @@ impl Mmu {
             oam_dma_src_addr: None,
             active_input: HashSet::from([]),
             cartridge,
-            debug_address: Option::from(IF_REG),
-            // drmario gamestatus:0xFFE1
+            debug_address: None,
             debug_value: 0,
             rom: [0; 0x8000],
             ram: [0; 0x8000],

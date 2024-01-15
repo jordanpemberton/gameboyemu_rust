@@ -18,6 +18,7 @@ const CYCLES_PER_FRAME: u64 = 69905;
 const FRAMES_PER_SECOND: u64 = 60;
 
 pub(crate) struct Console {
+    cycles: i16,
     timer: Timer,
     cpu: Cpu,
     mmu: Mmu,
@@ -59,6 +60,7 @@ impl Console {
             ppu.lcd.height);
 
         Console {
+            cycles: 0,
             timer,
             cpu,
             mmu,
@@ -182,31 +184,30 @@ impl Console {
         self.ppu.oam_dma(&mut self.mmu);
 
         // CPU - step (execute instruction)
-        #[allow(unused_mut)]
-        let mut cycles = self.cpu.step(&mut self.mmu);
+        self.cycles = self.cpu.step(&mut self.mmu);
 
-        if cycles < 0 {
+        if self.cycles < 0 {
             // self.debug_print_screen();
             self.debug_peek();
             panic!("Console step attempt failed with status {} at address {:#06X}.",
-                cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
+                self.cycles, self.cpu.registers.get_word(CpuRegIndex::PC));
         }
 
         // CPU - interrupts
         // TODO Do cycles need to be incremented /adjusted here?
-        // cycles +=
-            self.cpu.handle_interrupts(&mut self.mmu);
+        // self.cycles +=
+        self.cpu.handle_interrupts(&mut self.mmu);
 
         // PPU - step
         // TODO Is this suppost to occur before CPU step /instruction?
-        self.ppu.step(cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
+        self.ppu.step(self.cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 
-        // TIMER
-        if self.timer.step(&mut self.mmu, cycles as u8) {
+        // TIMER (using previous cycles delta)
+        if self.timer.step(&mut self.mmu, self.cycles as u8) {
             self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
         }
 
-        cycles as u16
+        self.cycles as u16
     }
 
     fn main_loop(&mut self) {

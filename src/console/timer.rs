@@ -43,6 +43,7 @@ impl Timer {
             self.tima_clocks = 0;
         }
 
+        // TODO: stop mode
         if self.is_in_stop_mode {
             return request_interrupt;
         }
@@ -56,25 +57,23 @@ impl Timer {
         let tima_incr_is_enabled = tac & 0b0100 == 0b0100;
 
         if tima_incr_is_enabled {
+            self.tima_clocks += cycles as u16;
+
             // Increment TIMA at the rate specified by TAC
             let selected_clocks = self.selected_clocks(tac);
-            let is_time_to_increment_tima = self.tima_clocks >= selected_clocks;
 
-            if is_time_to_increment_tima {
-                // Reset tima_clocks
-                self.tima_clocks = self.tima_clocks - selected_clocks;
+            while self.tima_clocks >= selected_clocks {
+                let (mut new_tima, overflow) = self.tima.read(mmu).overflowing_add(1);
 
-                let (mut result, overflow) = self.tima.read(mmu).overflowing_add(1);
                 // If TIMA overflows, set TIMA to TMA and request interrupt
                 if overflow {
-                    result = self.tma.read(mmu);
                     request_interrupt = true;
+                    new_tima = self.tma.read(mmu);
                 }
 
-                self.tima.write(mmu, result);
+                self.tima.write(mmu, new_tima);
+                self.tima_clocks = self.tima_clocks - selected_clocks;
             }
-
-            self.tima_clocks += cycles as u16;
         }
 
         request_interrupt
