@@ -19,6 +19,7 @@ const FRAMES_PER_SECOND: u64 = 60;
 
 pub(crate) struct Console {
     cycles: i16,
+    skip_boot: bool,
     timer: Timer,
     cpu: Cpu,
     mmu: Mmu,
@@ -38,9 +39,10 @@ impl Console {
             window_scale: u32,
             debug: bool,
             cpu_debug_print: bool,
+            skip_boot: bool,
             cartridge: Option<Cartridge>) -> Console {
         let timer = Timer::new();
-        let mmu = Mmu::new(cartridge);
+        let mmu = Mmu::new(cartridge, skip_boot);
         let cpu = Cpu::new(cpu_debug_print);
         let ppu = Ppu::new();
         let mut sdl_context: Sdl = sdl2::init().unwrap();
@@ -61,6 +63,7 @@ impl Console {
 
         Console {
             cycles: 0,
+            skip_boot,
             timer,
             cpu,
             mmu,
@@ -74,8 +77,8 @@ impl Console {
         }
     }
 
-    pub(crate) fn run(&mut self, skip_boot: bool) {
-        if skip_boot {
+    pub(crate) fn run(&mut self) {
+        if self.skip_boot {
             self.cpu.registers.set_word(CpuRegIndex::AF, 0x01B0);
             self.cpu.registers.set_word(CpuRegIndex::BC, 0x0013);
             self.cpu.registers.set_word(CpuRegIndex::DE, 0x00D8);
@@ -176,12 +179,21 @@ impl Console {
     }
 
     fn main_tick(&mut self) -> u16 {
+        // DEBUG
         if self.debugger.is_some() && self.debugger.as_mut().unwrap().active {
             return 4;
         }
 
+        // TIMER (using previous cycles delta)
+        if self.timer.step(&mut self.mmu, self.cycles as u8) {
+            self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
+        }
+
         // PPU - OAM DMA transfer
         self.ppu.oam_dma(&mut self.mmu);
+
+        // PPU - step
+        self.ppu.step(self.cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
 
         // CPU - step (execute instruction)
         self.cycles = self.cpu.step(&mut self.mmu);
@@ -194,17 +206,7 @@ impl Console {
         }
 
         // CPU - interrupts
-        // TODO Do cycles need to be incremented /adjusted here?
         self.cycles += self.cpu.handle_interrupts(&mut self.mmu);
-
-        // PPU - step
-        // TODO Is this suppost to occur before CPU step /instruction?
-        self.ppu.step(self.cycles as u16, &mut self.cpu.interrupts, &mut self.mmu);
-
-        // TIMER (using previous cycles delta)
-        if self.timer.step(&mut self.mmu, self.cycles as u8) {
-            self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
-        }
 
         self.cycles as u16
     }

@@ -76,7 +76,7 @@ pub(crate) struct Mmu {
 // While the PPU is accessing some video-related memory, that memory is inaccessible to the CPU
 // (writes are ignored, and reads return garbage values, usually $FF).
 impl Mmu {
-    pub(crate) fn new(cartridge: Option<Cartridge>) -> Mmu {
+    pub(crate) fn new(cartridge: Option<Cartridge>, skip_boot: bool) -> Mmu {
         let mut mmu = Mmu {
             sysclock: 0,
             is_booting: true,
@@ -88,7 +88,11 @@ impl Mmu {
             rom: [0; 0x8000],
             ram: [0; 0x8000],
         };
-        mmu.load_bootrom();
+
+        if !skip_boot {
+            mmu.load_bootrom();
+        }
+
         mmu.ram[(JOYPAD_REG - 0x8000) as usize] = 0x1F;
 
         mmu

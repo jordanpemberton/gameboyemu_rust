@@ -36,9 +36,22 @@ impl Cpu {
         } else {
             let value = self.interrupts.poll(mmu);
             if value > 0 {
-                Instruction::call(self, mmu, value as u16);
+                if self.debug_print_on {
+                    println!("{:#06X}\t{} INTERRUPT! -- CALL {:#06X}",
+                        self.registers.get_word(CpuRegIndex::PC),
+                        match value {
+                            0x40 => "VBLANK",
+                            0x48 => "LCDSTAT",
+                            0x50 => "TIMER",
+                            0x58 => "SERIAL",
+                            0x60 => "JOYPAD",
+                            _ => "?",
+                        },
+                        value);
+                }
                 self.interrupts.ime = false;
-                cycles = 16; // TODO
+                Instruction::call(self, mmu, value as u16);
+                cycles = 20; // 2M wait + 2M push + 1M jump
             }
         }
         cycles

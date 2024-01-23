@@ -105,14 +105,16 @@ fn run_rom(args: &EmuArgs) {
 
     if args.rom_filepath.trim().is_empty() {
         disassemble_rom(BOOTROM_FILEPATH);
+        let skip_boot = false;
         let mut gamboy = Console::new(
             "GAMBOY",
             window_scale,
             args.debug_enabled,
             args.print_cpu_instrs,
+            skip_boot,
             None
         );
-        gamboy.run(false);
+        gamboy.run();
     } else {
         disassemble_rom(args.rom_filepath.as_str());
         let cartridge = Cartridge::new(args.rom_filepath.as_ref());
@@ -121,9 +123,10 @@ fn run_rom(args: &EmuArgs) {
             window_scale,
             args.debug_enabled,
             args.print_cpu_instrs,
+            args.skip_boot,
             Some(cartridge)
         );
-        gamboy.run(args.skip_boot);
+        gamboy.run();
     }
 }
 
