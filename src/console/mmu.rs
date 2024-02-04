@@ -362,6 +362,7 @@ impl Mmu {
                 if caller == Caller::PPU
                     || (self.ppu_mode != ppu::StatMode::OamSearch && self.ppu_mode != ppu::StatMode::VBlank) {
                     adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                    self.ram[adjusted_address] = value;
                 } else {
                     println!("OAM LOCKED by PPU: Cannot write address {:#06X}.", address);
                 }
