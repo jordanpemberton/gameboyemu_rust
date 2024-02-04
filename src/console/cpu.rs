@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use crate::console::instruction::{Instruction};
-use crate::console::mmu::Mmu;
+use crate::console::mmu::{Caller, Mmu};
 use crate::console::cpu_registers::{CpuRegIndex, CpuRegisters};
 use crate::console::debugger::Debugger;
 use crate::console::interrupts::Interrupts;
@@ -67,7 +67,7 @@ impl Cpu {
 
     fn read_byte_at_pc(&mut self, mmu: &mut Mmu) -> u8 {
         let pc = self.registers.get_word(CpuRegIndex::PC);
-        let d8 = mmu.read_8(pc);
+        let d8 = mmu.read_8(pc, Caller::CPU);
         self.registers.increment(CpuRegIndex::PC, 1);
         d8
     }

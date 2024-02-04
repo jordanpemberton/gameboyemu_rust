@@ -7,7 +7,7 @@ use crate::console::cpu::Cpu;
 use crate::console::debugger::Debugger;
 use crate::console::display::Display;
 use crate::console::input::{Callback, Input};
-use crate::console::mmu::Mmu;
+use crate::console::mmu::{Caller, Mmu};
 use crate::console::ppu::Ppu;
 use crate::console::cpu_registers::{CpuRegIndex};
 use crate::console::interrupts::InterruptRegBit;
@@ -42,9 +42,9 @@ impl Console {
             skip_boot: bool,
             cartridge: Option<Cartridge>) -> Console {
         let timer = Timer::new();
+        let ppu = Ppu::new();
         let mmu = Mmu::new(cartridge, skip_boot);
         let cpu = Cpu::new(cpu_debug_print);
-        let ppu = Ppu::new();
         let mut sdl_context: Sdl = sdl2::init().unwrap();
         let input = Input::new(&mut sdl_context);
 
@@ -85,7 +85,7 @@ impl Console {
             self.cpu.registers.set_word(CpuRegIndex::HL, 0x014D);
             self.cpu.registers.set_word(CpuRegIndex::SP, 0xFFFE);
             self.cpu.registers.set_word(CpuRegIndex::PC, 0x0100);
-            self.mmu.write_8(mmu::LCD_CONTROL_REG, 0x91); // Enable LCD
+            self.mmu.write_8(mmu::LCD_CONTROL_REG, 0x91, Caller::CPU); // Enable LCD
             self.mmu.is_booting = false;
         }
 

@@ -1,25 +1,10 @@
-/*
-    BOOT_ROM        0x0000..=0x0100
-    CARTRIDGE_ROM   0x0000..=0x7FFF
-    VRAM            0x8000..=0x9FFF
-    EXTERNAL_RAM    0xA000..=0xBFFF
-    INTERNAL_RAM    0xC000..=0xDFFF
-    INVALID         0xE000..=0xFDFF
-    EXTERNAL_RAM    0xA000..=0xBFFF
-    OAM_RAM         0xFE00..=0xFF9F
-    RAM,            0xFEA0..=0xFEFF
-    IO              0xFF00..=0xFF79
-    HRAM            0xFF80..=0xFFFF
-
-    CARTRIDGE_ROM_BANK_SIZE: u16 = 0x4000;
-*/
-
 use std::cmp::{max, min};
 use std::collections::HashSet;
 use std::fs::read;
 use crate::cartridge::cartridge::Cartridge;
 use crate::cartridge::mbc::Mbc;
 use crate::console::input::JoypadInput;
+use crate::console::ppu;
 
 // OAM
 pub(crate) const OAM_START: u16 = 0xFE00;
@@ -60,6 +45,13 @@ pub(crate) enum Endianness {
     LITTLE,
 }
 
+#[derive(PartialEq, Clone, Copy)]
+pub(crate) enum Caller {
+    CPU,
+    PPU,
+    TIMER,
+}
+
 pub(crate) struct Mmu {
     pub(crate) sysclock: u16, // Incremented by Timer, TODO relocate?
     pub(crate) is_booting: bool,
@@ -70,11 +62,9 @@ pub(crate) struct Mmu {
     debug_value: u8,
     rom: [u8; 0x8000usize],
     ram: [u8; 0x8000usize],
+    ppu_mode: ppu::StatMode,
 }
 
-// TODO -- inaccessible memory in certain contexts.
-// While the PPU is accessing some video-related memory, that memory is inaccessible to the CPU
-// (writes are ignored, and reads return garbage values, usually $FF).
 impl Mmu {
     pub(crate) fn new(cartridge: Option<Cartridge>, skip_boot: bool) -> Mmu {
         let mut mmu = Mmu {
@@ -87,6 +77,7 @@ impl Mmu {
             debug_value: 0,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
+            ppu_mode: ppu::StatMode::HBlank,
         };
 
         if !skip_boot {
@@ -98,42 +89,96 @@ impl Mmu {
         mmu
     }
 
+    pub(crate) fn set_ppu_statmode(&mut self, ppu_mode: ppu::StatMode) {
+        self.ppu_mode = ppu_mode;
+    }
+
     // noinspection RsNonExhaustiveMatch -- u16 range covered
-    pub(crate) fn read_8(&mut self, address: u16) -> u8 {
+    pub(crate) fn read_8(&mut self, address: u16, caller: Caller) -> u8 {
         let result = match address {
-            0x0000..=0x00FF if self.is_booting => {
+            // BOOT ROM
+            0x0000..=0x0100 if self.is_booting => {
                 self.rom[address as usize]
             }
 
+            // CARTRIDGE ROM FIXED
             0x0000..=0x3FFF => if let Some(cartridge) = &self.cartridge {
                 cartridge.read_8_0000_3fff(address)
             } else {
+                // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:#06X}.", address);
+                // 0x00
                 self.rom[address as usize]
             }
 
+            // CARTRIDGE ROM SWITCHABLE
             0x4000..=0x7FFF => if let Some(cartridge) = &self.cartridge {
                 cartridge.read_8_4000_7fff(address)
             } else {
+                // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:#06X}.", address);
+                // 0x00
                 self.rom[address as usize]
             }
 
+            // VRAM
             0x8000..=0x9FFF => {
-                self.ram[address as usize - 0x8000]
+                if caller == Caller::PPU || self.ppu_mode != ppu::StatMode::PixelTransfer {
+                    self.ram[address as usize - 0x8000]
+                } else {
+                    println!("VRAM LOCKED by PPU: Cannot read address {:#06X}.", address);
+                    0xFF
+                }
             }
 
+            // EXTERNAL RAM
             0xA000..=0xBFFF => {
                 if let Some(cartridge) = &self.cartridge {
                     cartridge.read_8_a000_bfff(address)
                 } else {
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:#06X}.", address);
+                    // 0x00
                     self.ram[address as usize - 0x8000]
                 }
             }
 
-            0xC000..=0xFFFF => {
+            // INTERNAL RAM
+            0xC000..=0xDFFF => {
+                self.ram[address as usize - 0x8000]
+            }
+
+            // ECHO RAM PROHIBITED C000-DDFF Mirror
+            0xE000..=0xFDFF => {
+                println!("PROHIBITED ECHO RAM: Cannot read address {:#06X}.", address);
+                0xFF
+            }
+
+            // OAM RAM
+            0xFE00..=0xFE9F => {
+                if caller == Caller::PPU
+                    || (self.ppu_mode != ppu::StatMode::OamSearch && self.ppu_mode != ppu::StatMode::PixelTransfer) {
+                    self.ram[address as usize - 0x8000]
+                } else {
+                    println!("OAM LOCKED by PPU: Cannot read address {:#06X}.", address);
+                    0xFF
+                }
+            }
+
+            // PROHIBITED
+            0xFEA0..=0xFEFF => {
+                println!("PROHIBITED RAM: Cannot read address {:#06X}.", address);
+                0xFF
+            }
+
+            // IO
+            0xFF00..=0xFF7F => {
                 match address {
                     JOYPAD_REG => self.read_joypad_reg(self.ram[address as usize - 0x8000]),
                     _ => self.ram[address as usize - 0x8000]
                 }
+            }
+
+            // HRAM, IE
+            0xFF80..=0xFFFF => {
+                self.ram[address as usize - 0x8000]
             }
         };
 
@@ -149,8 +194,8 @@ impl Mmu {
     }
 
     pub(crate) fn read_16(&mut self, address: u16, endian: Endianness) -> u16 {
-        let lsb: u8 = self.read_8(address);
-        let msb: u8 = self.read_8(address + 1);
+        let lsb: u8 = self.read_8(address, Caller::CPU);
+        let msb: u8 = self.read_8(address + 1, Caller::CPU);
 
         match endian {
             Endianness::BIG => (msb as u16) << 8 | lsb as u16,
@@ -158,98 +203,140 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn read_buffer(&mut self, start: u16, end: u16) -> Vec<u8> {
+    pub(crate) fn read_buffer(&mut self, start: u16, end: u16, caller: Caller) -> Vec<u8> {
         let mut result = vec![0; end as usize - start as usize];
         for address in start..end {
-            result[address as usize - start as usize] = self.read_8(address);
+            result[address as usize - start as usize] = self.read_8(address, caller);
         }
         result
     }
 
-    // TEMP HACK to allow special write behavior
-    pub(crate) fn write_8_force(&mut self, address: u16, value: u8) {
-        let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-
-        match address {
-            DIV_REG
-                | LCD_STATUS_REG
-                | LY_REG => {
-                self.ram[adjusted_address] = value;
-            }
-            _ => {
-                println!("Force writing to address {:#06X} is not implemented.", address);
-            }
-        }
-
-        // For debugging because conditional breakpoints are unuseably slow
-        if let Some(debug_address) = self.debug_address {
-            if address == debug_address && self.ram[adjusted_address] != self.debug_value {
-                self.debug_value = self.ram[adjusted_address];
-                println!("(FORCE SET to {:#04X}) [{:#06X}] = {:#04X}", value, debug_address, self.debug_value);
-            }
-        }
-    }
-
-    // TODO Handle read-only mem /write permissions /handlers
     // noinspection RsNonExhaustiveMatch -- u16 range covered
-    pub(crate) fn write_8(&mut self, address: u16, value: u8) {
+    pub(crate) fn write_8(&mut self, address: u16, value: u8, caller: Caller) {
         let mut adjusted_address = address as usize;
 
         match address {
+            // BOOT ROM
+            0x0000..=0x0100 if self.is_booting => {
+                // println!("UNIMPLEMENTED: BOOT ROM, cannot write address {:#06X}.", address);
+                self.rom[address as usize] = value;
+            }
+
+            // CARTRIDGE ROM
             0x0000..=0x1FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
                         Mbc::Mbc1 { mbc } => {
                             mbc.ram_enabled = (value & 0x0F) == 0x0A;
                         }
-                        _ => { }
+                        Mbc::Mbc2 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:#06X}.", address);
+                        }
+                        Mbc::Mbc3 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:#06X}.", address);
+                        }
+                        Mbc::Mbc5 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
+                        }
+                        _ => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc?, cannot write address {:#06X}.", address);
+                        }
                     }
-                } else { }
+                } else {
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
+                    self.rom[address as usize] = value;
+                }
             }
 
+            // CARTRIDGE ROM
             0x2000..=0x3FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
                         Mbc::Mbc1 { mbc } => {
                             mbc.bank1 = max(value & 0x1F, 1);
                         }
-                        _ => { }
+                        Mbc::Mbc2 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:#06X}.", address);
+                        }
+                        Mbc::Mbc3 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:#06X}.", address);
+                        }
+                        Mbc::Mbc5 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
+                        }
+                        _ => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc?, cannot write address {:#06X}.", address);
+                        }
                     }
-                } else { }
+                } else {
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
+                    self.rom[address as usize] = value;
+                }
             }
 
+            // CARTRIDGE ROM
             0x4000..=0x5FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
                         Mbc::Mbc1 { mbc } => {
                             mbc.bank2 = value & 0x03;
                         }
-                        _ => { }
+                        Mbc::Mbc2 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:#06X}.", address);
+                        }
+                        Mbc::Mbc3 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:#06X}.", address);
+                        }
+                        Mbc::Mbc5 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
+                        }
+                        _ => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc?, cannot write address {:#06X}.", address);
+                        }
                     }
                 } else {
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
                     self.rom[address as usize] = value;
                 }
             }
 
+            // CARTRIDGE ROM
             0x6000..=0x7FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
                         Mbc::Mbc1 { mbc } => {
                             mbc.advram_banking_mode = (value & 1) == 1;
                         }
-                        _ => { }
+                        Mbc::Mbc2 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:#06X}.", address);
+                        }
+                        Mbc::Mbc3 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:#06X}.", address);
+                        }
+                        Mbc::Mbc5 => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
+                        }
+                        _ => {
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc?, cannot write address {:#06X}.", address);
+                        }
                     }
                 } else {
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
                     self.rom[address as usize] = value;
                 }
             }
 
-            // TODO only write to wrtie-able RAM
+            // VRAM
             0x8000..=0x9FFF => {
-                adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-                self.ram[adjusted_address] = value;
+                if caller == Caller::PPU || self.ppu_mode != ppu::StatMode::PixelTransfer {
+                    adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                    self.ram[adjusted_address] = value;
+                } else {
+                    println!("VRAM LOCKED by PPU: Cannot write address {:#06X}.", address);
+                }
             }
 
+            // EXTERNAL RAM
             0xA000..=0xBFFF => {
                 if let Some(cartridge) = &mut self.cartridge {
                     cartridge.write_8_a000_bfff(address, value);
@@ -259,31 +346,50 @@ impl Mmu {
                 }
             }
 
-            // TODO Add handlers for read-only memory
-            0xC000..=0xFFFF => {
+            // INTERNAL RAM
+            0xC000..=0xDFFF => {
                 adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                self.ram[adjusted_address] = value;
+            }
+
+            // PROHIBITED ECHO RAM
+            0xE000..=0xFDFF => {
+                println!("PROHIBITED ECHO RAM: Cannot write address {:#06X}.", address);
+            }
+
+            // OAM RAM
+            0xFE00..=0xFE9F => {
+                if caller == Caller::PPU
+                    || (self.ppu_mode != ppu::StatMode::OamSearch && self.ppu_mode != ppu::StatMode::VBlank) {
+                    adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                } else {
+                    println!("OAM LOCKED by PPU: Cannot write address {:#06X}.", address);
+                }
+            }
+
+            // PROHIBITED
+            0xFEA0..=0xFEFF => {
+                println!("PROHIBITED RAM: Cannot write address {:#06X}.", address);
+            }
+
+            // IO
+            0xFF00..=0xFF7F => {
+                adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
 
                 match address {
-                    // TEMP DEBUG Dr Mario
-                    // 0xFFE1 => { // game status
-                    //     self.ram[adjusted_address] = 0x07;
-                        // 00=(frozen) title,
-                        // 07=nautilus
-                        // 08=fish
-                        // 09=shows sprites
-                        // 0A=can make pills appear (wait),
-                        // 0B=(frozen) settings memu,
-                        // 01,02,03,04,05,0C,0D,0E,0F=nothing
-                    // }
-
-                    // Timer
+                    // TIMER
                     DIV_REG => {
-                        // Writes to timer DIV register reset it to 0
-                        self.ram[adjusted_address] = 0;
-                        self.sysclock = 0; // Internal clock is also reset
+                        if caller == Caller::TIMER {
+                            self.ram[adjusted_address] = value;
+                        } else {
+                            // Writes to timer DIV register reset it to 0
+                            self.ram[adjusted_address] = 0;
+                            self.sysclock = 0; // Internal clock is also reset
+                        }
                     }
 
-                    // IO
+                    // JOYPAD
                     JOYPAD_REG => {
                         // Bottom nibble is read only
                         let curr_value = self.ram[adjusted_address];
@@ -292,23 +398,34 @@ impl Mmu {
 
                     // PPU
                     LY_REG => {
-                        // Read-only
-                    }
-                    LCD_STATUS_REG => {
-                        // Bits 0,1,2 are read-only (only PPU can update)
-                        let curr_value = self.ram[adjusted_address];
-                        self.ram[adjusted_address] = (value & 0xF8) | (curr_value & 0x07);
-                    }
-                    LCD_CONTROL_REG => {
-                        // Bit 7 can only be cleared during VBlank STAT mode
-                        // TODO rewrite Mmu to make this type of thing nicer...
-                        let stat = self.ram[(LCD_STATUS_REG as usize - 0x8000) & (self.ram.len() - 1)];
-                        if stat & 0x03 == 0x01 { // VBlank PPU STAT == mode 1
+                        if caller == Caller::PPU {
                             self.ram[adjusted_address] = value;
                         } else {
-                            let curr_value = self.ram[adjusted_address];
-                            self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
+                            // Read-only
                         }
+                    }
+                    LCD_STATUS_REG => {
+                        if caller == Caller::PPU {
+                            self.ram[adjusted_address] = value;
+                        } else {
+                            // Bits 0,1,2 are read-only (only PPU can update)
+                            let curr_value = self.ram[adjusted_address];
+                            self.ram[adjusted_address] = (value & 0xF8) | (curr_value & 0x07);
+                        }
+                    }
+                    LCD_CONTROL_REG => {
+                        // Does PPU need special write priviledges?
+                        // if caller == Caller::PPU {
+                        //     self.ram[adjusted_address] = value;
+                        // } else {
+                            // Bit 7 can only be cleared during VBlank STAT mode
+                            if self.ppu_mode == ppu::StatMode::VBlank {
+                                self.ram[adjusted_address] = value;
+                            } else {
+                                let curr_value = self.ram[adjusted_address];
+                                self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
+                            }
+                        // }
                     }
                     DMA_REG => {
                         self.ram[adjusted_address] = value;
@@ -328,6 +445,12 @@ impl Mmu {
                     }
                 }
             }
+
+            // HRAM, IE
+            0xFF80..=0xFFFF => {
+                adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                self.ram[adjusted_address] = value;
+            }
         }
 
         // For debugging because conditional breakpoints are unuseably slow
@@ -339,7 +462,7 @@ impl Mmu {
         }
     }
 
-    pub(crate) fn write_16(&mut self, address: u16, value: u16, endian: Endianness) {
+    pub(crate) fn write_16(&mut self, address: u16, value: u16, endian: Endianness, caller: Caller) {
         let mut a = ((value & 0xFF00) >> 8) as u8;
         let mut b = (value & 0x00FF) as u8;
 
@@ -349,8 +472,8 @@ impl Mmu {
             b = temp;
         }
 
-        self.write_8(address, a);
-        self.write_8(address + 1, b);
+        self.write_8(address, a, caller);
+        self.write_8(address + 1, b, caller);
     }
 
     fn load_bootrom(&mut self) {

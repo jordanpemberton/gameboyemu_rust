@@ -1,5 +1,5 @@
 use crate::console::mmu;
-use crate::console::mmu::Mmu;
+use crate::console::mmu::{Caller, Mmu};
 use crate::console::register::Register;
 
 // const DIV_SPEED: u16 = 256; // 16384Hz = 256 cpu clocks
@@ -50,10 +50,10 @@ impl Timer {
 
         // Increment internal/system clock /DIV
         mmu.sysclock = mmu.sysclock.wrapping_add(cycles as u16);
-        self.div.write_force(mmu, (mmu.sysclock >> 8) as u8); // DIV = botttom 8 or sysclock, increments every 256 clocks
+        self.div.write(mmu, (mmu.sysclock >> 8) as u8, Caller::TIMER); // DIV = botttom 8 or sysclock, increments every 256 clocks
 
         // Increment TIMA according to TAC
-        let tac = self.tac.read(mmu);
+        let tac = self.tac.read(mmu, Caller::TIMER);
         let tima_incr_is_enabled = tac & 0b0100 == 0b0100;
 
         if tima_incr_is_enabled {
@@ -63,15 +63,15 @@ impl Timer {
             let selected_clocks = self.selected_clocks(tac);
 
             while self.tima_clocks >= selected_clocks {
-                let (mut new_tima, overflow) = self.tima.read(mmu).overflowing_add(1);
+                let (mut new_tima, overflow) = self.tima.read(mmu, Caller::TIMER).overflowing_add(1);
 
                 // If TIMA overflows, set TIMA to TMA and request interrupt
                 if overflow {
                     request_interrupt = true;
-                    new_tima = self.tma.read(mmu);
+                    new_tima = self.tma.read(mmu, Caller::TIMER);
                 }
 
-                self.tima.write(mmu, new_tima);
+                self.tima.write(mmu, new_tima, mmu::Caller::TIMER);
                 self.tima_clocks = self.tima_clocks - selected_clocks;
             }
         }
@@ -86,10 +86,10 @@ impl Timer {
              \tTMA (modulo):    {:#04X}\n\
              \tTAC (control):   {:#04X}\n\
              \tis_in_stop_mode: {}",
-            self.div.read(mmu),
-            self.tima.read(mmu),
-            self.tma.read(mmu),
-            self.tac.read(mmu),
+            self.div.read(mmu, Caller::TIMER),
+            self.tima.read(mmu, Caller::TIMER),
+            self.tma.read(mmu, Caller::TIMER),
+            self.tac.read(mmu, Caller::TIMER),
             self.is_in_stop_mode,
         )
     }

@@ -3,7 +3,7 @@
 
 use crate::console::cpu::Cpu;
 use crate::console::cpu_registers::CpuRegIndex;
-use crate::console::mmu::Mmu;
+use crate::console::mmu::{Caller, Mmu};
 use crate::console::ppu::Ppu;
 use crate::console::timer::Timer;
 
@@ -108,10 +108,10 @@ impl Debugger {
             cpu.registers.get_word(CpuRegIndex::SP),
             0, // ?
             start_pc,
-            mmu.read_8(start_pc),
-            mmu.read_8(start_pc + 1),
-            mmu.read_8(start_pc + 2),
-            mmu.read_8(start_pc + 3),
+            mmu.read_8(start_pc, Caller::CPU),
+            mmu.read_8(start_pc + 1, Caller::CPU),
+            mmu.read_8(start_pc + 2, Caller::CPU),
+            mmu.read_8(start_pc + 3, Caller::CPU),
         );
     }
 
@@ -153,7 +153,7 @@ impl Debugger {
         let cols: usize = 16;
 
         let mut vram_values_str = String::new();
-        let vram: &[u8] = &mmu.read_buffer(0x8000, 0xA000);
+        let vram: &[u8] = &mmu.read_buffer(0x8000, 0xA000, Caller::CPU);
         let rows: usize = 2; // for all: (vram.len() as u16 / cols as u16) as usize;
 
         let mut i = 0;

@@ -3,7 +3,7 @@
 
 use crate::console::{alu, mmu};
 use crate::console::cpu::{Cpu, PREFIX_BYTE};
-use crate::console::mmu::{Endianness, Mmu};
+use crate::console::mmu::{Caller, Endianness, Mmu};
 use crate::console::cpu_registers::{Flags, CpuRegIndex};
 
 #[derive(Clone, Copy, Debug)]
@@ -599,8 +599,8 @@ impl Instruction {
         match source {
             Src::D8 => args[0],
 
-            Src::A8 => mmu.read_8(0xFF00 | args[0] as u16),
-            Src::A16 => mmu.read_8(((args[1] as u16) << 8) | (args[0] as u16)),
+            Src::A8 => mmu.read_8(0xFF00 | args[0] as u16, Caller::CPU),
+            Src::A16 => mmu.read_8(((args[1] as u16) << 8) | (args[0] as u16), Caller::CPU),
 
             Src::A => cpu.registers.get_byte(CpuRegIndex::A),
             Src::B => cpu.registers.get_byte(CpuRegIndex::B),
@@ -611,12 +611,12 @@ impl Instruction {
             Src::H => cpu.registers.get_byte(CpuRegIndex::H),
             Src::L => cpu.registers.get_byte(CpuRegIndex::L),
 
-            Src::Ca => mmu.read_8(0xFF00 | cpu.registers.get_byte(CpuRegIndex::C) as u16),
+            Src::Ca => mmu.read_8(0xFF00 | cpu.registers.get_byte(CpuRegIndex::C) as u16, Caller::CPU),
 
-            Src::AFa => mmu.read_8(cpu.registers.get_word(CpuRegIndex::AF)),
-            Src::BCa => mmu.read_8(cpu.registers.get_word(CpuRegIndex::BC)),
-            Src::DEa => mmu.read_8(cpu.registers.get_word(CpuRegIndex::DE)),
-            Src::HLa => mmu.read_8(cpu.registers.get_word(CpuRegIndex::HL)),
+            Src::AFa => mmu.read_8(cpu.registers.get_word(CpuRegIndex::AF), Caller::CPU),
+            Src::BCa => mmu.read_8(cpu.registers.get_word(CpuRegIndex::BC), Caller::CPU),
+            Src::DEa => mmu.read_8(cpu.registers.get_word(CpuRegIndex::DE), Caller::CPU),
+            Src::HLa => mmu.read_8(cpu.registers.get_word(CpuRegIndex::HL), Caller::CPU),
 
             _ => panic!("Unsupported 8-bit source: {:?}", source),
         }
@@ -639,8 +639,8 @@ impl Instruction {
 
     fn set_target_value_8(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, value: u8) {
         match target {
-            Src::A8 => mmu.write_8(0xFF00 | args[0] as u16, value),
-            Src::A16 => mmu.write_8(((args[1] as u16) << 8) | (args[0] as u16), value),
+            Src::A8 => mmu.write_8(0xFF00 | args[0] as u16, value, Caller::CPU),
+            Src::A16 => mmu.write_8(((args[1] as u16) << 8) | (args[0] as u16), value, Caller::CPU),
 
             Src::A => cpu.registers.set_byte(CpuRegIndex::A, value),
             Src::B => cpu.registers.set_byte(CpuRegIndex::B, value),
@@ -651,12 +651,12 @@ impl Instruction {
             Src::H => cpu.registers.set_byte(CpuRegIndex::H, value),
             Src::L => cpu.registers.set_byte(CpuRegIndex::L, value),
 
-            Src::Ca => mmu.write_8(0xFF00 | cpu.registers.get_byte(CpuRegIndex::C) as u16, value),
+            Src::Ca => mmu.write_8(0xFF00 | cpu.registers.get_byte(CpuRegIndex::C) as u16, value, Caller::CPU),
 
-            Src::AFa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::AF), value),
-            Src::BCa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::BC), value),
-            Src::DEa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::DE), value),
-            Src::HLa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::HL), value),
+            Src::AFa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::AF), value, Caller::CPU),
+            Src::BCa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::BC), value, Caller::CPU),
+            Src::DEa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::DE), value, Caller::CPU),
+            Src::HLa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::HL), value, Caller::CPU),
 
             _ => panic!("Unsupported 8-bit target: {:?}", target),
         }
@@ -664,7 +664,7 @@ impl Instruction {
 
     fn set_target_value_16(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, value: u16) {
         match target {
-            Src::A16 => mmu.write_16(((args[1] as u16) << 8) | (args[0] as u16), value, Endianness::BIG),
+            Src::A16 => mmu.write_16(((args[1] as u16) << 8) | (args[0] as u16), value, Endianness::BIG, Caller::CPU),
 
             Src::AF => cpu.registers.set_word(CpuRegIndex::AF, value),
             Src::BC => cpu.registers.set_word(CpuRegIndex::BC, value),
@@ -684,7 +684,7 @@ impl Instruction {
         // (SP)=r16
         let value = cpu.registers.get_word(source_register);
         let target_address = cpu.registers.get_word(CpuRegIndex::SP);
-        mmu.write_16(target_address, value, Endianness::BIG);
+        mmu.write_16(target_address, value, Endianness::BIG, Caller::CPU);
     }
 
     /// POP
@@ -1057,7 +1057,7 @@ impl Instruction {
     /// 2 4
     /// - - - -
     fn op_0010(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        mmu.write_8(mmu::DIV_REG, 0);
+        mmu.write_8(mmu::DIV_REG, 0, Caller::CPU);
         self.cycles
     }
 

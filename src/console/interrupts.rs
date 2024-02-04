@@ -15,7 +15,7 @@ Bit 4: Joypad   Interrupt Request (INT $60)  (1=Request)
 */
 
 use crate::console::mmu;
-use crate::console::mmu::Mmu;
+use crate::console::mmu::{Caller, Mmu};
 use crate::console::register::Register;
 
 pub(crate) enum InterruptRegBit {
@@ -42,16 +42,16 @@ impl Interrupts {
     }
 
     pub(crate) fn request(&mut self, requesting: InterruptRegBit, mmu: &mut Mmu) {
-        self.requested.set_bit(mmu, requesting as u8, true);
+        self.requested.set_bit(mmu, requesting as u8, true, Caller::CPU);
     }
 
     pub(crate) fn peek_requested(&mut self, mmu: &mut Mmu) -> bool {
-        self.requested.read(mmu) != 0
+        self.requested.read(mmu, Caller::CPU) != 0
     }
 
     pub(crate) fn peek_interrupts(&mut self, mmu: &mut Mmu) -> u8 {
         if self.ime {
-            self.enabled.read(mmu) & self.requested.read(mmu)
+            self.enabled.read(mmu, Caller::CPU) & self.requested.read(mmu, Caller::CPU)
         } else {
             0
         }
@@ -60,19 +60,19 @@ impl Interrupts {
     pub(crate) fn poll(&mut self, mmu: &mut Mmu) -> u8 {
         let interrupt = self.peek_interrupts(mmu);
         if interrupt & (1 << InterruptRegBit::VBlank as u8) == (1 << InterruptRegBit::VBlank as u8) {
-            self.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, false);
+            self.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, false, Caller::CPU);
             0x40
         } else if interrupt & (1 << InterruptRegBit::LcdStat as u8) == (1 << InterruptRegBit::LcdStat as u8) {
-            self.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, false);
+            self.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, false, Caller::CPU);
            0x48
         } else if interrupt & (1 << InterruptRegBit::Timer as u8) == (1 << InterruptRegBit::Timer as u8) {
-            self.requested.set_bit(mmu, InterruptRegBit::Timer as u8, false);
+            self.requested.set_bit(mmu, InterruptRegBit::Timer as u8, false, Caller::CPU);
             0x50
         } else if interrupt & (1 << InterruptRegBit::Serial as u8) == (1 << InterruptRegBit::Serial as u8) {
-            self.requested.set_bit(mmu, InterruptRegBit::Serial as u8, false);
+            self.requested.set_bit(mmu, InterruptRegBit::Serial as u8, false, Caller::CPU);
             0x58
         } else if interrupt & (1 << InterruptRegBit::Joypad as u8) == (1 << InterruptRegBit::Joypad as u8) {
-            self.requested.set_bit(mmu, InterruptRegBit::Joypad as u8, false);
+            self.requested.set_bit(mmu, InterruptRegBit::Joypad as u8, false, Caller::CPU);
             0x60
         } else {
             0
@@ -82,16 +82,16 @@ impl Interrupts {
     pub(crate) fn as_str(&mut self, mmu: &mut Mmu) -> String {
         format!("
             \tRequested: {} {} {} {} {}\tEnabled: {} {} {} {} {}",
-            if self.requested.read(mmu) & (1 << InterruptRegBit::Joypad as u8) == (1 << InterruptRegBit::Joypad as u8) {"J"} else {"_"},
-            if self.requested.read(mmu) & (1 << InterruptRegBit::Serial as u8) == (1 << InterruptRegBit::Serial as u8) {"S"} else {"_"},
-            if self.requested.read(mmu) & (1 << InterruptRegBit::Timer as u8) == (1 << InterruptRegBit::Timer as u8) {"T"} else {"_"},
-            if self.requested.read(mmu) & (1 << InterruptRegBit::LcdStat as u8) == (1 << InterruptRegBit::LcdStat as u8) {"L"} else {"_"},
-            if self.requested.read(mmu) & (1 << InterruptRegBit::VBlank as u8) == (1 << InterruptRegBit::VBlank as u8) {"V"} else {"_"},
-            if self.enabled.read(mmu) & (1 << InterruptRegBit::Joypad as u8) == (1 << InterruptRegBit::Joypad as u8) {"J"} else {"_"},
-            if self.enabled.read(mmu) & (1 << InterruptRegBit::Serial as u8) == (1 << InterruptRegBit::Serial as u8) {"S"} else {"_"},
-            if self.enabled.read(mmu) & (1 << InterruptRegBit::Timer as u8) == (1 << InterruptRegBit::Timer as u8) {"T"} else {"_"},
-            if self.enabled.read(mmu) & (1 << InterruptRegBit::LcdStat as u8) == (1 << InterruptRegBit::LcdStat as u8) {"L"} else {"_"},
-            if self.enabled.read(mmu) & (1 << InterruptRegBit::VBlank as u8) == (1 << InterruptRegBit::VBlank as u8) {"V"} else {"_"},
+            if self.requested.read(mmu, Caller::CPU) & (1 << InterruptRegBit::Joypad as u8) == (1 << InterruptRegBit::Joypad as u8) {"J"} else {"_"},
+            if self.requested.read(mmu, Caller::CPU) & (1 << InterruptRegBit::Serial as u8) == (1 << InterruptRegBit::Serial as u8) {"S"} else {"_"},
+            if self.requested.read(mmu, Caller::CPU) & (1 << InterruptRegBit::Timer as u8) == (1 << InterruptRegBit::Timer as u8) {"T"} else {"_"},
+            if self.requested.read(mmu, Caller::CPU) & (1 << InterruptRegBit::LcdStat as u8) == (1 << InterruptRegBit::LcdStat as u8) {"L"} else {"_"},
+            if self.requested.read(mmu, Caller::CPU) & (1 << InterruptRegBit::VBlank as u8) == (1 << InterruptRegBit::VBlank as u8) {"V"} else {"_"},
+            if self.enabled.read(mmu, Caller::CPU) & (1 << InterruptRegBit::Joypad as u8) == (1 << InterruptRegBit::Joypad as u8) {"J"} else {"_"},
+            if self.enabled.read(mmu, Caller::CPU) & (1 << InterruptRegBit::Serial as u8) == (1 << InterruptRegBit::Serial as u8) {"S"} else {"_"},
+            if self.enabled.read(mmu, Caller::CPU) & (1 << InterruptRegBit::Timer as u8) == (1 << InterruptRegBit::Timer as u8) {"T"} else {"_"},
+            if self.enabled.read(mmu, Caller::CPU) & (1 << InterruptRegBit::LcdStat as u8) == (1 << InterruptRegBit::LcdStat as u8) {"L"} else {"_"},
+            if self.enabled.read(mmu, Caller::CPU) & (1 << InterruptRegBit::VBlank as u8) == (1 << InterruptRegBit::VBlank as u8) {"V"} else {"_"},
         )
     }
 }

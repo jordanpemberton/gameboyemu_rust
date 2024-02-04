@@ -1,0 +1,10 @@
+Dr Mario
+address 0xFFE1 = game status
+
+00=(frozen) title
+07=nautilus
+08=fish
+09=shows sprites
+0A=can make pills appear (wait)
+0B=(frozen) settings memu
+01,02,03,04,05,0C,0D,0E,0F=nothing
