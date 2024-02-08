@@ -147,8 +147,8 @@ impl Mmu {
 
             // ECHO RAM PROHIBITED C000-DDFF Mirror
             0xE000..=0xFDFF => {
-                println!("PROHIBITED ECHO RAM: Cannot read address {:#06X}.", address);
-                0xFF
+                // println!("PROHIBITED ECHO RAM: Cannot read address {:#06X}.", address);
+                self.ram[address as usize - 0xA000]
             }
 
             // OAM RAM
@@ -162,10 +162,15 @@ impl Mmu {
                 }
             }
 
-            // PROHIBITED
+            // PROHIBITED -- returns $FF when OAM is blocked, otherwise the behavior depends on the hardware revision.
+            // On DMG, MGB, SGB, and SGB2, reads during OAM block trigger OAM corruption. Reads otherwise return $00.
             0xFEA0..=0xFEFF => {
                 println!("PROHIBITED RAM: Cannot read address {:#06X}.", address);
-                0xFF
+                if self.ppu_mode == ppu::StatMode::OamSearch {
+                    0xFF
+                } else {
+                    0x00
+                }
             }
 
             // IO
@@ -354,13 +359,15 @@ impl Mmu {
 
             // PROHIBITED ECHO RAM
             0xE000..=0xFDFF => {
-                println!("PROHIBITED ECHO RAM: Cannot write address {:#06X}.", address);
+                // println!("PROHIBITED ECHO RAM: Cannot write address {:#06X}.", address);
+                adjusted_address = (address as usize - 0xA000) & (self.ram.len() - 1);
+                self.ram[adjusted_address] = value;
             }
 
             // OAM RAM
             0xFE00..=0xFE9F => {
                 if caller == Caller::PPU
-                    || (self.ppu_mode != ppu::StatMode::OamSearch && self.ppu_mode != ppu::StatMode::VBlank) {
+                    || (self.ppu_mode != ppu::StatMode::OamSearch && self.ppu_mode != ppu::StatMode::PixelTransfer) {
                     adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
                     self.ram[adjusted_address] = value;
                 } else {
@@ -368,7 +375,7 @@ impl Mmu {
                 }
             }
 
-            // PROHIBITED
+            // PROHIBITED -- returns $FF when OAM is blocked, and otherwise the behavior depends on the hardware revision.
             0xFEA0..=0xFEFF => {
                 println!("PROHIBITED RAM: Cannot write address {:#06X}.", address);
             }

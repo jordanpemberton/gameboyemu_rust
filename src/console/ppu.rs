@@ -145,12 +145,6 @@ impl Ppu {
     // TODO Fix OAM DMA timing (mooneye acceptance/add_sp_e_timing, jp_timing)
     pub(crate) fn oam_dma(&mut self, mmu: &mut Mmu) {
         // TODO Memory during OAM DMA transfer
-        // https://gbdev.io/pandocs/OAM_DMA_Transfer.html
-        // let stat_mode = self.get_stat_mode(mmu);
-        // if *stat_mode == StatMode::VBlank || *stat_mode == StatMode::OamSearch {
-        //     return;
-        // }
-
         if let Some(mut src_address) = mmu.oam_dma_src_addr {
             let value = mmu.read_8(src_address, Caller::PPU);
             let oam_address = mmu::OAM_START | (src_address & 0xFF);
