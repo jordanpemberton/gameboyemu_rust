@@ -147,7 +147,6 @@ impl Mmu {
 
             // ECHO RAM PROHIBITED C000-DDFF Mirror
             0xE000..=0xFDFF => {
-                // println!("PROHIBITED ECHO RAM: Cannot read address {:#06X}.", address);
                 self.ram[address as usize - 0xA000]
             }
 
@@ -165,7 +164,7 @@ impl Mmu {
             // PROHIBITED -- returns $FF when OAM is blocked, otherwise the behavior depends on the hardware revision.
             // On DMG, MGB, SGB, and SGB2, reads during OAM block trigger OAM corruption. Reads otherwise return $00.
             0xFEA0..=0xFEFF => {
-                println!("PROHIBITED RAM: Cannot read address {:#06X}.", address);
+                println!("PROHIBITED RAM: Not supposed to read address {:#06X}.", address);
                 if self.ppu_mode == ppu::StatMode::OamSearch {
                     0xFF
                 } else {
@@ -231,6 +230,9 @@ impl Mmu {
             0x0000..=0x1FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
+                        Mbc::None => {
+                            self.rom[address as usize] = value;
+                        }
                         Mbc::Mbc1 { mbc } => {
                             mbc.ram_enabled = (value & 0x0F) == 0x0A;
                         }
@@ -243,9 +245,6 @@ impl Mmu {
                         Mbc::Mbc5 => {
                             println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
                         }
-                        _ => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc?, cannot write address {:#06X}.", address);
-                        }
                     }
                 } else {
                     // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
@@ -257,6 +256,9 @@ impl Mmu {
             0x2000..=0x3FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
+                        Mbc::None => {
+                            self.rom[address as usize] = value;
+                        }
                         Mbc::Mbc1 { mbc } => {
                             mbc.bank1 = max(value & 0x1F, 1);
                         }
@@ -269,9 +271,6 @@ impl Mmu {
                         Mbc::Mbc5 => {
                             println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
                         }
-                        _ => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc?, cannot write address {:#06X}.", address);
-                        }
                     }
                 } else {
                     // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
@@ -283,6 +282,9 @@ impl Mmu {
             0x4000..=0x5FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
+                        Mbc::None => {
+                            self.rom[address as usize] = value;
+                        }
                         Mbc::Mbc1 { mbc } => {
                             mbc.bank2 = value & 0x03;
                         }
@@ -295,9 +297,6 @@ impl Mmu {
                         Mbc::Mbc5 => {
                             println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
                         }
-                        _ => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc?, cannot write address {:#06X}.", address);
-                        }
                     }
                 } else {
                     // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
@@ -309,6 +308,9 @@ impl Mmu {
             0x6000..=0x7FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
                     match &mut cartridge.mbc {
+                        Mbc::None => {
+                            self.rom[address as usize] = value;
+                        }
                         Mbc::Mbc1 { mbc } => {
                             mbc.advram_banking_mode = (value & 1) == 1;
                         }
@@ -320,9 +322,6 @@ impl Mmu {
                         }
                         Mbc::Mbc5 => {
                             println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
-                        }
-                        _ => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc?, cannot write address {:#06X}.", address);
                         }
                     }
                 } else {
@@ -359,7 +358,6 @@ impl Mmu {
 
             // PROHIBITED ECHO RAM
             0xE000..=0xFDFF => {
-                // println!("PROHIBITED ECHO RAM: Cannot write address {:#06X}.", address);
                 adjusted_address = (address as usize - 0xA000) & (self.ram.len() - 1);
                 self.ram[adjusted_address] = value;
             }
@@ -375,9 +373,11 @@ impl Mmu {
                 }
             }
 
-            // PROHIBITED -- returns $FF when OAM is blocked, and otherwise the behavior depends on the hardware revision.
+            // PROHIBITED
             0xFEA0..=0xFEFF => {
-                println!("PROHIBITED RAM: Cannot write address {:#06X}.", address);
+                println!("PROHIBITED RAM: Not supposed to write address {:#06X}.", address);
+                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
+                self.ram[adjusted_address] = value;
             }
 
             // IO
