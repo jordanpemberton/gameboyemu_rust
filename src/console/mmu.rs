@@ -411,7 +411,7 @@ impl Mmu {
                     LCD_STATUS_REG => {
                         if caller == Caller::PPU {
                             self.ram[adjusted_address] = value;
-                            self.ppu_mode = ppu::STAT_MODES[(value & 0x03) as usize]; // locking dr mario?
+                            self.ppu_mode = ppu::STAT_MODES[(value & 0x03) as usize]; // dr mario getting locked in non hblank...
                         } else {
                             // Bits 0,1,2 are read-only (only PPU can update)
                             let curr_value = self.ram[adjusted_address];

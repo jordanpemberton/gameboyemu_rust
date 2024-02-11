@@ -162,22 +162,19 @@ impl Ppu {
 
     pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
         if self.lcd_control.check_bit(mmu, LcdControlRegBit::LcdAndPpuEnabled as u8, Caller::PPU) {
-            self.clocks += cycles as usize;
-
             // let mode = mmu.ppu_mode;
             let mode_flag = (self.lcd_status.read(mmu, Caller::PPU) & 0x03) as usize;
             let mode = STAT_MODES[mode_flag];
-
             let mode_duration = MODE_DURATION[mode as usize];
             let (mode_y_start, mode_y_end) = MODE_LINE_RANGE[mode as usize];
 
-            // Force current line ly to align with current mode (hack)
+            // HACK Force current line ly to align with current mode
             if self.ly.read(mmu, Caller::PPU) < mode_y_start || mode_y_end <= self.ly.read(mmu, Caller::PPU) {
                 self.set_ly(mmu, mode_y_start);
             }
 
             if self.clocks >= mode_duration {
-                self.clocks = 0;
+                self.clocks = self.clocks - mode_duration;
 
                 match mode {
                     StatMode::OamSearch => {
@@ -205,22 +202,23 @@ impl Ppu {
 
             match mode {
                 StatMode::OamSearch => {
-                        self.oam_search(mmu);
+                    self.oam_search(mmu);
                 }
                 StatMode::PixelTransfer => {
-                        self.pixel_transfer(mmu);
+                    self.pixel_transfer(mmu);
                 }
                 StatMode::HBlank => {}
                 StatMode::VBlank => {}
             }
 
-            // TODO relocate?
             if self.ly.read(mmu, Caller::PPU) == self.lyc.read(mmu, Caller::PPU) {
                 self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, true, Caller::PPU);
-                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU); // ?
+                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
             } else {
                 self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, false, Caller::PPU);
             }
+
+            self.clocks += cycles as usize;
         }
     }
 
@@ -268,7 +266,7 @@ impl Ppu {
                 interrupts.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, true, Caller::PPU);
 
                 if self.lcd_status.check_bit(mmu, LcdStatRegBit::VBlankInterruptEnabled as u8, Caller::PPU)
-                || self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8, Caller::PPU) {
+                    || self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8, Caller::PPU) {
                     interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
                 }
             }
