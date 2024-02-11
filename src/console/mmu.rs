@@ -62,7 +62,7 @@ pub(crate) struct Mmu {
     debug_value: u8,
     rom: [u8; 0x8000usize],
     ram: [u8; 0x8000usize],
-    ppu_mode: ppu::StatMode,
+    pub(crate) ppu_mode: ppu::StatMode,
 }
 
 impl Mmu {
@@ -73,7 +73,7 @@ impl Mmu {
             oam_dma_src_addr: None,
             active_input: HashSet::from([]),
             cartridge,
-            debug_address: Option::from(LCD_STATUS_REG), // Option::from(0xFFCC), // Option::from(0xFFE1), // None,
+        debug_address: Option::from(LCD_CONTROL_REG), // Option::from(0xFFCC), // Option::from(0xFFE1), // None,
             debug_value: 0,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
@@ -87,10 +87,6 @@ impl Mmu {
         mmu.ram[(JOYPAD_REG - 0x8000) as usize] = 0x1F;
 
         mmu
-    }
-
-    pub(crate) fn set_ppu_statmode(&mut self, ppu_mode: ppu::StatMode) {
-        self.ppu_mode = ppu_mode;
     }
 
     // noinspection RsNonExhaustiveMatch -- u16 range covered
@@ -197,9 +193,9 @@ impl Mmu {
         result
     }
 
-    pub(crate) fn read_16(&mut self, address: u16, endian: Endianness) -> u16 {
-        let lsb: u8 = self.read_8(address, Caller::CPU);
-        let msb: u8 = self.read_8(address + 1, Caller::CPU);
+    pub(crate) fn read_16(&mut self, address: u16, endian: Endianness, caller: Caller) -> u16 {
+        let lsb: u8 = self.read_8(address, caller);
+        let msb: u8 = self.read_8(address + 1, caller);
 
         match endian {
             Endianness::BIG => (msb as u16) << 8 | lsb as u16,
@@ -415,6 +411,7 @@ impl Mmu {
                     LCD_STATUS_REG => {
                         if caller == Caller::PPU {
                             self.ram[adjusted_address] = value;
+                            self.ppu_mode = ppu::STAT_MODES[(value & 0x03) as usize]; // locking dr mario?
                         } else {
                             // Bits 0,1,2 are read-only (only PPU can update)
                             let curr_value = self.ram[adjusted_address];
@@ -422,18 +419,15 @@ impl Mmu {
                         }
                     }
                     LCD_CONTROL_REG => {
-                        // Does PPU need special write priviledges?
-                        // if caller == Caller::PPU {
-                        //     self.ram[adjusted_address] = value;
-                        // } else {
-                            // Bit 7 can only be cleared during VBlank STAT mode
-                            if self.ppu_mode == ppu::StatMode::VBlank {
-                                self.ram[adjusted_address] = value;
-                            } else {
-                                let curr_value = self.ram[adjusted_address];
-                                self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
-                            }
-                        // }
+                        if self.ppu_mode == ppu::StatMode::VBlank {
+                            println!("Writing CONTROL during VBlank.");
+                            self.ram[adjusted_address] = value;
+                        }
+                        else {
+                            println!("Writing CONTROL outside VBlank, don't clear bit 7.");
+                            let curr_value = self.ram[adjusted_address];
+                            self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
+                        }
                     }
                     DMA_REG => {
                         self.ram[adjusted_address] = value;
@@ -463,7 +457,7 @@ impl Mmu {
 
         // For debugging because conditional breakpoints are unuseably slow
         if let Some(debug_address) = self.debug_address {
-            if address == debug_address && self.ram[adjusted_address] != self.debug_value {
+            if address == debug_address { // && self.ram[adjusted_address] != self.debug_value {
                 self.debug_value = self.ram[adjusted_address];
                 println!("(SET to {:#04X}) [{:#06X}] = {:#04X}", value, debug_address, self.debug_value);
             }

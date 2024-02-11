@@ -691,7 +691,7 @@ impl Instruction {
     fn pop(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, target_register: CpuRegIndex) -> i16 {
         // r16=(SP)
         let source_address = cpu.registers.get_word(CpuRegIndex::SP);
-        let value = mmu.read_16(source_address, Endianness::BIG);
+        let value = mmu.read_16(source_address, Endianness::BIG, Caller::CPU);
         cpu.registers.set_word(target_register, value);
         // SP=SP+2
         cpu.registers.increment(CpuRegIndex::SP, 2);
