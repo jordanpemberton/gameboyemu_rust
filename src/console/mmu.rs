@@ -73,7 +73,7 @@ impl Mmu {
             oam_dma_src_addr: None,
             active_input: HashSet::from([]),
             cartridge,
-        debug_address: Option::from(LCD_CONTROL_REG), // Option::from(0xFFCC), // Option::from(0xFFE1), // None,
+            debug_address: Option::from(LCD_CONTROL_REG), // (0xFFCC), (0xFFE1),
             debug_value: 0,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
@@ -141,7 +141,7 @@ impl Mmu {
                 self.ram[address as usize - 0x8000]
             }
 
-            // ECHO RAM PROHIBITED C000-DDFF Mirror
+            // ECHO RAM C000-DDFF Mirror
             0xE000..=0xFDFF => {
                 self.ram[address as usize - 0xA000]
             }
@@ -352,7 +352,7 @@ impl Mmu {
                 self.ram[adjusted_address] = value;
             }
 
-            // PROHIBITED ECHO RAM
+            // ECHO RAM C000-DDFF Mirror
             0xE000..=0xFDFF => {
                 adjusted_address = (address as usize - 0xA000) & (self.ram.len() - 1);
                 self.ram[adjusted_address] = value;
@@ -371,7 +371,7 @@ impl Mmu {
 
             // PROHIBITED
             0xFEA0..=0xFEFF => {
-                println!("PROHIBITED RAM: Not supposed to write address {:#06X}.", address);
+                // println!("PROHIBITED RAM: Not supposed to write address {:#06X}.", address);
                 let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
                 self.ram[adjusted_address] = value;
             }
@@ -424,9 +424,10 @@ impl Mmu {
                             self.ram[adjusted_address] = value;
                         }
                         else {
-                            println!("Writing CONTROL outside VBlank, don't clear bit 7.");
-                            let curr_value = self.ram[adjusted_address];
-                            self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
+                            println!("Writing CONTROL outside VBlank, please don't clear bit 7.");
+                            // let curr_value = self.ram[adjusted_address];
+                            // self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
+                            self.ram[adjusted_address] = value;
                         }
                     }
                     DMA_REG => {

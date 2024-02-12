@@ -8,7 +8,6 @@ use crate::console::register::Register;
 pub(crate) struct Timer {
     // Internally, SYSCLK is a 16 bit divider, incremented each "clock tick" (every cpu clock cycle?)
     tima_clocks: u16,
-    overflow: bool,
     is_in_stop_mode: bool, // TODO implement
 
     // The DIV IO register only exposes the upper 8 bits of SYSCLK,
@@ -25,7 +24,6 @@ impl Timer {
     pub(crate) fn new() -> Timer {
         Timer {
             tima_clocks: 0,
-            overflow: false,
             is_in_stop_mode: false,
             div: Register::new(mmu::DIV_REG),
             tima: Register::new(mmu::TIMA_REG),
@@ -72,7 +70,7 @@ impl Timer {
                 }
 
                 self.tima.write(mmu, new_tima, mmu::Caller::TIMER);
-                self.tima_clocks = self.tima_clocks - selected_clocks;
+                self.tima_clocks -= selected_clocks;
             }
         }
 
