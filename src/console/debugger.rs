@@ -78,12 +78,12 @@ impl Debugger {
     // Option 1, Example: "0xC375	0x00CA	JP Z,a16      	0xB9	0xC1"
     pub(crate) fn print_cpu_exec_op1(cpu: &mut Cpu, mmu: &Mmu, start_pc: u16, opcode: u16, mnemonic: &str, args: &[u8]) {
         if !cpu.visited.contains(&start_pc) { // 0x234E == DrMario PollJoypad
-            print!("{:#06X}\t{:#06X}\t{:<14}", start_pc, opcode, mnemonic);
+            print!("{:04X}\t{:02X}\t{:<14}", start_pc, opcode, mnemonic);
             if args.len() > 0 {
-                print!("\t{:#04X}", args[0]);
+                print!("\t{:02X}", args[0]);
             };
             if args.len() > 1 {
-                print!("\t{:#04X}", args[1]);
+                print!("\t{:02X}", args[1]);
             };
             println!();
             cpu.visited.insert(start_pc);

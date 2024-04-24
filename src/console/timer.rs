@@ -46,22 +46,27 @@ impl Timer {
             return request_interrupt;
         }
 
-        // Increment internal/system clock /DIV
+        // Increment internal/system clock by cycles, which in turn increments DIV every 256 counts
         mmu.sysclock = mmu.sysclock.wrapping_add(cycles as u16);
-        self.div.write(mmu, (mmu.sysclock >> 8) as u8, Caller::TIMER); // DIV = botttom 8 or sysclock, increments every 256 clocks
+        self.div.write(mmu, (mmu.sysclock >> 8) as u8, Caller::TIMER); // DIV = top 8 of sysclock, increments every 256 clocks
 
         // Increment TIMA according to TAC
         let tac = self.tac.read(mmu, Caller::TIMER);
         let tima_incr_is_enabled = tac & 0b0100 == 0b0100;
 
         if tima_incr_is_enabled {
+            // Increment internal TIMA cycle counter
+            // self.tima_clocks = self.tima_clocks.wrapping_add(cycles as u16);
             self.tima_clocks += cycles as u16;
+            // self.tima_clocks = self.div.read(mmu, Caller::TIMER) as u16; // ?
 
             // Increment TIMA at the rate specified by TAC
             let selected_clocks = self.selected_clocks(tac);
 
             while self.tima_clocks >= selected_clocks {
-                let (mut new_tima, overflow) = self.tima.read(mmu, Caller::TIMER).overflowing_add(1);
+                // Increment TIMA
+                let (mut new_tima, overflow) = self.tima.read(mmu, Caller::TIMER)
+                    .overflowing_add(1);
 
                 // If TIMA overflows, set TIMA to TMA and request interrupt
                 if overflow {
@@ -70,6 +75,7 @@ impl Timer {
                 }
 
                 self.tima.write(mmu, new_tima, mmu::Caller::TIMER);
+                // self.tima_clocks = self.tima_clocks.wrapping_sub(selected_clocks);
                 self.tima_clocks -= selected_clocks;
             }
         }

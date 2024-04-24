@@ -45,7 +45,7 @@ pub(crate) enum Endianness {
     LITTLE,
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub(crate) enum Caller {
     CPU,
     PPU,
@@ -73,7 +73,7 @@ impl Mmu {
             oam_dma_src_addr: None,
             active_input: HashSet::from([]),
             cartridge,
-            debug_address: Option::from(LCD_CONTROL_REG), // (0xFFCC), (0xFFE1),
+            debug_address: Option::from(TIMA_REG),
             debug_value: 0,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
@@ -101,7 +101,7 @@ impl Mmu {
             0x0000..=0x3FFF => if let Some(cartridge) = &self.cartridge {
                 cartridge.read_8_0000_3fff(address)
             } else {
-                // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:#06X}.", address);
+                // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
                 // 0x00
                 self.rom[address as usize]
             }
@@ -110,7 +110,7 @@ impl Mmu {
             0x4000..=0x7FFF => if let Some(cartridge) = &self.cartridge {
                 cartridge.read_8_4000_7fff(address)
             } else {
-                // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:#06X}.", address);
+                // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
                 // 0x00
                 self.rom[address as usize]
             }
@@ -120,7 +120,7 @@ impl Mmu {
                 if caller == Caller::PPU || self.ppu_mode != ppu::StatMode::PixelTransfer {
                     self.ram[address as usize - 0x8000]
                 } else {
-                    println!("VRAM LOCKED by PPU: Cannot read address {:#06X}.", address);
+                    // println!("VRAM LOCKED by PPU: Cannot read address {:04X}.", address);
                     0xFF
                 }
             }
@@ -130,7 +130,7 @@ impl Mmu {
                 if let Some(cartridge) = &self.cartridge {
                     cartridge.read_8_a000_bfff(address)
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:#06X}.", address);
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
                     // 0x00
                     self.ram[address as usize - 0x8000]
                 }
@@ -152,7 +152,7 @@ impl Mmu {
                     || (self.ppu_mode != ppu::StatMode::OamSearch && self.ppu_mode != ppu::StatMode::PixelTransfer) {
                     self.ram[address as usize - 0x8000]
                 } else {
-                    println!("OAM LOCKED by PPU: Cannot read address {:#06X}.", address);
+                    println!("OAM LOCKED by PPU: Cannot read address {:04X}.", address);
                     0xFF
                 }
             }
@@ -160,7 +160,7 @@ impl Mmu {
             // PROHIBITED -- returns $FF when OAM is blocked, otherwise the behavior depends on the hardware revision.
             // On DMG, MGB, SGB, and SGB2, reads during OAM block trigger OAM corruption. Reads otherwise return $00.
             0xFEA0..=0xFEFF => {
-                println!("PROHIBITED RAM: Not supposed to read address {:#06X}.", address);
+                println!("PROHIBITED RAM: Not supposed to read address {:04X}.", address);
                 if self.ppu_mode == ppu::StatMode::OamSearch {
                     0xFF
                 } else {
@@ -186,7 +186,7 @@ impl Mmu {
         if let Some(debug_address) = self.debug_address {
             if address == debug_address && result != self.debug_value {
                 self.debug_value = result;
-                println!("(GET) [{:#06X}] = {:#04X}", debug_address, self.debug_value);
+                println!("(READ) [{:04X}] = {:02X}", debug_address, self.debug_value);
             }
         }
 
@@ -218,7 +218,7 @@ impl Mmu {
         match address {
             // BOOT ROM
             0x0000..=0x0100 if self.is_booting => {
-                // println!("UNIMPLEMENTED: BOOT ROM, cannot write address {:#06X}.", address);
+                // println!("UNIMPLEMENTED: BOOT ROM, cannot write address {:04X}.", address);
                 self.rom[address as usize] = value;
             }
 
@@ -233,17 +233,17 @@ impl Mmu {
                             mbc.ram_enabled = (value & 0x0F) == 0x0A;
                         }
                         Mbc::Mbc2 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc3 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc5 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
                         }
                     }
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                     self.rom[address as usize] = value;
                 }
             }
@@ -259,17 +259,17 @@ impl Mmu {
                             mbc.bank1 = max(value & 0x1F, 1);
                         }
                         Mbc::Mbc2 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc3 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc5 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
                         }
                     }
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                     self.rom[address as usize] = value;
                 }
             }
@@ -285,17 +285,17 @@ impl Mmu {
                             mbc.bank2 = value & 0x03;
                         }
                         Mbc::Mbc2 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc3 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc5 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
                         }
                     }
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                     self.rom[address as usize] = value;
                 }
             }
@@ -311,17 +311,17 @@ impl Mmu {
                             mbc.advram_banking_mode = (value & 1) == 1;
                         }
                         Mbc::Mbc2 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc3 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc5 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:#06X}.", address);
+                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
                         }
                     }
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:#06X}.", address);
+                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                     self.rom[address as usize] = value;
                 }
             }
@@ -332,7 +332,7 @@ impl Mmu {
                     adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
                     self.ram[adjusted_address] = value;
                 } else {
-                    println!("VRAM LOCKED by PPU: Cannot write address {:#06X}.", address);
+                    println!("VRAM LOCKED by PPU: Cannot write address {:04X}.", address);
                 }
             }
 
@@ -365,13 +365,13 @@ impl Mmu {
                     adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
                     self.ram[adjusted_address] = value;
                 } else {
-                    println!("OAM LOCKED by PPU: Cannot write address {:#06X}.", address);
+                    println!("OAM LOCKED by PPU: Cannot write address {:04X}.", address);
                 }
             }
 
             // PROHIBITED
             0xFEA0..=0xFEFF => {
-                // println!("PROHIBITED RAM: Not supposed to write address {:#06X}.", address);
+                // println!("PROHIBITED RAM: Not supposed to write address {:04X}.", address);
                 let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
                 self.ram[adjusted_address] = value;
             }
@@ -391,6 +391,15 @@ impl Mmu {
                             self.ram[adjusted_address] = 0;
                             self.sysclock = 0; // Internal clock is also reset
                         }
+                    }
+                    TIMA_REG => {
+                        self.ram[adjusted_address] = value;
+                    }
+                    TMA_REG => {
+                        self.ram[adjusted_address] = value;
+                    }
+                    TAC_REG => {
+                        self.ram[adjusted_address] = value;
                     }
 
                     // JOYPAD
@@ -460,7 +469,8 @@ impl Mmu {
         if let Some(debug_address) = self.debug_address {
             if address == debug_address { // && self.ram[adjusted_address] != self.debug_value {
                 self.debug_value = self.ram[adjusted_address];
-                println!("(SET to {:#04X}) [{:#06X}] = {:#04X}", value, debug_address, self.debug_value);
+                println!("(WRITE {:02X}) [{:04X}] = {:02X} Caller:{:?}",
+                    value, debug_address, self.debug_value, caller);
             }
         }
     }
