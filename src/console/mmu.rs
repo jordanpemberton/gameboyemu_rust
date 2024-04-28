@@ -53,7 +53,7 @@ pub(crate) enum Caller {
 }
 
 pub(crate) struct Mmu {
-    pub(crate) sysclock: u16, // Incremented by Timer, TODO relocate?
+    pub(crate) sysclock: u16, // 16bit internal DIV reg, incremented by Timer, TODO relocate?
     pub(crate) is_booting: bool,
     pub(crate) oam_dma_src_addr: Option<u16>,
     pub(crate) active_input: HashSet<JoypadInput>,  // TODO this doesn't belong here
@@ -387,10 +387,10 @@ impl Mmu {
                         if caller == Caller::TIMER {
                             self.ram[adjusted_address] = value;
                         } else {
-                            // Writes to timer DIV register reset it to 0
+                            // All writes to timer DIV register reset it to 0.
                             self.ram[adjusted_address] = 0;
-                            self.sysclock = 0; // Internal clock is also reset
-                            self.ram[TIMA_REG as usize - 0x8000] = 0; // also TIMA...?
+                            self.sysclock = 0; // Internal clock is also reset(?)
+                            // TODO How is TIMA affected...?
                         }
                     }
                     TIMA_REG => {

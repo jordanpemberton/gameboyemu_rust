@@ -41,37 +41,33 @@ impl Timer {
             return request_interrupt;
         }
 
+        // TAC
         let tac = self.tac.read(mmu, Caller::TIMER);
-        let selected_clocks = self.selected_clocks(tac);
-        let tac_mask = self.tac_frequency_mask(tac);
-        let prev_tac_frequency_bit = (mmu.sysclock & tac_mask) == tac_mask;
+        let tima_incr_is_enabled = (tac & 0b0100) == 0b0100;
+        let tac_frequency = self.tac_frequency_mask(tac);
+        // let selected_clocks = self.selected_clocks(tac);
+        let prev_tac_frequency_bit = (mmu.sysclock & tac_frequency) == tac_frequency;
 
         // Increment internal/system clock by cycles, which in turn increments DIV.
         // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
         mmu.sysclock = mmu.sysclock.wrapping_add(cycles as u16);
-        // if mmu.sysclock >= 0x4000 {
-        //     mmu.sysclock = 0;
-        // }
-        let new_tac_frequency_bit = (mmu.sysclock & tac_mask) == tac_mask;
+        self.tima_clocks = self.tima_clocks.wrapping_add(cycles as u16); // ?
+        // let mut tima_clocks = mmu.sysclock; // fails Blargg CPU #2
 
-        // DIV = top 8 bits of sysclock /sysclock shifted >> 6 bits. DIV increments every 256 machine clocks (?)
+        // DIV = top 8 bits of sysclock /sysclock shifted >> 8 bits. DIV increments every 256 machine clocks.
         let new_div = (mmu.sysclock >> 8) as u8;
-        // let new_div = (mmu.sysclock >> 6) as u8;
         if new_div != self.div.read(mmu, Caller::TIMER) {
             self.div.write(mmu, new_div, Caller::TIMER);
         }
 
-        // Increment TIMA according to TAC
-        self.tima_clocks = self.tima_clocks.wrapping_add(cycles as u16);
-        let tima_incr_is_enabled = (tac & 0b0100) == 0b0100;
-
+        // Increment TIMA according to TAC and DIV/sysclock
         if tima_incr_is_enabled {
-            // Increment TIMA at the rate specified by TAC
-            let time_to_increment_tima = !prev_tac_frequency_bit && new_tac_frequency_bit;
+            let new_tac_frequency_bit = (mmu.sysclock & tac_frequency) == tac_frequency;
+            // let time_to_increment_tima = prev_tac_frequency_bit != new_tac_frequency_bit; // bit was just changed
+            let time_to_increment_tima = self.tima_clocks >= tac_frequency; // times up
 
-            // if time_to_increment_tima {
-            while self.tima_clocks >= selected_clocks {
-                // Increment TIMA
+            if time_to_increment_tima {
+            // while self.tima_clocks >= selected_clocks {
                 let (mut new_tima, overflow) = self.tima.read(mmu, Caller::TIMER)
                     .overflowing_add(1);
 
@@ -83,8 +79,7 @@ impl Timer {
 
                 self.tima.write(mmu, new_tima, Caller::TIMER);
 
-                // Reset /adjust TIMA internal counter
-                self.tima_clocks = self.tima_clocks.wrapping_sub(selected_clocks);
+                // self.tima_clocks = self.tima_clocks.wrapping_sub(tac_frequency);
             }
         }
 
@@ -109,10 +104,10 @@ impl Timer {
     #[allow(dead_code)]
     fn selected_clocks(&self, tac: u8) -> u16 {
         match tac & 0b0011 {
-            0b00 => 1024, // 256 M * 4
-            0b01 => 16,   // 4 M * 4
-            0b10 => 64,   // 16 M * 4
-            0b11 => 256,  // 64 M * 4
+            0b00 => 1024, // = 256 M * 4
+            0b01 => 16,   // = 4 M * 4
+            0b10 => 64,   // = 16 M * 4
+            0b11 => 256,  // = 64 M * 4
             _ => unreachable!()
         }
     }
@@ -120,12 +115,14 @@ impl Timer {
     fn tac_frequency_mask(&self, tac: u8) -> u16 {
         let tac_frequency = tac & 0b0011;
         // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
-        // ______0_ 3_2_1_
+        // https://www.reddit.com/r/EmuDev/comments/pbmu8r/gameboy_writing_to_the_div_location_reset_its/
+        // bits 3, 5, 7, 9 of sysclock (div):
+        // ____ __0_ 3_2_ 1___
         match tac_frequency {
-            0b00 => 0b1000_0000, // 0x80, 128
-            0b01 => 0b0010_0000, // 0x40, 32
-            0b10 => 0b0000_1000, // 0x08, 8
-            0b11 => 0b0000_0010, // 0x02, 2
+            0b00 => 0b0010_0000_0000, // 512, 0x200
+            0b01 => 0b0000_1000,      // 8, 0x08
+            0b10 => 0b0010_0000,      // 32, 0x20
+            0b11 => 0b1000_0000,      // 128, 0x80
             _ => unreachable!()
         }
     }
