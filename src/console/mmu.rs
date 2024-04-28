@@ -430,11 +430,11 @@ impl Mmu {
                     }
                     LCD_CONTROL_REG => {
                         if self.ppu_mode == ppu::StatMode::VBlank {
-                            println!("Writing CONTROL during VBlank.");
+                            println!("Writing CONTROL during VBlank: {:04X}", value);
                             self.ram[adjusted_address] = value;
                         }
                         else {
-                            println!("Writing CONTROL outside VBlank, please don't clear bit 7.");
+                            println!("Writing CONTROL outside VBlank, please don't clear bit 7: {:04X}", value);
                             // let curr_value = self.ram[adjusted_address];
                             // self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
                             self.ram[adjusted_address] = value;
