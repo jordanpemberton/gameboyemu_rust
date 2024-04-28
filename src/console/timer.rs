@@ -36,33 +36,40 @@ impl Timer {
     pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
         let mut request_interrupt = false;
 
-        // If internal clock was reset, reset tima_clocks also
-        if mmu.sysclock == 0 {
-            self.tima_clocks = 0;
-        }
-
         // TODO: stop mode
         if self.is_in_stop_mode {
             return request_interrupt;
         }
 
-        // Increment internal/system clock by cycles, which in turn increments DIV every 256 counts
+        let tac = self.tac.read(mmu, Caller::TIMER);
+        let selected_clocks = self.selected_clocks(tac);
+        let tac_mask = self.tac_frequency_mask(tac);
+        let prev_tac_frequency_bit = (mmu.sysclock & tac_mask) == tac_mask;
+
+        // Increment internal/system clock by cycles, which in turn increments DIV.
+        // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
         mmu.sysclock = mmu.sysclock.wrapping_add(cycles as u16);
-        self.div.write(mmu, (mmu.sysclock >> 8) as u8, Caller::TIMER); // DIV = top 8 of sysclock, increments every 256 clocks
+        // if mmu.sysclock >= 0x4000 {
+        //     mmu.sysclock = 0;
+        // }
+        let new_tac_frequency_bit = (mmu.sysclock & tac_mask) == tac_mask;
+
+        // DIV = top 8 bits of sysclock /sysclock shifted >> 6 bits. DIV increments every 256 machine clocks (?)
+        let new_div = (mmu.sysclock >> 8) as u8;
+        // let new_div = (mmu.sysclock >> 6) as u8;
+        if new_div != self.div.read(mmu, Caller::TIMER) {
+            self.div.write(mmu, new_div, Caller::TIMER);
+        }
 
         // Increment TIMA according to TAC
-        let tac = self.tac.read(mmu, Caller::TIMER);
-        let tima_incr_is_enabled = tac & 0b0100 == 0b0100;
+        self.tima_clocks = self.tima_clocks.wrapping_add(cycles as u16);
+        let tima_incr_is_enabled = (tac & 0b0100) == 0b0100;
 
         if tima_incr_is_enabled {
-            // Increment internal TIMA cycle counter
-            // self.tima_clocks = self.tima_clocks.wrapping_add(cycles as u16);
-            self.tima_clocks += cycles as u16;
-            // self.tima_clocks = self.div.read(mmu, Caller::TIMER) as u16; // ?
-
             // Increment TIMA at the rate specified by TAC
-            let selected_clocks = self.selected_clocks(tac);
+            let time_to_increment_tima = !prev_tac_frequency_bit && new_tac_frequency_bit;
 
+            // if time_to_increment_tima {
             while self.tima_clocks >= selected_clocks {
                 // Increment TIMA
                 let (mut new_tima, overflow) = self.tima.read(mmu, Caller::TIMER)
@@ -70,13 +77,14 @@ impl Timer {
 
                 // If TIMA overflows, set TIMA to TMA and request interrupt
                 if overflow {
-                    request_interrupt = true;
                     new_tima = self.tma.read(mmu, Caller::TIMER);
+                    request_interrupt = true;
                 }
 
-                self.tima.write(mmu, new_tima, mmu::Caller::TIMER);
-                // self.tima_clocks = self.tima_clocks.wrapping_sub(selected_clocks);
-                self.tima_clocks -= selected_clocks;
+                self.tima.write(mmu, new_tima, Caller::TIMER);
+
+                // Reset /adjust TIMA internal counter
+                self.tima_clocks = self.tima_clocks.wrapping_sub(selected_clocks);
             }
         }
 
@@ -98,12 +106,26 @@ impl Timer {
         )
     }
 
+    #[allow(dead_code)]
     fn selected_clocks(&self, tac: u8) -> u16 {
         match tac & 0b0011 {
-            0b00 => 1024,
-            0b01 => 16,
-            0b10 => 64,
-            0b11 => 256,
+            0b00 => 1024, // 256 M * 4
+            0b01 => 16,   // 4 M * 4
+            0b10 => 64,   // 16 M * 4
+            0b11 => 256,  // 64 M * 4
+            _ => unreachable!()
+        }
+    }
+
+    fn tac_frequency_mask(&self, tac: u8) -> u16 {
+        let tac_frequency = tac & 0b0011;
+        // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
+        // ______0_ 3_2_1_
+        match tac_frequency {
+            0b00 => 0b1000_0000, // 0x80, 128
+            0b01 => 0b0010_0000, // 0x40, 32
+            0b10 => 0b0000_1000, // 0x08, 8
+            0b11 => 0b0000_0010, // 0x02, 2
             _ => unreachable!()
         }
     }

@@ -73,7 +73,7 @@ impl Mmu {
             oam_dma_src_addr: None,
             active_input: HashSet::from([]),
             cartridge,
-            debug_address: Option::from(TIMA_REG),
+            debug_address: None, // Option::from(IF_REG),
             debug_value: 0,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
@@ -390,6 +390,7 @@ impl Mmu {
                             // Writes to timer DIV register reset it to 0
                             self.ram[adjusted_address] = 0;
                             self.sysclock = 0; // Internal clock is also reset
+                            self.ram[TIMA_REG as usize - 0x8000] = 0; // also TIMA...?
                         }
                     }
                     TIMA_REG => {

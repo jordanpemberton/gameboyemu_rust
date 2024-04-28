@@ -184,11 +184,6 @@ impl Console {
             return 4;
         }
 
-        // TIMER (using previous cycles delta)
-        if self.timer.step(&mut self.mmu, self.cycles as u8) {
-            self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
-        }
-
         // PPU - OAM DMA transfer
         self.ppu.oam_dma(&mut self.mmu);
 
@@ -197,7 +192,6 @@ impl Console {
 
         // CPU - step (execute instruction)
         self.cycles = self.cpu.step(&mut self.mmu);
-
         if self.cycles < 0 {
             // self.debug_print_screen();
             self.debug_peek();
@@ -207,6 +201,11 @@ impl Console {
 
         // CPU - interrupts
         self.cycles += self.cpu.handle_interrupts(&mut self.mmu);
+
+        // TIMER
+        if self.timer.step(&mut self.mmu, self.cycles as u8) {
+            self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
+        }
 
         self.cycles as u16
     }
