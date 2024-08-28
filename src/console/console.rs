@@ -203,7 +203,7 @@ impl Console {
         self.cycles += self.cpu.handle_interrupts(&mut self.mmu);
 
         // TIMER
-        if self.timer.step(&mut self.mmu, self.cycles as u8) {
+        if self.timer.step(&mut self.mmu, self.cycles as u16) {
             self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
         }
 

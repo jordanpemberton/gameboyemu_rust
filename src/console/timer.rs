@@ -31,7 +31,7 @@ impl Timer {
     }
 
     #[allow(unused_variables)]
-    pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u8) -> bool {
+    pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u16) -> bool {
         let mut request_interrupt = false;
 
         // TODO: stop mode
@@ -47,7 +47,7 @@ impl Timer {
 
         // Increment internal/system clock by cycles, which in turn increments DIV.
         // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
-        mmu.sysclock = mmu.sysclock.wrapping_add(cycles as u16);
+        mmu.sysclock = mmu.sysclock.wrapping_add(cycles);
 
         // DIV = top 8 bits of sysclock /sysclock shifted >> 8 bits. DIV increments every 256 machine clocks.
         let new_div = (mmu.sysclock >> 8) as u8; // why does mooneye use >>6?
@@ -55,7 +55,7 @@ impl Timer {
             self.div.write(mmu, new_div, Caller::TIMER);
         }
 
-        // If TIMA overflowed, set TIMA to TMA and request interrupt.
+        // If TIMA overflowed (on last tick), set TIMA to TMA and request interrupt.
         if self.tima_overflow {
             let tma = self.tma.read(mmu, Caller::TIMER);
             self.tima.write(mmu, tma, Caller::TIMER);
@@ -72,7 +72,6 @@ impl Timer {
             // let increment_tima = !prev_tac_frequency_bit && new_tac_frequency_bit; // TAC bit was just set
 
             if increment_tima {
-            // while self.tima_clocks >= tac_frequency { // vs counting cycles
                 let mut tima = self.tima.read(mmu, Caller::TIMER);
                 (tima, self.tima_overflow) = tima.overflowing_add(1);
                 self.tima.write(mmu, tima, Caller::TIMER);
