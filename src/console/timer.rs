@@ -48,9 +48,11 @@ impl Timer {
         // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
         mmu.sysclock = mmu.sysclock.wrapping_add(cycles);
 
-        // DIV = top 8 bits of sysclock /sysclock shifted >> 8 bits. DIV increments every 256 machine clocks.
-        let new_div = (mmu.sysclock >> 8) as u8; // why does mooneye use >>6?
-        if new_div != self.div.read(mmu, Caller::TIMER) {
+        // DIV = top 8 (?) bits of the sysclock, ie sysclock shifted >> 8(?) bits.
+        // DIV increments every 256 machine clocks(?)
+        let curr_div = self.div.read(mmu, Caller::TIMER);
+        let new_div = (mmu.sysclock >> 8) as u8;
+        if new_div != curr_div {
             self.div.write(mmu, new_div, Caller::TIMER);
         }
 
@@ -99,13 +101,13 @@ impl Timer {
 
     // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
     // https://www.reddit.com/r/EmuDev/comments/pbmu8r/gameboy_writing_to_the_div_location_reset_its/
-    // Used to mask bits 3, 5, 7, 9 of the sysclock (DIV):
+    // Used to mask bits of the sysclock:
     fn counter_bit(&self, tac: u8) -> u16 {
         match tac & 0b11 {
             0b00 => 1 << 9,
-            0b01 => 1 << 3,
-            0b10 => 1 << 5,
             0b11 => 1 << 7,
+            0b10 => 1 << 5,
+            0b01 => 1 << 3,
             _ => unreachable!()
         }
     }
