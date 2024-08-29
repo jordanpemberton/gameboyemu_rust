@@ -42,8 +42,7 @@ impl Timer {
         // Check TAC
         let tac = self.tac.read(mmu, Caller::TIMER);
         let tima_incr_is_enabled = (tac & 0b0100) == 0b0100;
-        let tac_frequency = self.tac_frequency_mask(tac);
-        let prev_tac_frequency_bit = self.tac_counter_bit(mmu.sysclock, tac);
+        let prev_counter_bit = self.is_counter_bit_flipped(mmu.sysclock, tac);
 
         // Increment internal/system clock by cycles, which in turn increments DIV.
         // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
@@ -65,11 +64,8 @@ impl Timer {
 
         // Else increment TIMA according to TAC and DIV/sysclock
         else if tima_incr_is_enabled {
-            let tac_frequency = self.tac_frequency_mask(tac);
-            let new_tac_frequency_bit = self.tac_counter_bit(mmu.sysclock, tac);
-            let increment_tima = prev_tac_frequency_bit != new_tac_frequency_bit; // TAC bit was just changed
-            // let increment_tima = prev_tac_frequency_bit && !new_tac_frequency_bit; // TAC bit was just cleared
-            // let increment_tima = !prev_tac_frequency_bit && new_tac_frequency_bit; // TAC bit was just set
+            // If counter bit was flipped last tick and now isn't after sys clock was incremented ...?
+            let increment_tima = prev_counter_bit && !self.is_counter_bit_flipped(mmu.sysclock, tac);
 
             if increment_tima {
                 let mut tima = self.tima.read(mmu, Caller::TIMER);
@@ -96,59 +92,20 @@ impl Timer {
         )
     }
 
-    #[allow(dead_code)]
-    fn selected_clocks(&self, tac: u8) -> u16 {
-        match tac & 0b0011 {
-            0b00 => 1 << 10, // 1024, // = 256 M * 4
-            0b01 => 1 << 4,  // 16,   // = 4 M * 4
-            0b10 => 1 << 6,  // 64,   // = 16 M * 4
-            0b11 => 1 << 8,  // 256,  // = 64 M * 4
-            _ => unreachable!()
-        }
+    fn is_counter_bit_flipped(&self, internal_counter: u16, tac: u8) -> bool {
+        let bit_mask = self.counter_bit(tac);
+        (internal_counter & bit_mask) == bit_mask
     }
 
-    #[allow(dead_code)]
-    fn tac_frequency_mask(&self, tac: u8) -> u16 {
-        let tac_frequency = tac & 0b0011;
-        // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
-        // https://www.reddit.com/r/EmuDev/comments/pbmu8r/gameboy_writing_to_the_div_location_reset_its/
-        // bits 3, 5, 7, 9 of sysclock (DIV):
-        // ____ __0_ 3_2_ 1___
-        match tac_frequency {
-            0b00 => 1 << 9, // 0b0010_0000_0000, // 0x200, 512
-            0b01 => 1 << 3, // 0b0000_1000,      // 0x08,  8
-            0b10 => 1 << 5, // 0b0010_0000,      // 0x20,  32
-            0b11 => 1 << 7, // 0b1000_0000,      // 0x80,  128
-            _ => unreachable!()
-        }
-    }
-
-    #[allow(dead_code)]
-    // from mooneye
-    fn tac_counter_bit(&self, internal_counter: u16, tac: u8) -> bool {
-        // let mask = self.tac_counter_mask_16b(tac);
-        let mask = self.tac_frequency_mask(tac);
-        (internal_counter & mask) == mask
-    }
-
-    #[allow(dead_code)]
-    fn tac_counter_mask_14b(&self, tac: u8) -> u16 {
+    // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
+    // https://www.reddit.com/r/EmuDev/comments/pbmu8r/gameboy_writing_to_the_div_location_reset_its/
+    // Used to mask bits 3, 5, 7, 9 of the sysclock (DIV):
+    fn counter_bit(&self, tac: u8) -> u16 {
         match tac & 0b11 {
-            0b00 => 1 << 7,       // 0x80, 128
-            0b01 => 1 << 1,       // 0x02, 2
-            0b10 => 1 << 3,       // 0x08, 8
-            0b11 => 1 << 5,       // 0x20, 32
-            _ => unreachable!()
-        }
-    }
-
-    #[allow(dead_code)]
-    fn tac_counter_mask_16b(&self, tac: u8) -> u16 {
-        match tac & 0b11 {
-            0b00 => 1 << 8,       // 0x80, 128
-            0b01 => 1 << 2,       // 0x02, 2
-            0b10 => 1 << 4,       // 0x08, 8
-            0b11 => 1 << 6,       // 0x20, 32
+            0b00 => 1 << 9,
+            0b01 => 1 << 3,
+            0b10 => 1 << 5,
+            0b11 => 1 << 7,
             _ => unreachable!()
         }
     }
