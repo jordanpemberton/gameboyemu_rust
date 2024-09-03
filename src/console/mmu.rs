@@ -5,6 +5,7 @@ use crate::cartridge::cartridge::Cartridge;
 use crate::cartridge::mbc::Mbc;
 use crate::console::input::JoypadInput;
 use crate::console::ppu;
+use crate::console::timer::Timer;
 
 // OAM
 pub(crate) const OAM_START: u16 = 0xFE00;
@@ -384,7 +385,7 @@ impl Mmu {
                 match address {
                     // TIMER
                     DIV_REG => {
-                        if caller == Caller::TIMER {
+                        if caller == Caller::TIMER { // so that Timer can update DIV
                             self.ram[adjusted_address] = value;
                         } else {
                             // All writes to timer DIV register reset it to 0.
@@ -400,7 +401,29 @@ impl Mmu {
                         self.ram[adjusted_address] = value;
                     }
                     TAC_REG => {
-                        self.ram[adjusted_address] = value;
+                        let new_tac = value & 0b0111;
+
+                        // TODO Does other timer registers also need to be updated on writes?
+                        // let old_tac = self.read_8(address, caller);
+                        // let tima_incr_is_enabled = Timer::is_tac_enabled(old_tac);
+                        // let old_counter_bit = tima_incr_is_enabled && Timer::is_counter_bit_flipped(self.sysclock, old_tac);
+
+                        self.ram[adjusted_address] = new_tac;
+
+                        // TODO Does other timer registers also need to be updated on writes?
+                        // let tima_incr_is_enabled = Timer::is_tac_enabled(new_tac);
+                        // let new_counter_bit = tima_incr_is_enabled && Timer::is_counter_bit_flipped(self.sysclock, new_tac);
+                        //
+                        // // if old_counter_bit != new_counter_bit {
+                        // if old_counter_bit && !new_counter_bit {
+                        //     // increment TIMA
+                        //     let old_tima = self.read_8(TIMA_REG, Caller::TIMER);
+                        //     let (mut new_tima, tima_overflow) = old_tima.overflowing_add(1);
+                        //     if tima_overflow {
+                        //         new_tima = self.read_8(TMA_REG, Caller::TIMER);
+                        //     }
+                        //     self.write_8(TIMA_REG, new_tima, Caller::TIMER);
+                        // }
                     }
 
                     // JOYPAD

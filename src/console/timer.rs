@@ -30,19 +30,30 @@ impl Timer {
         }
     }
 
+    pub(crate) fn is_tac_enabled(tac: u8) -> bool {
+        (tac & 0b0100) == 0b0100
+    }
+
+    pub(crate) fn is_counter_bit_flipped(internal_counter: u16, tac: u8) -> bool {
+        let bit_mask = Timer::counter_bit(tac);
+        (internal_counter & bit_mask) == bit_mask
+    }
+
     #[allow(unused_variables)]
     pub(crate) fn step(&mut self, mmu: &mut Mmu, cycles: u16) -> bool {
         let mut request_interrupt = false;
 
         // TODO: stop mode
-        if self.is_in_stop_mode {
-            return false;
-        }
+        // if self.is_in_stop_mode {
+        //     return false;
+        // }
 
         // Check TAC
         let tac = self.tac.read(mmu, Caller::TIMER);
-        let tima_incr_is_enabled = (tac & 0b0100) == 0b0100;
-        let prev_counter_bit = self.is_counter_bit_flipped(mmu.sysclock, tac);
+        let tima_incr_is_enabled = Timer::is_tac_enabled(tac);
+
+        // Using TAC, check sysclock counter bit (before clock is incremented)
+        let prev_counter_bit = Timer::is_counter_bit_flipped(mmu.sysclock, tac);
 
         // Increment internal/system clock by cycles, which in turn increments DIV.
         // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
@@ -57,17 +68,29 @@ impl Timer {
         }
 
         // If TIMA overflowed (on last tick), set TIMA to TMA and request interrupt.
+        // When TIMA overflows, the value from TMA is copied, and the timer flag is set in IF, but one M-cycle later.
+        // (This means that TIMA is equal to $00 for the M-cycle after it overflows.)
+        // (This only happens when TIMA overflows from incrementing, it cannot be made to happen by manually writing to TIMA.)
         if self.tima_overflow {
             let tma = self.tma.read(mmu, Caller::TIMER);
             self.tima.write(mmu, tma, Caller::TIMER);
             self.tima_overflow = false;
             request_interrupt = true;
         }
-
         // Else increment TIMA according to TAC and DIV/sysclock
         else if tima_incr_is_enabled {
-            // If counter bit was flipped last tick and now isn't after sys clock was incremented ...?
-            let increment_tima = prev_counter_bit && !self.is_counter_bit_flipped(mmu.sysclock, tac);
+            let new_counter_bit = Timer::is_counter_bit_flipped(mmu.sysclock, tac);
+
+            let increment_tima =
+                // Option 1: different than before -- Passes all blarrg/cpu_instrs tests!
+                // but fails blargg/mem_timing/individual/02-write_timing.gb
+                prev_counter_bit != new_counter_bit;
+
+                // Option 2: was flipped last tick but now isn't
+                // passes more of blargg/mem_timing/individual/02-write_timing.gb??,
+                // but fails blarrg/cpu_instrs/individual/02-interrupts.gb!! >:(
+                // WHY?
+                // prev_counter_bit && !new_counter_bit;
 
             if increment_tima {
                 let mut tima = self.tima.read(mmu, Caller::TIMER);
@@ -94,15 +117,10 @@ impl Timer {
         )
     }
 
-    fn is_counter_bit_flipped(&self, internal_counter: u16, tac: u8) -> bool {
-        let bit_mask = self.counter_bit(tac);
-        (internal_counter & bit_mask) == bit_mask
-    }
-
     // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#relation-between-timer-and-divider-register
     // https://www.reddit.com/r/EmuDev/comments/pbmu8r/gameboy_writing_to_the_div_location_reset_its/
     // Used to mask bits of the sysclock:
-    fn counter_bit(&self, tac: u8) -> u16 {
+    fn counter_bit(tac: u8) -> u16 {
         match tac & 0b11 {
             0b00 => 1 << 9,
             0b11 => 1 << 7,
