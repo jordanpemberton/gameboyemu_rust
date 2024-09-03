@@ -102,18 +102,18 @@ impl Mmu {
             0x0000..=0x3FFF => if let Some(cartridge) = &self.cartridge {
                 cartridge.read_8_0000_3fff(address)
             } else {
-                // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
-                // 0x00
-                self.rom[address as usize]
+                println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
+                0x00
+                // self.rom[address as usize]
             }
 
             // CARTRIDGE ROM SWITCHABLE
             0x4000..=0x7FFF => if let Some(cartridge) = &self.cartridge {
                 cartridge.read_8_4000_7fff(address)
             } else {
-                // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
-                // 0x00
-                self.rom[address as usize]
+                println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
+                0x00
+                // self.rom[address as usize]
             }
 
             // VRAM
@@ -121,7 +121,7 @@ impl Mmu {
                 if caller == Caller::PPU || self.ppu_mode != ppu::StatMode::PixelTransfer {
                     self.ram[address as usize - 0x8000]
                 } else {
-                    // println!("VRAM LOCKED by PPU: Cannot read address {:04X}.", address);
+                    println!("VRAM LOCKED by PPU: Cannot read address {:04X}.", address);
                     0xFF
                 }
             }
@@ -131,9 +131,9 @@ impl Mmu {
                 if let Some(cartridge) = &self.cartridge {
                     cartridge.read_8_a000_bfff(address)
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
-                    // 0x00
-                    self.ram[address as usize - 0x8000]
+                    println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
+                    0x00
+                    // self.ram[address as usize - 0x8000]
                 }
             }
 
@@ -219,8 +219,8 @@ impl Mmu {
         match address {
             // BOOT ROM
             0x0000..=0x0100 if self.is_booting => {
-                // println!("UNIMPLEMENTED: BOOT ROM, cannot write address {:04X}.", address);
-                self.rom[address as usize] = value;
+                println!("UNIMPLEMENTED: BOOT ROM, cannot write address {:04X}.", address);
+                // self.rom[address as usize] = value;
             }
 
             // CARTRIDGE ROM
@@ -244,8 +244,8 @@ impl Mmu {
                         }
                     }
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                    self.rom[address as usize] = value;
+                    println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
+                    // self.rom[address as usize] = value;
                 }
             }
 
@@ -270,8 +270,8 @@ impl Mmu {
                         }
                     }
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                    self.rom[address as usize] = value;
+                    println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
+                    // self.rom[address as usize] = value;
                 }
             }
 
@@ -296,8 +296,8 @@ impl Mmu {
                         }
                     }
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                    self.rom[address as usize] = value;
+                    println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
+                    // self.rom[address as usize] = value;
                 }
             }
 
@@ -322,8 +322,8 @@ impl Mmu {
                         }
                     }
                 } else {
-                    // println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                    self.rom[address as usize] = value;
+                    println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
+                    // self.rom[address as usize] = value;
                 }
             }
 
@@ -372,7 +372,7 @@ impl Mmu {
 
             // PROHIBITED
             0xFEA0..=0xFEFF => {
-                // println!("PROHIBITED RAM: Not supposed to write address {:04X}.", address);
+                println!("PROHIBITED RAM: Not supposed to write address {:04X}.", address);
                 let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
                 self.ram[adjusted_address] = value;
             }
@@ -448,19 +448,21 @@ impl Mmu {
                         } else {
                             // Bits 0,1,2 are read-only (only PPU can update)
                             let curr_value = self.ram[adjusted_address];
-                            self.ram[adjusted_address] = (value & 0xF8) | (curr_value & 0x07);
+                            let adjusted_value = (value & 0xF8) | (curr_value & 0x07);
+                            self.ram[adjusted_address] = adjusted_value;
                         }
                     }
                     LCD_CONTROL_REG => {
-                        if self.ppu_mode == ppu::StatMode::VBlank {
+                        if caller == Caller::PPU
+                            || self.ppu_mode == ppu::StatMode::VBlank {
                             println!("Writing CONTROL during VBlank: {:04X}", value);
                             self.ram[adjusted_address] = value;
                         }
                         else {
-                            println!("Writing CONTROL outside VBlank, please don't clear bit 7: {:04X}", value);
-                            // let curr_value = self.ram[adjusted_address];
-                            // self.ram[adjusted_address] = value | (curr_value & 0x80); // Don't clear bit 7
-                            self.ram[adjusted_address] = value;
+                            let curr_value = self.ram[adjusted_address];
+                            let adjusted_value = value | (curr_value & 0x80); // Enforce not clearing bit 7
+                            println!("Writing CONTROL outside VBlank, clearing bit 7 is not allowed: {:04X} -> {:04X}", value, adjusted_value);
+                            self.ram[adjusted_address] = adjusted_value;
                         }
                     }
                     DMA_REG => {

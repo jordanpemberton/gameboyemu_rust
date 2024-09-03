@@ -29,6 +29,7 @@ impl Cpu {
 
     pub(crate) fn handle_interrupts(&mut self, mmu: &mut Mmu) -> i16 {
         let mut cycles = 0;
+
         if !self.interrupts.ime {
             if self.is_halted && self.interrupts.peek_requested(mmu) {
                 self.is_halted = false;

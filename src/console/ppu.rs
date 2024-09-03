@@ -144,11 +144,16 @@ impl Ppu {
 
     // TODO Fix OAM DMA timing (mooneye acceptance/add_sp_e_timing, jp_timing)
     pub(crate) fn oam_dma(&mut self, mmu: &mut Mmu) {
-        // TODO Memory during OAM DMA transfer
         if let Some(mut src_address) = mmu.oam_dma_src_addr {
             let value = mmu.read_8(src_address, Caller::PPU);
             let oam_address = mmu::OAM_START | (src_address & 0xFF);
-            mmu.write_8(oam_address, value, Caller::PPU);
+
+            // Writes to OAM not allowed in certain PPU modes
+            let lcd_status_value = self.lcd_status.read(mmu, Caller::PPU);
+            let stat_mode = STAT_MODES[(lcd_status_value & 0x03) as usize];
+            if stat_mode != StatMode::PixelTransfer && stat_mode != StatMode::OamSearch {
+                mmu.write_8(oam_address, value, Caller::PPU);
+            }
 
             // Increment source address
             src_address += 1;
