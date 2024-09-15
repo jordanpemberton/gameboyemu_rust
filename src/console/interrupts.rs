@@ -19,11 +19,11 @@ use crate::console::mmu::{Caller, Mmu};
 use crate::console::register::Register;
 
 pub(crate) enum InterruptRegBit {
-    VBlank = 0,
-    LcdStat = 1,
-    Timer = 2,
-    Serial = 3,
-    Joypad = 4
+    VBlank = 0,     // x40
+    LcdStat = 1,    // x48
+    Timer = 2,      // x50
+    Serial = 3,     // x58
+    Joypad = 4      // x60
 }
 
 pub(crate) struct Interrupts {
@@ -59,6 +59,8 @@ impl Interrupts {
 
     pub(crate) fn poll(&mut self, mmu: &mut Mmu) -> u8 {
         let interrupt = self.peek_interrupts(mmu);
+
+        // Acknowledge (flip requested bit back to 0) and return call address
         if interrupt & (1 << InterruptRegBit::VBlank as u8) == (1 << InterruptRegBit::VBlank as u8) {
             self.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, false, Caller::CPU);
             0x40

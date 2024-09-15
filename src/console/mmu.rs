@@ -56,7 +56,7 @@ pub(crate) enum LcdStatRegBit {
     // Bit 5 - Mode 2 OAM STAT Interrupt source     (1=Enable)
     OamInterruptEnabled = 5,
     // Bit 6 - LYC=LY STAT Interrupt source         (1=Enable)
-    LcyInterruptEnabled = 6,
+    LycInterruptEnabled = 6,
 }
 pub(crate) const SCY_REG: u16 = 0xFF42;
 pub(crate) const SCX_REG: u16 = 0xFF43;
@@ -126,8 +126,56 @@ impl Mmu {
         mmu
     }
 
-    // noinspection RsNonExhaustiveMatch -- u16 range covered
+    //noinspection RsNonExhaustiveMatch
     pub(crate) fn read_8(&mut self, address: u16, caller: Caller) -> u8 {
+        match address {
+            0x0000..=0x7FFF => self.read_8_rom(address, caller),
+            0x8000..=0xFFFF => self.read_8_ram(address, caller),
+        }
+    }
+
+    pub(crate) fn read_16(&mut self, address: u16, endian: Endianness, caller: Caller) -> u16 {
+        let lsb: u8 = self.read_8(address, caller);
+        let msb: u8 = self.read_8(address + 1, caller);
+
+        match endian {
+            Endianness::BIG => (msb as u16) << 8 | lsb as u16,
+            Endianness::LITTLE => (lsb as u16) << 8 | msb as u16,
+        }
+    }
+
+    pub(crate) fn read_buffer(&mut self, start: u16, end: u16, caller: Caller) -> Vec<u8> {
+        let mut result = vec![0; end as usize - start as usize];
+        for address in start..end {
+            result[address as usize - start as usize] = self.read_8(address, caller);
+        }
+        result
+    }
+
+    //noinspection RsNonExhaustiveMatch
+    pub(crate) fn write_8(&mut self, address: u16, value: u8, caller: Caller) {
+        match address {
+            0x0000..=0x7FFF => self.write_8_rom(address, value, caller),
+            0x8000..=0xFFFF => self.write_8_ram(address, value, caller),
+        }
+    }
+
+    pub(crate) fn write_16(&mut self, address: u16, value: u16, endian: Endianness, caller: Caller) {
+        let mut a = ((value & 0xFF00) >> 8) as u8;
+        let mut b = (value & 0x00FF) as u8;
+
+        if endian == Endianness::BIG {
+            let temp = a;
+            a = b;
+            b = temp;
+        }
+
+        self.write_8(address, a, caller);
+        self.write_8(address + 1, b, caller);
+    }
+
+    #[allow(unused_variable)]
+    fn read_8_rom(&mut self, address: u16, caller: Caller) -> u8 {
         let result = match address {
             // BOOT ROM
             0x0000..=0x0100 if self.is_booting => {
@@ -150,12 +198,24 @@ impl Mmu {
                 println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
                 0x00
                 // self.rom[address as usize]
-            }
+            },
 
+            _ => {
+                panic!("Invalid ROM address {:6X}", address);
+            }
+        };
+
+        result
+    }
+
+    fn read_8_ram(&mut self, address: u16, caller: Caller) -> u8 {
+        let ram_address = address as usize - 0x8000;
+
+        let result = match address {
             // VRAM
             0x8000..=0x9FFF => {
                 if caller == Caller::PPU || self.ppu_mode != ppu::StatMode::PixelTransfer {
-                    self.ram[address as usize - 0x8000]
+                    self.ram[ram_address]
                 } else {
                     println!("VRAM LOCKED by PPU: Cannot read address {:04X}.", address);
                     0xFF
@@ -175,19 +235,20 @@ impl Mmu {
 
             // INTERNAL RAM
             0xC000..=0xDFFF => {
-                self.ram[address as usize - 0x8000]
+                self.ram[ram_address]
             }
 
-            // ECHO RAM C000-DDFF Mirror
+            // ECHO RAM -- Mirrors C000-DDFF
             0xE000..=0xFDFF => {
-                self.ram[address as usize - 0xA000]
+                let ram_address = address as usize - 0xA000;
+                self.ram[ram_address]
             }
 
             // OAM RAM
             0xFE00..=0xFE9F => {
                 if caller == Caller::PPU
                     || (self.ppu_mode != ppu::StatMode::OamSearch && self.ppu_mode != ppu::StatMode::PixelTransfer) {
-                    self.ram[address as usize - 0x8000]
+                    self.ram[ram_address]
                 } else {
                     println!("OAM LOCKED by PPU: Cannot read address {:04X}.", address);
                     0xFF
@@ -208,14 +269,18 @@ impl Mmu {
             // IO
             0xFF00..=0xFF7F => {
                 match address {
-                    JOYPAD_REG => self.read_joypad_reg(self.ram[address as usize - 0x8000]),
-                    _ => self.ram[address as usize - 0x8000]
+                    JOYPAD_REG => self.read_joypad_reg(self.ram[ram_address]),
+                    _ => self.ram[ram_address]
                 }
             }
 
             // HRAM, IE
             0xFF80..=0xFFFF => {
-                self.ram[address as usize - 0x8000]
+                self.ram[ram_address]
+            }
+
+            _ => {
+                panic!("Invalid RAM address {:6X}", address);
             }
         };
 
@@ -230,33 +295,12 @@ impl Mmu {
         result
     }
 
-    pub(crate) fn read_16(&mut self, address: u16, endian: Endianness, caller: Caller) -> u16 {
-        let lsb: u8 = self.read_8(address, caller);
-        let msb: u8 = self.read_8(address + 1, caller);
-
-        match endian {
-            Endianness::BIG => (msb as u16) << 8 | lsb as u16,
-            Endianness::LITTLE => (lsb as u16) << 8 | msb as u16,
-        }
-    }
-
-    pub(crate) fn read_buffer(&mut self, start: u16, end: u16, caller: Caller) -> Vec<u8> {
-        let mut result = vec![0; end as usize - start as usize];
-        for address in start..end {
-            result[address as usize - start as usize] = self.read_8(address, caller);
-        }
-        result
-    }
-
-    // noinspection RsNonExhaustiveMatch -- u16 range covered
-    pub(crate) fn write_8(&mut self, address: u16, value: u8, caller: Caller) {
-        let mut adjusted_address = address as usize;
-
+    #[allow(unused_variable)]
+    fn write_8_rom(&mut self, address: u16, value: u8, caller: Caller) {
         match address {
             // BOOT ROM
             0x0000..=0x0100 if self.is_booting => {
-                println!("UNIMPLEMENTED: BOOT ROM, cannot write address {:04X}.", address);
-                // self.rom[address as usize] = value;
+                panic!("UNIMPLEMENTED: BOOT ROM, cannot write address {:04X}.", address);
             }
 
             // CARTRIDGE ROM
@@ -283,8 +327,7 @@ impl Mmu {
                         }
                     }
                 } else {
-                    println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                    // self.rom[address as usize] = value;
+                    panic!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                 }
             }
 
@@ -312,8 +355,7 @@ impl Mmu {
                         }
                     }
                 } else {
-                    println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                    // self.rom[address as usize] = value;
+                    panic!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                 }
             }
 
@@ -341,8 +383,7 @@ impl Mmu {
                         }
                     }
                 } else {
-                    println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                    // self.rom[address as usize] = value;
+                    panic!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                 }
             }
 
@@ -370,16 +411,24 @@ impl Mmu {
                         }
                     }
                 } else {
-                    println!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                    // self.rom[address as usize] = value;
+                    panic!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                 }
             }
+            
+            _ => {
+                panic!("Invalid ROM address: {:6X}", address);
+            }
+        }
+    }
+   
+    fn write_8_ram(&mut self, address: u16, value: u8, caller: Caller) {
+        let mut ram_address = address as usize - 0x8000;
 
+        match address {
             // VRAM
             0x8000..=0x9FFF => {
                 if caller == Caller::PPU || self.ppu_mode != ppu::StatMode::PixelTransfer {
-                    adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-                    self.ram[adjusted_address] = value;
+                    self.ram[ram_address] = value;
                 } else {
                     println!("VRAM LOCKED by PPU: Cannot write address {:04X}.", address);
                 }
@@ -390,73 +439,66 @@ impl Mmu {
                 if let Some(cartridge) = &mut self.cartridge {
                     cartridge.write_8_a000_bfff(address, value);
                 } else {
-                    adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-                    self.ram[adjusted_address] = value;
+                    self.ram[ram_address] = value;
                 }
             }
 
             // INTERNAL RAM
             0xC000..=0xDFFF => {
-                adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-                self.ram[adjusted_address] = value;
+                self.ram[ram_address] = value;
             }
 
-            // ECHO RAM C000-DDFF Mirror
+            // ECHO RAM -- Mirrors C000-DDFF
             0xE000..=0xFDFF => {
-                adjusted_address = (address as usize - 0xA000) & (self.ram.len() - 1);
-                self.ram[adjusted_address] = value;
+                // let ram_address = address as usize - 0xA000; // ?
+                self.ram[ram_address] = value;
             }
 
             // OAM RAM
             0xFE00..=0xFE9F => {
                 if caller == Caller::PPU
                     || (self.ppu_mode != ppu::StatMode::OamSearch && self.ppu_mode != ppu::StatMode::PixelTransfer) {
-                    adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-                    self.ram[adjusted_address] = value;
+                    self.ram[ram_address] = value;
                 } else {
                     println!("OAM LOCKED by PPU: Cannot write address {:04X}.", address);
                 }
             }
 
-            // PROHIBITED
+            // PROHIBITED -- Dr Mario explicitly clears this memory when starting
             0xFEA0..=0xFEFF => {
                 println!("PROHIBITED RAM: Not supposed to write address {:04X}.", address);
-                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-                self.ram[adjusted_address] = value;
+                self.ram[ram_address] = value;
             }
 
             // IO
             0xFF00..=0xFF7F => {
-                adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-                let adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-
                 match address {
                     // TIMER
                     DIV_REG => {
                         if caller == Caller::TIMER { // so that Timer can update DIV
-                            self.ram[adjusted_address] = value;
+                            self.ram[ram_address] = value;
                         } else {
                             // All writes to timer DIV register reset it to 0.
-                            self.ram[adjusted_address] = 0;
+                            self.ram[ram_address] = 0;
                             self.sysclock = 0; // Internal clock is also reset(?)
                             // TODO How is TIMA affected...?
                         }
                     }
                     TIMA_REG => {
-                        self.ram[adjusted_address] = value;
+                        self.ram[ram_address] = value;
                     }
                     TMA_REG => {
-                        self.ram[adjusted_address] = value;
+                        self.ram[ram_address] = value;
                     }
                     TAC_REG => {
-                        let new_tac = value & 0b0111;
+                        let written_value = value & 0b0111;
 
                         // TODO Does other timer registers also need to be updated on writes?
                         // let old_tac = self.read_8(address, caller);
                         // let tima_incr_is_enabled = Timer::is_tac_enabled(old_tac);
                         // let old_counter_bit = tima_incr_is_enabled && Timer::is_counter_bit_flipped(self.sysclock, old_tac);
 
-                        self.ram[adjusted_address] = new_tac;
+                        self.ram[ram_address] = written_value;
 
                         // TODO Does other timer registers also need to be updated on writes?
                         // let tima_incr_is_enabled = Timer::is_tac_enabled(new_tac);
@@ -477,90 +519,71 @@ impl Mmu {
                     // JOYPAD
                     JOYPAD_REG => {
                         // Bottom nibble is read only
-                        let curr_value = self.ram[adjusted_address];
-                        self.ram[adjusted_address] = (value & 0xF0) | (curr_value & 0x0F);
+                        let curr_value = self.ram[ram_address];
+                        let adjusted_value = (value & 0xF0) | (curr_value & 0x0F);
+                        self.ram[ram_address] = adjusted_value;
                     }
 
                     // PPU
                     LY_REG => {
                         if caller == Caller::PPU {
-                            self.ram[adjusted_address] = value;
+                            self.ram[ram_address] = value;
                         } else {
                             // Read-only
                         }
                     }
                     LCD_STATUS_REG => {
                         if caller == Caller::PPU {
-                            self.ram[adjusted_address] = value;
+                            self.ram[ram_address] = value;
                             self.ppu_mode = ppu::STAT_MODES[(value & 0x03) as usize]; // dr mario getting locked in non hblank...
                         } else {
                             // Bits 0,1,2 are read-only (only PPU can update)
-                            let curr_value = self.ram[adjusted_address];
+                            let curr_value = self.ram[ram_address];
                             let adjusted_value = (value & 0xF8) | (curr_value & 0x07);
-                            self.ram[adjusted_address] = adjusted_value;
+                            self.ram[ram_address] = adjusted_value;
                         }
                     }
                     LCD_CONTROL_REG => {
                         if caller == Caller::PPU
                             || self.ppu_mode == ppu::StatMode::VBlank {
                             println!("Writing CONTROL during VBlank: {:04X}", value);
-                            self.ram[adjusted_address] = value;
+                            self.ram[ram_address] = value;
                         }
                         else {
-                            let curr_value = self.ram[adjusted_address];
+                            let curr_value = self.ram[ram_address];
                             let adjusted_value = value | (curr_value & 0x80); // Enforce not clearing bit 7
                             println!("Writing CONTROL outside VBlank, clearing bit 7 is not allowed: {:04X} -> {:04X}", value, adjusted_value);
-                            self.ram[adjusted_address] = adjusted_value;
+                            self.ram[ram_address] = adjusted_value;
                         }
                     }
                     DMA_REG => {
-                        self.ram[adjusted_address] = value;
+                        self.ram[ram_address] = value;
                         self.oam_dma_src_addr = Option::from((value as u16) << 8);
                     }
 
                     // BANKING
                     BANK_REG => {
-                        self.ram[adjusted_address] = value;
+                        self.ram[ram_address] = value;
                         if self.is_booting && (value & 1) == 1 {
                             self.is_booting = false;
                         }
                     }
 
                     _ => {
-                        self.ram[adjusted_address] = value;
+                        self.ram[ram_address] = value;
                     }
                 }
             }
 
             // HRAM, IE
             0xFF80..=0xFFFF => {
-                adjusted_address = (address as usize - 0x8000) & (self.ram.len() - 1);
-                self.ram[adjusted_address] = value;
+                self.ram[ram_address] = value;
+            }
+            
+            _ => { 
+                panic!("Invalid RAM address: {:6X}", address);
             }
         }
-
-        // For debugging because conditional breakpoints are unuseably slow
-        if let Some(debug_address) = self.debug_address {
-            if address == debug_address { // && self.ram[adjusted_address] != self.debug_value {
-                self.debug_value = self.ram[adjusted_address];
-                println!("(WRITE {:02X}) [{:04X}] = {:02X} Caller:{:?}",
-                    value, debug_address, self.debug_value, caller);
-            }
-        }
-    }
-
-    pub(crate) fn write_16(&mut self, address: u16, value: u16, endian: Endianness, caller: Caller) {
-        let mut a = ((value & 0xFF00) >> 8) as u8;
-        let mut b = (value & 0x00FF) as u8;
-
-        if endian == Endianness::BIG {
-            let temp = a;
-            a = b;
-            b = temp;
-        }
-
-        self.write_8(address, a, caller);
-        self.write_8(address + 1, b, caller);
     }
 
     fn load_bootrom(&mut self) {

@@ -14,10 +14,10 @@ pub(crate) const STAT_MODES: [StatMode; 4] = [
 // From Michael Steil, Ultimate Game Boy Talk
 // (Gekkio (Mooneye) has HBlank=50 and OAM=21)
 const MODE_DURATION: [usize; 4] = [
-    51 * 4,             // = 204    HBlank[0]
-    (20 + 43 + 51) * 4, // = 456    VBlank [1]
-    20 * 4,             // = 80     OAM [2]
-    43 * 4,             // = 172    PixelTransfer [3]
+    51 * 4,             // = 204    HBlank (0)
+    (20 + 43 + 51) * 4, // = 456    VBlank (1)
+    20 * 4,             // = 80     OAM (2)
+    43 * 4,             // = 172    PixelTransfer (3)
 ];
 
 const MODE_LINE_RANGE: [(u8, u8); 4] = [
@@ -27,7 +27,6 @@ const MODE_LINE_RANGE: [(u8, u8); 4] = [
     (0, 144),   // PixelTransfer
 ];
 
-// #[repr(usize)]
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) enum StatMode {
     HBlank = 0,
@@ -65,7 +64,7 @@ impl Lcd {
 
 #[allow(dead_code)]
 pub(crate) struct Ppu {
-    clocks: usize,
+    mode_cycle_count: usize,
     scy: Register,
     scx: Register,
     ly: Register,
@@ -85,7 +84,7 @@ pub(crate) struct Ppu {
 impl Ppu {
     pub(crate) fn new() -> Ppu {
         Ppu {
-            clocks: 0,
+            mode_cycle_count: 0,
             scy: Register::new(mmu::SCY_REG),
             scx: Register::new(mmu::SCX_REG),
             ly: Register::new(mmu::LY_REG),
@@ -132,40 +131,19 @@ impl Ppu {
             let mode_flag = (self.lcd_status.read(mmu, Caller::PPU) & 0x03) as usize;
             let mode = STAT_MODES[mode_flag];
             let mode_duration = MODE_DURATION[mode as usize];
-            let (mode_y_start, mode_y_end) = MODE_LINE_RANGE[mode as usize];
 
             // HACK Force current line ly to align with current mode
-            if self.ly.read(mmu, Caller::PPU) < mode_y_start || mode_y_end <= self.ly.read(mmu, Caller::PPU) {
-                self.set_ly(mmu, mode_y_start);
+            // let (mode_y_start, mode_y_end) = MODE_LINE_RANGE[mode as usize];
+            // if self.ly.read(mmu, Caller::PPU) < mode_y_start || mode_y_end <= self.ly.read(mmu, Caller::PPU) {
+            //     self.set_ly(mmu, mode_y_start);
+            // }
+
+            // If time to do so, move to next stat mode
+            if self.mode_cycle_count >= mode_duration {
+                self.move_to_next_stat_mode(mmu, interrupts, mode);
             }
 
-            if self.clocks >= mode_duration {
-                self.clocks = self.clocks - mode_duration;
-
-                match mode {
-                    StatMode::OamSearch => {
-                        self.set_stat_mode(mmu, StatMode::PixelTransfer, interrupts);
-                    }
-                    StatMode::PixelTransfer => {
-                        self.set_stat_mode(mmu, StatMode::HBlank, interrupts);
-                    }
-                    StatMode::HBlank => {
-                        self.increment_ly(mmu);
-                        if self.ly.read(mmu, Caller::PPU) < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
-                            self.set_stat_mode(mmu, StatMode::OamSearch, interrupts);
-                        } else {
-                            self.set_stat_mode(mmu, StatMode::VBlank, interrupts);
-                        }
-                    }
-                    StatMode::VBlank => {
-                        self.increment_ly(mmu);
-                        if self.ly.read(mmu, Caller::PPU) < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
-                            self.set_stat_mode(mmu, StatMode::OamSearch, interrupts);
-                        }
-                    }
-                }
-            }
-
+            // Do mode-specific action
             match mode {
                 StatMode::OamSearch => {
                     self.oam_search(mmu);
@@ -177,15 +155,18 @@ impl Ppu {
                 StatMode::VBlank => {}
             }
 
+            // If LY == LYC
             if self.ly.read(mmu, Caller::PPU) == self.lyc.read(mmu, Caller::PPU) {
                 self.lcd_status.set_bit(mmu, mmu::LcdStatRegBit::LycEqLy as u8, true, Caller::PPU);
-                interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
+                if self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::LycInterruptEnabled as u8, Caller::PPU) {
+                    interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
+                }
             } else {
                 self.lcd_status.set_bit(mmu, mmu::LcdStatRegBit::LycEqLy as u8, false, Caller::PPU);
             }
-
-            self.clocks += cycles as usize;
         }
+
+        self.mode_cycle_count += cycles as usize;
     }
 
     fn read_palette(byte: u8) -> [u8; 4] {
@@ -201,42 +182,77 @@ impl Ppu {
         ]
     }
 
-    fn set_ly(&mut self, mmu: &mut Mmu, value: u8) {
-        if value < MODE_LINE_RANGE[StatMode::VBlank as usize].1 {
-            self.ly.write(mmu, value, Caller::PPU);
-        } else {
-            self.ly.write(mmu, 0, Caller::PPU);
-        }
-    }
-
     fn increment_ly(&mut self, mmu: &mut Mmu) {
-        self.clocks = 0;
-        let ly = self.ly.read(mmu, Caller::PPU).wrapping_add(1);
-        self.set_ly(mmu, ly);
+        let mut new_ly = self.ly.read(mmu, Caller::PPU).wrapping_add(1);
+        if new_ly >= MODE_LINE_RANGE[StatMode::VBlank as usize].1 {
+            new_ly = 0;
+        }
+
+        self.ly.write(mmu, new_ly, Caller::PPU);
     }
 
-    fn set_stat_mode(&mut self, mmu: &mut Mmu, mode: StatMode, interrupts: &mut Interrupts) {
-        let x = mode as usize as u8;
+    fn set_stat_mode(&mut self, mmu: &mut Mmu, new_mode: StatMode, interrupts: &mut Interrupts) {
         let curr_value = self.lcd_status.read(mmu, Caller::PPU);
-        let new_value = (curr_value & 0xFC) | x;
+        let new_value = (curr_value & 0xFC) | (new_mode as u8);
         self.lcd_status.write(mmu, new_value, Caller::PPU);
 
-        // Interrupt request
-        match mode {
+        // Request interrupts
+        match new_mode {
+            StatMode::HBlank => {
+                if self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::HBlankInterruptEnabled as u8, Caller::PPU) {
+                    interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
+                }
+            }
+            StatMode::VBlank => {
+                // Always request VBLank interrupt
+                interrupts.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, true, Caller::PPU);
+
+                if self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::VBlankInterruptEnabled as u8, Caller::PPU) {
+                    interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
+                }
+                // Mooneye includes a check if OAM INT enabled when swithcing to VBLank also, but I'm not sure why
+                if self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::OamInterruptEnabled as u8, Caller::PPU) {
+                    interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
+                }
+            }
             StatMode::OamSearch => {
                 if self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::OamInterruptEnabled as u8, Caller::PPU) {
                     interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
                 }
             }
-            StatMode::VBlank => {
-                interrupts.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, true, Caller::PPU);
+            StatMode::PixelTransfer => {
+                // Do nothing
+            }
+        }
+    }
 
-                if self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::VBlankInterruptEnabled as u8, Caller::PPU)
-                    || self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::OamInterruptEnabled as u8, Caller::PPU) {
-                    interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
+    fn move_to_next_stat_mode(&mut self, mmu: &mut Mmu, interrupts: &mut Interrupts, curr_mode: StatMode) {
+        self.mode_cycle_count = 0;
+
+        match curr_mode {
+            StatMode::OamSearch => {
+                self.set_stat_mode(mmu, StatMode::PixelTransfer, interrupts);
+            }
+            StatMode::PixelTransfer => {
+                self.set_stat_mode(mmu, StatMode::HBlank, interrupts);
+            }
+            StatMode::HBlank => {
+                self.increment_ly(mmu);
+                let ly = self.ly.read(mmu, Caller::PPU);
+                if ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
+                    self.set_stat_mode(mmu, StatMode::OamSearch, interrupts);
+                } else {
+                    self.set_stat_mode(mmu, StatMode::VBlank, interrupts);
                 }
             }
-            _ => {}
+            StatMode::VBlank => {
+                self.increment_ly(mmu);
+                let ly = self.ly.read(mmu, Caller::PPU);
+                if ly == 0 { // ly < MODE_LINE_RANGE[StatMode::OamSearch as usize].1 {
+                    self.set_stat_mode(mmu, StatMode::OamSearch, interrupts);
+                }
+                //else still in VBlank mode, just on a new line.
+            }
         }
     }
 

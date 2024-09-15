@@ -2815,6 +2815,7 @@ impl Instruction {
     /// EI
     /// 1 4
     /// - - - -
+    /// The effect of ei is delayed by one instruction. This means that ei followed immediately by di does not allow any interrupts between them.
     fn op_00fb(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         cpu.interrupts.ime = true;
         self.cycles
