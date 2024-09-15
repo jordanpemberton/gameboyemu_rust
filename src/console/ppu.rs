@@ -44,45 +44,6 @@ enum DrawMode {
     Window,
 }
 
-enum LcdControlRegBit {
-    // 0	BG and Window enable/priority	0=Off, 1=On
-    BackgroundAndWindowEnabled = 0,
-    // 1	OBJ enable	0=Off, 1=On
-    ObjEnabled = 1,
-    // 2	OBJ size	0=8x8, 1=8x16
-    SpriteSizeIs16 = 2,
-    // 3	BG tile map area	0=9800-9BFF, 1=9C00-9FFF
-    BackgroundTilemapIsAt9C00 = 3,
-    // 4	BG and Window tile data area	0=8800-97FF, 1=8000-8FFF
-    AddressingMode8000 = 4,
-    // 5	Window enable	0=Off, 1=On
-    WindowEnabled = 5,
-    // 6	Window tile map area	0=9800-9BFF, 1=9C00-9FFF
-    WindowTilemapIsAt9C00 = 6,
-    // 7	LCD and PPU enable	0=Off, 1=On
-    // This bit controls whether the LCD is on and the PPU is active.
-    // Setting it to 0 turns both off, which grants immediate and full access to VRAM, OAM, etc. TODO
-    LcdAndPpuEnabled = 7,
-}
-
-#[allow(dead_code)]
-enum LcdStatRegBit {
-    // Bit 0-1 - Mode Flag
-    ModeBit0 = 0,
-    ModeBit1 = 1,
-    // Bit 2 - LYC=LY Flag
-    LycEqLy = 2,
-    // STAT Interrupt bits
-    // Bit 3 - Mode 0 HBlank STAT Interrupt source  (1=Enable)
-    HBlankInterruptEnabled = 3,
-    // Bit 4 - Mode 1 VBlank STAT Interrupt source  (1=Enable)
-    VBlankInterruptEnabled = 4,
-    // Bit 5 - Mode 2 OAM STAT Interrupt source     (1=Enable)
-    OamInterruptEnabled = 5,
-    // Bit 6 - LYC=LY STAT Interrupt source         (1=Enable)
-    LcyInterruptEnabled = 6,
-}
-
 pub(crate) struct Lcd {
     pub(crate) width: usize,
     pub(crate) height: usize,
@@ -166,7 +127,7 @@ impl Ppu {
     }
 
     pub(crate) fn step(&mut self, cycles: u16, interrupts: &mut Interrupts, mmu: &mut Mmu) {
-        if self.lcd_control.check_bit(mmu, LcdControlRegBit::LcdAndPpuEnabled as u8, Caller::PPU) {
+        if self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::LcdAndPpuEnabled as u8, Caller::PPU) {
             // let mode = mmu.ppu_mode;
             let mode_flag = (self.lcd_status.read(mmu, Caller::PPU) & 0x03) as usize;
             let mode = STAT_MODES[mode_flag];
@@ -217,10 +178,10 @@ impl Ppu {
             }
 
             if self.ly.read(mmu, Caller::PPU) == self.lyc.read(mmu, Caller::PPU) {
-                self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, true, Caller::PPU);
+                self.lcd_status.set_bit(mmu, mmu::LcdStatRegBit::LycEqLy as u8, true, Caller::PPU);
                 interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
             } else {
-                self.lcd_status.set_bit(mmu, LcdStatRegBit::LycEqLy as u8, false, Caller::PPU);
+                self.lcd_status.set_bit(mmu, mmu::LcdStatRegBit::LycEqLy as u8, false, Caller::PPU);
             }
 
             self.clocks += cycles as usize;
@@ -263,15 +224,15 @@ impl Ppu {
         // Interrupt request
         match mode {
             StatMode::OamSearch => {
-                if self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8, Caller::PPU) {
+                if self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::OamInterruptEnabled as u8, Caller::PPU) {
                     interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
                 }
             }
             StatMode::VBlank => {
                 interrupts.requested.set_bit(mmu, InterruptRegBit::VBlank as u8, true, Caller::PPU);
 
-                if self.lcd_status.check_bit(mmu, LcdStatRegBit::VBlankInterruptEnabled as u8, Caller::PPU)
-                    || self.lcd_status.check_bit(mmu, LcdStatRegBit::OamInterruptEnabled as u8, Caller::PPU) {
+                if self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::VBlankInterruptEnabled as u8, Caller::PPU)
+                    || self.lcd_status.check_bit(mmu, mmu::LcdStatRegBit::OamInterruptEnabled as u8, Caller::PPU) {
                     interrupts.requested.set_bit(mmu, InterruptRegBit::LcdStat as u8, true, Caller::PPU);
                 }
             }
@@ -282,7 +243,7 @@ impl Ppu {
     fn oam_search(&mut self, mmu: &mut Mmu) {
         if self.ly.read(mmu, Caller::PPU) == 0 {
             self.lcd_control.read(mmu, Caller::PPU);
-            let obj_enabled = self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8, Caller::PPU);
+            let obj_enabled = self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::ObjEnabled as u8, Caller::PPU);
             if obj_enabled {
                 let attribute_data = mmu.read_buffer(mmu::OAM_START, mmu::OAM_END + 1, Caller::PPU);
                 for i in 0..40 {
@@ -301,14 +262,14 @@ impl Ppu {
     }
 
     fn draw_background_line(&mut self, mmu: &mut Mmu) {
-        if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8, Caller::PPU) {
+        if self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::BackgroundAndWindowEnabled as u8, Caller::PPU) {
             self.draw_background_or_window_line(mmu, DrawMode::Background);
         }
     }
 
     fn draw_window_line(&mut self, mmu: &mut Mmu) {
-        if self.lcd_control.check_bit(mmu, LcdControlRegBit::BackgroundAndWindowEnabled as u8, Caller::PPU)
-                && self.lcd_control.check_bit(mmu, LcdControlRegBit::WindowEnabled as u8, Caller::PPU) {
+        if self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::BackgroundAndWindowEnabled as u8, Caller::PPU)
+                && self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::WindowEnabled as u8, Caller::PPU) {
             self.draw_background_or_window_line(mmu, DrawMode::Window);
         }
     }
@@ -329,12 +290,12 @@ impl Ppu {
     }
 
     fn draw_sprites_line(&mut self, mmu: &mut Mmu) {
-        if self.lcd_control.check_bit(mmu, LcdControlRegBit::ObjEnabled as u8, Caller::PPU) {
+        if self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::ObjEnabled as u8, Caller::PPU) {
             let tiledata_address: usize = 0x8000;
             let y = self.ly.read(mmu, Caller::PPU);
 
             for attr in self.sprite_attributes {
-                let is_16_sprite = self.lcd_control.check_bit(mmu, LcdControlRegBit::SpriteSizeIs16 as u8, Caller::PPU);
+                let is_16_sprite = self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::SpriteSizeIs16 as u8, Caller::PPU);
                 let sprite_top_y = attr.y.wrapping_sub(16);
                 let sprite_height: u8 = if is_16_sprite { 16 } else { 8 };
 
@@ -391,10 +352,10 @@ impl Ppu {
 
         let palette = Ppu::read_palette(self.bgp.read(mmu, Caller::PPU));
 
-        let index_mode_8000 = self.lcd_control.check_bit(mmu, LcdControlRegBit::AddressingMode8000 as u8, Caller::PPU);
+        let index_mode_8000 = self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::AddressingMode8000 as u8, Caller::PPU);
         let tilemap_at_9c00_bit = match mode {
-            DrawMode::Window => LcdControlRegBit::WindowTilemapIsAt9C00,
-            DrawMode::Background | _ => LcdControlRegBit::BackgroundTilemapIsAt9C00,
+            DrawMode::Window => mmu::LcdControlRegBit::WindowTilemapIsAt9C00,
+            DrawMode::Background | _ => mmu::LcdControlRegBit::BackgroundTilemapIsAt9C00,
         } as u8;
         let tilemap_address: u16 = if self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit, Caller::PPU) {
             0x9C00

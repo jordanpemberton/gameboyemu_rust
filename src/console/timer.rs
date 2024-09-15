@@ -44,9 +44,9 @@ impl Timer {
         let mut request_interrupt = false;
 
         // TODO: stop mode
-        // if self.is_in_stop_mode {
-        //     return false;
-        // }
+        if self.is_in_stop_mode {
+            return false;
+        }
 
         // Check TAC
         let tac = self.tac.read(mmu, Caller::TIMER);
@@ -89,7 +89,6 @@ impl Timer {
                 // Option 2: was flipped last tick but now isn't
                 // passes more of blargg/mem_timing/individual/02-write_timing.gb??,
                 // but fails blarrg/cpu_instrs/individual/02-interrupts.gb!! >:(
-                // WHY?
                 // prev_counter_bit && !new_counter_bit;
 
             if increment_tima {

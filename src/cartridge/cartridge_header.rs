@@ -9,11 +9,24 @@ pub(crate) enum CartridgeType {
         battery: bool,
         is_multicart: bool,
     },
-    Mbc2,
-    Mbc3,
-    Mbc5,
+    Mbc2 {
+        battery: bool,
+    },
+    Mbc3 {
+        ram: bool,
+        battery: bool,
+        rtc: bool,
+    },
+    Mbc5 {
+        ram: bool,
+        battery: bool,
+        rumble: bool,
+    },
+    Mbc6,
+    Mbc7,
+    Huc1,
+    Huc3,
 }
-
 
 impl CartridgeType {
     pub(crate) fn from_u8(value: u8) -> CartridgeType {
@@ -37,7 +50,12 @@ impl CartridgeType {
                 battery: true,
                 is_multicart: false,
             },
-
+            0x05 => CartridgeType::Mbc2 {
+                battery: false
+            },
+            0x06 => CartridgeType::Mbc2 {
+                battery: true
+            },
             0x08 => CartridgeType::NoMbc {
                 ram: true,
                 battery: false,
@@ -46,10 +64,67 @@ impl CartridgeType {
                 ram: true,
                 battery: true,
             },
-
-            _ => CartridgeType::NoMbc {
+            0x0F => CartridgeType::Mbc3 {
+                ram: false,
+                battery: true,
+                rtc: true,
+            },
+            0x10 => CartridgeType::Mbc3 {
+                ram: true,
+                battery: true,
+                rtc: true,
+            },
+            0x11 => CartridgeType::Mbc3 {
                 ram: false,
                 battery: false,
+                rtc: false,
+            },
+            0x12 => CartridgeType::Mbc3 {
+                ram: true,
+                battery: false,
+                rtc: false,
+            },
+            0x13 => CartridgeType::Mbc3 {
+                ram: true,
+                battery: true,
+                rtc: false,
+            },
+            0x19 => CartridgeType::Mbc5 {
+                ram: false,
+                battery: false,
+                rumble: false,
+            },
+            0x1A => CartridgeType::Mbc5 {
+                ram: true,
+                battery: false,
+                rumble: false,
+            },
+            0x1B => CartridgeType::Mbc5 {
+                ram: true,
+                battery: true,
+                rumble: false,
+            },
+            0x1C => CartridgeType::Mbc5 {
+                ram: false,
+                battery: false,
+                rumble: true,
+            },
+            0x1D => CartridgeType::Mbc5 {
+                ram: true,
+                battery: false,
+                rumble: true,
+            },
+            0x1E => CartridgeType::Mbc5 {
+                ram: true,
+                battery: true,
+                rumble: true,
+            },
+            0x20 => CartridgeType::Mbc6,
+            0x22 => CartridgeType::Mbc7,
+            0xFF => CartridgeType::Huc1,
+            0xFE => CartridgeType::Huc3,
+            _ => {
+                panic!("UNIMPLEMENTED CartridgeType ??? {:6X}", value)
             },
         }
     }

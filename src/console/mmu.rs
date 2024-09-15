@@ -5,7 +5,6 @@ use crate::cartridge::cartridge::Cartridge;
 use crate::cartridge::mbc::Mbc;
 use crate::console::input::JoypadInput;
 use crate::console::ppu;
-use crate::console::timer::Timer;
 
 // OAM
 pub(crate) const OAM_START: u16 = 0xFE00;
@@ -21,7 +20,44 @@ pub(crate) const TAC_REG: u16 = 0xFF07;
 pub(crate) const IF_REG: u16 = 0xFF0F;
 // PPU
 pub(crate) const LCD_CONTROL_REG: u16 = 0xFF40;
+pub(crate) enum LcdControlRegBit {
+    // 0	BG and Window enable/priority	0=Off, 1=On
+    BackgroundAndWindowEnabled = 0,
+    // 1	OBJ enable	0=Off, 1=On
+    ObjEnabled = 1,
+    // 2	OBJ size	0=8x8, 1=8x16
+    SpriteSizeIs16 = 2,
+    // 3	BG tile map area	0=9800-9BFF, 1=9C00-9FFF
+    BackgroundTilemapIsAt9C00 = 3,
+    // 4	BG and Window tile data area	0=8800-97FF, 1=8000-8FFF
+    AddressingMode8000 = 4,
+    // 5	Window enable	0=Off, 1=On
+    WindowEnabled = 5,
+    // 6	Window tile map area	0=9800-9BFF, 1=9C00-9FFF
+    WindowTilemapIsAt9C00 = 6,
+    // 7	LCD and PPU enable	0=Off, 1=On
+    // This bit controls whether the LCD is on and the PPU is active.
+    // Setting it to 0 turns both off, which grants immediate and full access to VRAM, OAM, etc. TODO
+    LcdAndPpuEnabled = 7,
+}
 pub(crate) const LCD_STATUS_REG: u16 = 0xFF41;
+#[allow(dead_code)]
+pub(crate) enum LcdStatRegBit {
+    // Bit 0-1 - Mode Flag
+    ModeBit0 = 0,
+    ModeBit1 = 1,
+    // Bit 2 - LYC=LY Flag
+    LycEqLy = 2,
+    // STAT Interrupt bits
+    // Bit 3 - Mode 0 HBlank STAT Interrupt source  (1=Enable)
+    HBlankInterruptEnabled = 3,
+    // Bit 4 - Mode 1 VBlank STAT Interrupt source  (1=Enable)
+    VBlankInterruptEnabled = 4,
+    // Bit 5 - Mode 2 OAM STAT Interrupt source     (1=Enable)
+    OamInterruptEnabled = 5,
+    // Bit 6 - LYC=LY STAT Interrupt source         (1=Enable)
+    LcyInterruptEnabled = 6,
+}
 pub(crate) const SCY_REG: u16 = 0xFF42;
 pub(crate) const SCX_REG: u16 = 0xFF43;
 pub(crate) const LY_REG: u16 = 0xFF44;
@@ -234,13 +270,16 @@ impl Mmu {
                             mbc.ram_enabled = (value & 0x0F) == 0x0A;
                         }
                         Mbc::Mbc2 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc3 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc5 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
+                        }
+                        Mbc::Huc1 => {
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Huc1, cannot write address {:04X}.", address);
                         }
                     }
                 } else {
@@ -260,13 +299,16 @@ impl Mmu {
                             mbc.bank1 = max(value & 0x1F, 1);
                         }
                         Mbc::Mbc2 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc3 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc5 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
+                        }
+                        Mbc::Huc1 => {
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Huc1, cannot write address {:04X}.", address);
                         }
                     }
                 } else {
@@ -286,13 +328,16 @@ impl Mmu {
                             mbc.bank2 = value & 0x03;
                         }
                         Mbc::Mbc2 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc3 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc5 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
+                        }
+                        Mbc::Huc1 => {
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Huc1, cannot write address {:04X}.", address);
                         }
                     }
                 } else {
@@ -312,13 +357,16 @@ impl Mmu {
                             mbc.advram_banking_mode = (value & 1) == 1;
                         }
                         Mbc::Mbc2 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc3 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
                         }
                         Mbc::Mbc5 => {
-                            println!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
+                        }
+                        Mbc::Huc1 => {
+                            panic!("UNIMPLEMENTED: Unsupported cartridge type Huc1, cannot write address {:04X}.", address);
                         }
                     }
                 } else {

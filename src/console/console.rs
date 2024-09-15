@@ -203,6 +203,13 @@ impl Console {
         self.cycles += self.cpu.handle_interrupts(&mut self.mmu);
 
         // TIMER
+        // let mut timer_cycles = self.cycles;
+        // while timer_cycles >= 4 {
+        //     timer_cycles -= 4;
+        //     if self.timer.step(&mut self.mmu, 4) {
+        //         self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
+        //     }
+        // }
         if self.timer.step(&mut self.mmu, self.cycles as u16) {
             self.cpu.interrupts.request(InterruptRegBit::Timer, &mut self.mmu);
         }
