@@ -96,7 +96,8 @@ pub(crate) struct Mmu {
     pub(crate) active_input: HashSet<JoypadInput>,  // TODO this doesn't belong here
     cartridge: Option<Cartridge>,
     debug_address: Option<u16>,
-    debug_value: u8,
+    debug_written_value: u8,
+    debug_read_value: u8,
     rom: [u8; 0x8000usize],
     ram: [u8; 0x8000usize],
     pub(crate) ppu_mode: ppu::StatMode,
@@ -110,8 +111,9 @@ impl Mmu {
             oam_dma_src_addr: None,
             active_input: HashSet::from([]),
             cartridge,
-            debug_address: None, // Option::from(IF_REG),
-            debug_value: 0,
+            debug_address: Option::from(LCD_CONTROL_REG),
+            debug_written_value: 0,
+            debug_read_value: 0,
             rom: [0; 0x8000],
             ram: [0; 0x8000],
             ppu_mode: ppu::StatMode::HBlank,
@@ -128,10 +130,20 @@ impl Mmu {
 
     //noinspection RsNonExhaustiveMatch
     pub(crate) fn read_8(&mut self, address: u16, caller: Caller) -> u8 {
-        match address {
+        let result = match address {
             0x0000..=0x7FFF => self.read_8_rom(address, caller),
             0x8000..=0xFFFF => self.read_8_ram(address, caller),
+        };
+
+        // For debugging because conditional breakpoints are unuseably slow
+        if let Some(debug_address) = self.debug_address {
+            if address == debug_address && result != self.debug_read_value { // only log if it changed
+                self.debug_read_value = result;
+                println!("READ [{:04X}] => {:02X}", debug_address, self.debug_read_value);
+            }
         }
+
+        result
     }
 
     pub(crate) fn read_16(&mut self, address: u16, endian: Endianness, caller: Caller) -> u16 {
@@ -154,9 +166,18 @@ impl Mmu {
 
     //noinspection RsNonExhaustiveMatch
     pub(crate) fn write_8(&mut self, address: u16, value: u8, caller: Caller) {
-        match address {
+        let result = match address {
             0x0000..=0x7FFF => self.write_8_rom(address, value, caller),
             0x8000..=0xFFFF => self.write_8_ram(address, value, caller),
+        };
+
+        // For debugging because conditional breakpoints are unuseably slow
+        if let Some(debug_address) = self.debug_address {
+            if address == debug_address { // && result != self.debug_written_value { // only log if it changed
+                self.debug_written_value = result;
+                println!("WRITE {:02X} -> [{:04X}] => {:02X}",
+                    value, debug_address, self.debug_written_value);
+            }
         }
     }
 
@@ -174,7 +195,7 @@ impl Mmu {
         self.write_8(address + 1, b, caller);
     }
 
-    #[allow(unused_variable)]
+    #[allow(unused_variables)]
     fn read_8_rom(&mut self, address: u16, caller: Caller) -> u8 {
         let result = match address {
             // BOOT ROM
@@ -186,18 +207,14 @@ impl Mmu {
             0x0000..=0x3FFF => if let Some(cartridge) = &self.cartridge {
                 cartridge.read_8_0000_3fff(address)
             } else {
-                println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
-                0x00
-                // self.rom[address as usize]
+                panic!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
             }
 
             // CARTRIDGE ROM SWITCHABLE
             0x4000..=0x7FFF => if let Some(cartridge) = &self.cartridge {
                 cartridge.read_8_4000_7fff(address)
             } else {
-                println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
-                0x00
-                // self.rom[address as usize]
+                panic!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
             },
 
             _ => {
@@ -217,7 +234,7 @@ impl Mmu {
                 if caller == Caller::PPU || self.ppu_mode != ppu::StatMode::PixelTransfer {
                     self.ram[ram_address]
                 } else {
-                    println!("VRAM LOCKED by PPU: Cannot read address {:04X}.", address);
+                    // println!("VRAM LOCKED by PPU: Cannot read address {:04X}.", address);
                     0xFF
                 }
             }
@@ -227,9 +244,7 @@ impl Mmu {
                 if let Some(cartridge) = &self.cartridge {
                     cartridge.read_8_a000_bfff(address)
                 } else {
-                    println!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
-                    0x00
-                    // self.ram[address as usize - 0x8000]
+                    panic!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
                 }
             }
 
@@ -258,7 +273,7 @@ impl Mmu {
             // PROHIBITED -- returns $FF when OAM is blocked, otherwise the behavior depends on the hardware revision.
             // On DMG, MGB, SGB, and SGB2, reads during OAM block trigger OAM corruption. Reads otherwise return $00.
             0xFEA0..=0xFEFF => {
-                println!("PROHIBITED RAM: Not supposed to read address {:04X}.", address);
+                // println!("PROHIBITED RAM: Not supposed to read address {:04X}.", address);
                 if self.ppu_mode == ppu::StatMode::OamSearch {
                     0xFF
                 } else {
@@ -284,19 +299,11 @@ impl Mmu {
             }
         };
 
-        // For debugging because conditional breakpoints are unuseably slow
-        if let Some(debug_address) = self.debug_address {
-            if address == debug_address && result != self.debug_value {
-                self.debug_value = result;
-                println!("(READ) [{:04X}] = {:02X}", debug_address, self.debug_value);
-            }
-        }
-
         result
     }
 
-    #[allow(unused_variable)]
-    fn write_8_rom(&mut self, address: u16, value: u8, caller: Caller) {
+    #[allow(unused_variables)]
+    fn write_8_rom(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
         match address {
             // BOOT ROM
             0x0000..=0x0100 if self.is_booting => {
@@ -419,10 +426,13 @@ impl Mmu {
                 panic!("Invalid ROM address: {:6X}", address);
             }
         }
+
+        // For debugging because conditional breakpoints are unuseably slow
+        self.rom[address as usize]
     }
    
-    fn write_8_ram(&mut self, address: u16, value: u8, caller: Caller) {
-        let mut ram_address = address as usize - 0x8000;
+    fn write_8_ram(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
+        let ram_address = address as usize - 0x8000;
 
         match address {
             // VRAM
@@ -466,7 +476,7 @@ impl Mmu {
 
             // PROHIBITED -- Dr Mario explicitly clears this memory when starting
             0xFEA0..=0xFEFF => {
-                println!("PROHIBITED RAM: Not supposed to write address {:04X}.", address);
+                // println!("PROHIBITED RAM: Not supposed to write address {:04X}.", address);
                 self.ram[ram_address] = value;
             }
 
@@ -544,15 +554,19 @@ impl Mmu {
                         }
                     }
                     LCD_CONTROL_REG => {
-                        if caller == Caller::PPU
-                            || self.ppu_mode == ppu::StatMode::VBlank {
-                            println!("Writing CONTROL during VBlank: {:04X}", value);
+                        if self.ppu_mode == ppu::StatMode::VBlank {
+                            println!("{:?} Writing CONTROL during VBlank: {:02X}", caller, value);
                             self.ram[ram_address] = value;
                         }
+                        // else if caller == Caller::PPU {
+                        //     println!("PPU writing CONTROL outside VBlank: {:02X}", value);
+                        //     self.ram[ram_address] = value;
+                        // }
                         else {
                             let curr_value = self.ram[ram_address];
                             let adjusted_value = value | (curr_value & 0x80); // Enforce not clearing bit 7
-                            println!("Writing CONTROL outside VBlank, clearing bit 7 is not allowed: {:04X} -> {:04X}", value, adjusted_value);
+                            println!("{:?} Writing CONTROL outside VBlank, clearing bit 7 is not allowed: {:02X} -> {:02X}",
+                                caller, value, adjusted_value);
                             self.ram[ram_address] = adjusted_value;
                         }
                     }
@@ -584,6 +598,8 @@ impl Mmu {
                 panic!("Invalid RAM address: {:6X}", address);
             }
         }
+
+        self.ram[ram_address]
     }
 
     fn load_bootrom(&mut self) {
