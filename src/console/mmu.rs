@@ -242,7 +242,7 @@ impl Mmu {
             // EXTERNAL RAM
             0xA000..=0xBFFF => {
                 if let Some(cartridge) = &self.cartridge {
-                    cartridge.read_8_a000_bfff(address)
+                    cartridge.read_8_A000_BFFF(address)
                 } else {
                     panic!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
                 }
@@ -447,7 +447,7 @@ impl Mmu {
             // EXTERNAL RAM
             0xA000..=0xBFFF => {
                 if let Some(cartridge) = &mut self.cartridge {
-                    cartridge.write_8_a000_bfff(address, value);
+                    cartridge.write_8_A000_BFFF(address, value);
                 } else {
                     self.ram[ram_address] = value;
                 }

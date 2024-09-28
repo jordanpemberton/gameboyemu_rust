@@ -9,6 +9,7 @@ const ROM_SIZE_ADDRESS: usize = 0x0148;
 const RAM_SIZE_ADDRESS: usize = 0x0149;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub(crate) enum Mbc {
     None,
     Mbc1 { mbc: Mbc1 },
