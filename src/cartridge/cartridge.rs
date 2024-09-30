@@ -58,8 +58,21 @@ impl Cartridge {
                     _ => panic!("This should be unreachable")
                 }
             }
-            Mbc::Mbc3 { mbc: _ }
-            | Mbc::Mbc2
+            Mbc::Mbc3 { mbc: mbc3 } => {
+                let (rom_lower, rom_upper) = mbc3.rom_offsets;
+                match address {
+                    0x0000..=0x3FFF => {
+                        let adjusted_address = (address as usize & 0x3FFF) | rom_lower;
+                        self.data[adjusted_address]
+                    },
+                    0x4000..=0x7FFF => {
+                        let adjusted_address = (address as usize & 0x3FFF) | rom_upper;
+                        self.data[adjusted_address]
+                    },
+                    _ => panic!("This should be unreachable")
+                }
+            },
+            Mbc::Mbc2
             | Mbc::Mbc5
             | Mbc::Huc1 => panic!("UNIMPLEMENTED: Unsupported cartridge type {:?}, cannot write address {:04X}.", &self.mbc, address),
         };
@@ -128,9 +141,24 @@ impl Cartridge {
                     },
                     _ => panic!("This should be unreachable")
                 }
+            },
+            Mbc::Mbc3 { mbc: mbc3 } => {
+                match address {
+                    0xA000..=0xBFFF => {
+                        if mbc3.map_en {
+                            match mbc3.map_select {
+                                0x00..=0x03 => self.data[address as usize],
+                                0x04..=0x07 if mbc3.mbc30 => self.data[address as usize],
+                                _ => 0xFF,
+                            }
+                        } else {
+                            0xFF
+                        }
+                    },
+                    _ => panic!("This should be unreachable")
+                }
             }
             Mbc::Mbc2
-            | Mbc::Mbc3 { mbc: _ }
             | Mbc::Mbc5
             | Mbc::Huc1 => panic!("UNIMPLEMENTED: Unsupported cartridge type {:?}, cannot write address {:04X}.", &self.mbc, address),
         };
@@ -153,9 +181,19 @@ impl Cartridge {
                     },
                     _ => panic!("This should be unreachable")
                 }
-            }
+            },
+            Mbc::Mbc3 { mbc: mbc3 } => {
+                match address {
+                    0xA000..=0xBFFF => {
+                        if mbc3.map_en
+                            && (mbc3.map_select <= 3 || (mbc3.map_select <=7 && mbc3.mbc30)) {
+                            self.data[address as usize] = value;
+                        }
+                    },
+                    _ => panic!("this should be unreachable")
+                }
+            },
             Mbc::Mbc2
-            | Mbc::Mbc3 { mbc: _ }
             | Mbc::Mbc5
             | Mbc::Huc1 => panic!("UNIMPLEMENTED: Unsupported cartridge type {:?}, cannot write address {:04X}.", &self.mbc, address),
         }
