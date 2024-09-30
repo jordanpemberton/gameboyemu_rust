@@ -1,4 +1,5 @@
 #[allow(dead_code)]
+#[derive(Debug)]
 pub(crate) enum CartridgeType {
     NoMbc {
         ram: bool,

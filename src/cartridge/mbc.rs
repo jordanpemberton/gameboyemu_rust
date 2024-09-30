@@ -1,5 +1,6 @@
 use crate::cartridge::cartridge_header::CartridgeType;
 use crate::cartridge::mbc1::Mbc1;
+use crate::cartridge::mbc3::Mbc3;
 
 pub(crate) const ROM_BANK_SIZE: usize = 0x4000;
 pub(crate) const RAM_BANK_SIZE: usize = 0x2000;
@@ -14,7 +15,7 @@ pub(crate) enum Mbc {
     None,
     Mbc1 { mbc: Mbc1 },
     Mbc2, // { mbc: Mbc2 },
-    Mbc3, // { mbc: Mbc3 },
+    Mbc3 { mbc: Mbc3 },
     Mbc5, // { mbc: Mbc5 },
     Huc1,
 }
@@ -40,32 +41,12 @@ impl Mbc {
 
         let mbc = match cartridge_type {
             CartridgeType::NoMbc { .. } => Mbc::None,
-            CartridgeType::Mbc1 { is_multicart, .. } => {
-                Mbc::Mbc1 {
-                    mbc: Mbc1 {
-                        ram_enabled: false,
-                        advram_banking_mode: false,
-                        is_multicart,
-                        bank1: 1,
-                        bank2: 0,
-                    }
-                }
-            },
-            CartridgeType::Mbc2 { .. } => {
-                panic!("UNIMPLEMENTED CartridgeType MBC2");
-            },
-            CartridgeType::Mbc3 { .. } => {
-                panic!("UNIMPLEMENTED CartridgeType MBC3");
-            },
-            CartridgeType::Mbc5 { .. } => {
-                panic!("UNIMPLEMENTED CartridgeType MBC5");
-            },
-            CartridgeType::Huc1 { .. } => {
-                panic!("UNIMPLEMENTED CartridgeType HUC1");
-            }
-            _ => {
-                panic!("UNIMPLEMENTED CartridgeType ???");
-            }
+            CartridgeType::Mbc1 { is_multicart, .. } => Mbc::Mbc1 { mbc: Mbc1::new(is_multicart) },
+            CartridgeType::Mbc3 { .. } => Mbc::Mbc3 { mbc: Mbc3::new(ram_size) },
+            CartridgeType::Mbc2 { .. }
+            | CartridgeType::Mbc5 { .. }
+            | CartridgeType::Huc1 { .. }
+            | _ => panic!("UNIMPLEMENTED CartridgeType {:?}", cartridge_type),
         };
 
         mbc

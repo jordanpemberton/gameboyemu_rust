@@ -26,6 +26,16 @@ pub(crate) struct Mbc1 {
 }
 
 impl Mbc1 {
+    pub(crate) fn new(is_multicart: bool) -> Mbc1 {
+        Mbc1 {
+            ram_enabled: false,
+            advram_banking_mode: false,
+            is_multicart,
+            bank1: 1,
+            bank2: 0,
+        }
+    }
+
     pub(crate) fn rom_offsets(&self) -> (usize, usize) {
         let (upper_bits, lower_bits) = if self.is_multicart {
             (self.bank2 << 4, self.bank1 & 0x0F)
