@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::fs::read;
 use std::path::Path;
 
@@ -35,77 +36,106 @@ impl Cartridge {
         }
     }
 
-    pub(crate) fn read_8_0000_3fff(&self, address: u16) -> u8 {
-        let (rom_lower, _) = match &self.mbc {
-            Mbc::None => (0, 0),
-            Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
+    // ROM: 0x0000..=0x7FFF
+    pub(crate) fn read_8_rom(&mut self, address: u16) -> u8 {
+        let result = match &mut self.mbc {
+            Mbc::None => {
+                self.data[address as usize]
+            }
+            Mbc::Mbc1 { mbc } => {
+                let (rom_lower, rom_upper) = mbc.rom_offsets();
+                match address {
+                    0x0000..=0x3FFF => {
+                        let adjusted_address = (address as usize & 0x3FFF) | rom_lower;
+                        self.data[adjusted_address]
+                    },
+                    0x4000..=0x7FFF => {
+                        let adjusted_address = (address as usize & 0x3FFF) | rom_upper;
+                        self.data[adjusted_address]
+                    },
+                    _ => panic!("This should be unreachable")
+                }
+            }
             Mbc::Mbc2
             | Mbc::Mbc3
             | Mbc::Mbc5
-            | _ => { panic!("UNIMPLEMENTED MBC {:?}", &self.mbc) }
+            | Mbc::Huc1 => panic!("UNIMPLEMENTED: Unsupported cartridge type {:?}, cannot write address {:04X}.", &self.mbc, address),
         };
-        self.data[(rom_lower | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
+
+        result
     }
 
-    pub(crate) fn read_8_4000_7fff(&self, address: u16) -> u8 {
-        let (_, rom_upper) = match &self.mbc {
-            Mbc::None => (0, 0x4000),
-            Mbc::Mbc1 { mbc } => mbc.rom_offsets(),
+    pub(crate) fn write_8_rom(&mut self, address: u16, value: u8) {
+        match &mut self.mbc {
+            Mbc::None => {
+                self.data[address as usize] = value;
+            }
+            Mbc::Mbc1 { mbc } => {
+                match address {
+                    0x0000..=0x1FFF => { mbc.ram_enabled = (value & 0x0F) == 0x0A; },
+                    0x2000..=0x3FFF => { mbc.bank1 = max(value & 0x1F, 1); },
+                    0x4000..=0x5FFF => { mbc.bank2 = value & 0x03; },
+                    0x6000..=0x7FFF => { mbc.advram_banking_mode = (value & 1) == 1; },
+                    _ => panic!("this should be unreachable")
+                }
+            }
             Mbc::Mbc2
             | Mbc::Mbc3
             | Mbc::Mbc5
-            | _ => { panic!("UNIMPLEMENTED MBC {:?}", &self.mbc) }
-        };
-        self.data[(rom_upper | (address as usize & 0x3FFF)) & (self.data.len() - 1)]
-    }
-
-    pub(crate) fn read_8_A000_BFFF(&self, address: u16) -> u8 {
-        match &self.mbc {
-            Mbc::None => 0xFF, // ?
-            Mbc::Mbc1 { mbc } if mbc.ram_enabled => self.read_8_ram(address),
-            Mbc::Mbc2
-            | Mbc::Mbc3
-            | Mbc::Mbc5
-            | _ => { panic!("UNIMPLEMENTED MBC {:?}", &self.mbc) }
+            | Mbc::Huc1 => panic!("UNIMPLEMENTED: Unsupported cartridge type {:?}, cannot write address {:04X}.", &self.mbc, address),
         }
     }
 
-    pub(crate) fn write_8_A000_BFFF(&mut self, address: u16, value: u8) {
-        match &self.mbc {
-            Mbc::None => (),
-            Mbc::Mbc1 { mbc } if mbc.ram_enabled => self.write_8_ram(address, value),
+    pub(crate) fn read_8_ram(&mut self, address: u16) -> u8 {
+        let result = match &mut self.mbc {
+            Mbc::None => {
+                self.data[address as usize]
+            }
+            Mbc::Mbc1 { mbc } => {
+                match address {
+                    0xA000..=0xBFFF => {
+                        // The RAM is only accessible if RAM is enabled
+                        if mbc.ram_enabled {
+                            let adjusted_address = (address as usize & 0x1FFF) | mbc.ram_offset();
+                            self.data[adjusted_address]
+                        }
+                        // Otherwise reads return open bus values (often $FF, but not guaranteed)
+                        else {
+                            0xFF
+                        }
+                    },
+                    _ => panic!("This should be unreachable")
+                }
+            }
             Mbc::Mbc2
             | Mbc::Mbc3
             | Mbc::Mbc5
-            | _ => { panic!("UNIMPLEMENTED MBC {:?}", &self.mbc) }
+            | Mbc::Huc1 => panic!("UNIMPLEMENTED: Unsupported cartridge type {:?}, cannot write address {:04X}.", &self.mbc, address),
+        };
+
+        result
+    }
+
+    // RAM: 0x8000+
+    pub(crate) fn write_8_ram(&mut self, address: u16, value: u8) {
+        match &mut self.mbc {
+            Mbc::None => {
+                self.data[address as usize] = value;
+            }
+            Mbc::Mbc1 { mbc } => {
+                match address {
+                    // Writes are ignored if RAM is not enabled.
+                    0xA000..=0xBFFF if mbc.ram_enabled => {
+                        let adjusted_address = (address as usize & 0x1FFF) | mbc.ram_offset();
+                        self.data[adjusted_address] = value;
+                    },
+                    _ => panic!("This should be unreachable")
+                }
+            },
+            Mbc::Mbc2
+            | Mbc::Mbc3
+            | Mbc::Mbc5
+            | Mbc::Huc1 => panic!("UNIMPLEMENTED: Unsupported cartridge type {:?}, cannot write address {:04X}.", &self.mbc, address),
         }
-    }
-
-    fn read_8_ram(&self, address: u16) -> u8 {
-        let ram_offset = match &self.mbc {
-            Mbc::None => 0,
-            Mbc::Mbc1 { mbc } => mbc.ram_offset(),
-            Mbc::Mbc2
-            | Mbc::Mbc3
-            | Mbc::Mbc5
-            | _ => { panic!("UNIMPLEMENTED MBC {:?}", &self.mbc) }
-        };
-        // let adjusted_address = (ram_offset | ((address as usize & 0x1FFF) + 0x8000)) & (self.data.len() - 1);
-        let adjusted_address = address as usize + ram_offset;
-        self.data[adjusted_address]
-    }
-
-    fn write_8_ram(&mut self, address: u16, value: u8) {
-        let ram_offset = match &self.mbc {
-            Mbc::None => 0,
-            Mbc::Mbc1 { mbc } => mbc.ram_offset(),
-            Mbc::Mbc2
-            | Mbc::Mbc3
-            | Mbc::Mbc5
-            | _ => { panic!("UNIMPLEMENTED MBC {:?}", &self.mbc) }
-        };
-        // let adjusted_address = (ram_offset | ((address as usize & 0x1FFF) + 0x8000)) & (self.data.len() - 1);
-        let adjusted_address = address as usize + ram_offset;
-        self.data[adjusted_address] = value;
     }
 }

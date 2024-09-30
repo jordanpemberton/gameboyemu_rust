@@ -1,8 +1,7 @@
-use std::cmp::{max, min};
+use std::cmp::min;
 use std::collections::HashSet;
 use std::fs::read;
 use crate::cartridge::cartridge::Cartridge;
-use crate::cartridge::mbc::Mbc;
 use crate::console::input::JoypadInput;
 use crate::console::ppu;
 
@@ -203,19 +202,12 @@ impl Mmu {
                 self.rom[address as usize]
             }
 
-            // CARTRIDGE ROM FIXED
-            0x0000..=0x3FFF => if let Some(cartridge) = &self.cartridge {
-                cartridge.read_8_0000_3fff(address)
+            // CARTRIDGE ROM
+            0x0000..=0x7FFF => if let Some(cartridge) = &mut self.cartridge {
+                cartridge.read_8_rom(address)
             } else {
                 panic!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
             }
-
-            // CARTRIDGE ROM SWITCHABLE
-            0x4000..=0x7FFF => if let Some(cartridge) = &self.cartridge {
-                cartridge.read_8_4000_7fff(address)
-            } else {
-                panic!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
-            },
 
             _ => {
                 panic!("Invalid ROM address {:6X}", address);
@@ -241,8 +233,8 @@ impl Mmu {
 
             // EXTERNAL RAM
             0xA000..=0xBFFF => {
-                if let Some(cartridge) = &self.cartridge {
-                    cartridge.read_8_A000_BFFF(address)
+                if let Some(cartridge) = &mut self.cartridge {
+                    cartridge.read_8_ram(address)
                 } else {
                     panic!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
                 }
@@ -311,120 +303,15 @@ impl Mmu {
             }
 
             // CARTRIDGE ROM
-            0x0000..=0x1FFF => {
+            0x0000..=0x7FFF => {
                 if let Some(cartridge) = &mut self.cartridge {
-                    match &mut cartridge.mbc {
-                        Mbc::None => {
-                            self.rom[address as usize] = value;
-                        }
-                        Mbc::Mbc1 { mbc } => {
-                            mbc.ram_enabled = (value & 0x0F) == 0x0A;
-                        }
-                        Mbc::Mbc2 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Mbc3 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Mbc5 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Huc1 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Huc1, cannot write address {:04X}.", address);
-                        }
-                    }
+                    cartridge.write_8_rom(address, value);
                 } else {
                     panic!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                 }
             }
 
-            // CARTRIDGE ROM
-            0x2000..=0x3FFF => {
-                if let Some(cartridge) = &mut self.cartridge {
-                    match &mut cartridge.mbc {
-                        Mbc::None => {
-                            self.rom[address as usize] = value;
-                        }
-                        Mbc::Mbc1 { mbc } => {
-                            mbc.bank1 = max(value & 0x1F, 1);
-                        }
-                        Mbc::Mbc2 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Mbc3 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Mbc5 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Huc1 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Huc1, cannot write address {:04X}.", address);
-                        }
-                    }
-                } else {
-                    panic!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                }
-            }
-
-            // CARTRIDGE ROM
-            0x4000..=0x5FFF => {
-                if let Some(cartridge) = &mut self.cartridge {
-                    match &mut cartridge.mbc {
-                        Mbc::None => {
-                            self.rom[address as usize] = value;
-                        }
-                        Mbc::Mbc1 { mbc } => {
-                            mbc.bank2 = value & 0x03;
-                        }
-                        Mbc::Mbc2 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Mbc3 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Mbc5 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Huc1 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Huc1, cannot write address {:04X}.", address);
-                        }
-                    }
-                } else {
-                    panic!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                }
-            }
-
-            // CARTRIDGE ROM
-            0x6000..=0x7FFF => {
-                if let Some(cartridge) = &mut self.cartridge {
-                    match &mut cartridge.mbc {
-                        Mbc::None => {
-                            self.rom[address as usize] = value;
-                        }
-                        Mbc::Mbc1 { mbc } => {
-                            mbc.advram_banking_mode = (value & 1) == 1;
-                        }
-                        Mbc::Mbc2 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc2, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Mbc3 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc3, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Mbc5 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Mbc5, cannot write address {:04X}.", address);
-                        }
-                        Mbc::Huc1 => {
-                            panic!("UNIMPLEMENTED: Unsupported cartridge type Huc1, cannot write address {:04X}.", address);
-                        }
-                    }
-                } else {
-                    panic!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
-                }
-            }
-            
-            _ => {
-                panic!("Invalid ROM address: {:6X}", address);
-            }
+            _ => panic!("Invalid ROM address: {:6X}", address)
         }
 
         // For debugging because conditional breakpoints are unuseably slow
@@ -447,9 +334,9 @@ impl Mmu {
             // EXTERNAL RAM
             0xA000..=0xBFFF => {
                 if let Some(cartridge) = &mut self.cartridge {
-                    cartridge.write_8_A000_BFFF(address, value);
+                    cartridge.write_8_ram(address, value);
                 } else {
-                    self.ram[ram_address] = value;
+                    panic!("UNIMPLEMENTED: No cartridge loaded, cannot write address {:04X}.", address);
                 }
             }
 
