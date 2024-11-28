@@ -225,6 +225,7 @@ impl Console {
         while is_running {
             if cycles_this_frame >= CYCLES_PER_FRAME {
                 self.display.draw(&mut self.ppu);
+
                 is_running = self.input_polling();
 
                 self.total_frames += 1;

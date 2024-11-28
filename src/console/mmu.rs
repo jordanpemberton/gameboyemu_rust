@@ -327,7 +327,7 @@ impl Mmu {
                 if caller == Caller::PPU || self.ppu_mode != ppu::StatMode::PixelTransfer {
                     self.ram[ram_address] = value;
                 } else {
-                    println!("VRAM LOCKED by PPU: Cannot write address {:04X}.", address);
+                    // println!("VRAM LOCKED by PPU: Cannot write address {:04X}.", address);
                 }
             }
 

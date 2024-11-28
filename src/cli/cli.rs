@@ -8,6 +8,10 @@ use crate::console::disassembler;
 
 const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/dmg.bin";
 const ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/";
+const SKIP_BOOT_FLAG_STRING: &str = "skipboot";
+const DEBUG_FLAG_STRING: &str = "debug";
+const PRINT_CPU_FLAG_STRING: &str = "printcpu";
+
 
 struct EmuArgs {
     skip_boot: bool,
@@ -23,11 +27,25 @@ impl EmuArgs {
 
     fn parse_args() -> EmuArgs {
         let args: Vec<String> = env::args().collect();
+
+        // Defaults
+        let mut rom_filepath = String::new();
+        let mut skip_boot = false;
+        let mut debug_enabled = false;
+        let mut print_cpu_instrs = false;
+
+        if args.len() > 1 {
+            rom_filepath = args[1].clone();
+            skip_boot = args.contains(&String::from(SKIP_BOOT_FLAG_STRING));
+            debug_enabled = args.contains(&String::from(DEBUG_FLAG_STRING));
+            print_cpu_instrs = args.contains(&String::from(PRINT_CPU_FLAG_STRING));
+        }
+
         EmuArgs {
-            rom_filepath: if args.len() > 1 { args[1].clone() } else { String::new() },
-            skip_boot: if args.len() > 2 { args[2].clone().parse().unwrap() } else { 0 } > 0,
-            debug_enabled: if args.len() > 3 { args[3].clone().parse().unwrap() } else { 1 } > 0,
-            print_cpu_instrs: if args.len() > 4 { args[4].clone().parse().unwrap() } else { 0 } > 0,
+            rom_filepath,
+            skip_boot,
+            debug_enabled,
+            print_cpu_instrs,
         }
     }
 }

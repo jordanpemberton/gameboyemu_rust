@@ -36,7 +36,7 @@ pub(crate) enum StatMode {
 }
 
 #[allow(dead_code)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum DrawMode {
     Background,
     Sprites,
@@ -271,6 +271,7 @@ impl Ppu {
         }
     }
 
+    // TODO: Fix graphics misaligned on screen bug
     fn pixel_transfer(&mut self, mmu: &mut Mmu) {
         self.draw_background_line(mmu);
         self.draw_window_line(mmu);
@@ -361,38 +362,43 @@ impl Ppu {
     }
 
     fn draw_background_or_window_line(&mut self, mmu: &mut Mmu, mode: DrawMode) { // TOO SLOW
-        if mode == DrawMode::Window &&
-            (self.wy.read(mmu, Caller::PPU) >= self.ly.read(mmu, Caller::PPU) || self.wx.read(mmu, Caller::PPU) >= self.lcd.width as u8 + 7) {
-            return;
-        }
+        let ly = self.ly.read(mmu, Caller::PPU) as i32;
+        let y_offset = match mode {
+            DrawMode::Window => {
+                let wy = self.wy.read(mmu, Caller::PPU) as i32;
+                if wy >= ly  { return; } // offscreen
+                -wy
+            },
+            DrawMode::Background => {
+                self.scy.read(mmu, Caller::PPU) as i32
+            },
+            | _ => panic!("Mode {:?} is not allowed here", mode),
+        };
+        let x_offset = match mode {
+            DrawMode::Window => {
+                let wx = self.wx.read(mmu, Caller::PPU) as i32;
+                if wx >= (self.lcd.width as i32 + 7) { return; } // offscreen
+                -(wx - 7)
+            },
+            DrawMode::Background => {
+                self.scx.read(mmu, Caller::PPU) as i32
+            },
+            | _ => panic!("Mode {:?} is not allowed here", mode),
+        };
 
         let palette = Ppu::read_palette(self.bgp.read(mmu, Caller::PPU));
-
         let index_mode_8000 = self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::AddressingMode8000 as u8, Caller::PPU);
+        let tilemap_base_address: i32 = if index_mode_8000 { 0x8000 } else { 0x9000 };
         let tilemap_at_9c00_bit = match mode {
             DrawMode::Window => mmu::LcdControlRegBit::WindowTilemapIsAt9C00,
             DrawMode::Background | _ => mmu::LcdControlRegBit::BackgroundTilemapIsAt9C00,
         } as u8;
-        let tilemap_address: u16 = if self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit, Caller::PPU) {
-            0x9C00
-        } else {
-            0x9800
-        };
+        let is_tilemap_at_9c00 = self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit, Caller::PPU);
+        let tilemap_address: u16 = if is_tilemap_at_9c00 { 0x9C00 } else { 0x9800 };
 
-        let y = self.ly.read(mmu, Caller::PPU) as i32;
-        let y_offset = match mode {
-            DrawMode::Window => -(self.wy.read(mmu, Caller::PPU) as i32),
-            DrawMode::Background | _ => self.scy.read(mmu, Caller::PPU) as i32,
-        };
-        let x_offset = match mode {
-            DrawMode::Window => -(self.wx.read(mmu, Caller::PPU) as i32 - 7),
-            DrawMode::Background | _ => self.scx.read(mmu, Caller::PPU) as i32
-        };
-
-        let tilemap_row = (y + y_offset) as u8 / 8;
-        let tile_row = (y + y_offset) as u8 % 8;
+        let tilemap_row = (ly + y_offset) / 8;
+        let tile_row = (ly + y_offset) as u8 % 8;
         let tile_index_base_address = tilemap_address + tilemap_row as u16 * 32;
-        let tilemap_base_address: i32 = if index_mode_8000 { 0x8000 } else { 0x9000 };
 
         for x in 0..self.lcd.width as i32 {
             let tilemap_col = (x + x_offset) as u8 / 8;
@@ -415,10 +421,13 @@ impl Ppu {
             let color = high + low;
 
             if mode == DrawMode::Background || color > 0 { // TODO priority, transparency
-                self.lcd.data[y as usize][x as usize] = palette[color as usize] + match mode {
-                    DrawMode::Window => 4,
-                    DrawMode::Background | _ => 0,
-                };
+                let pixel_color = palette[color as usize]
+                    // adjust colors of different layers
+                    + match mode {
+                        DrawMode::Window => 4,
+                        _ => 0,
+                    };
+                self.lcd.data[ly as usize][x as usize] = pixel_color;
             }
         }
     }
