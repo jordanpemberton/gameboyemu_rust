@@ -376,9 +376,9 @@ impl Ppu {
         };
         let x_offset = match mode {
             DrawMode::Window => {
-                let wx = self.wx.read(mmu, Caller::PPU) as i32;
-                if wx >= (self.lcd.width as i32 + 7) { return; } // offscreen
-                -(wx - 7)
+                let wx = self.wx.read(mmu, Caller::PPU);
+                if wx >= (self.lcd.width as u8 + 7) { return; } // offscreen
+                -(wx as i32 - 7)
             },
             DrawMode::Background => {
                 self.scx.read(mmu, Caller::PPU) as i32
@@ -396,7 +396,7 @@ impl Ppu {
         let is_tilemap_at_9c00 = self.lcd_control.check_bit(mmu, tilemap_at_9c00_bit, Caller::PPU);
         let tilemap_address: u16 = if is_tilemap_at_9c00 { 0x9C00 } else { 0x9800 };
 
-        let tilemap_row = (ly + y_offset) / 8;
+        let tilemap_row = (ly + y_offset) as u8 / 8;
         let tile_row = (ly + y_offset) as u8 % 8;
         let tile_index_base_address = tilemap_address + tilemap_row as u16 * 32;
 
