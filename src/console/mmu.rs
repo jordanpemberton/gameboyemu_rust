@@ -195,7 +195,7 @@ impl Mmu {
     }
 
     #[allow(unused_variables)]
-    fn read_8_rom(&mut self, address: u16, caller: Caller) -> u8 {
+    pub(crate) fn read_8_rom(&mut self, address: u16, caller: Caller) -> u8 {
         let result = match address {
             // BOOT ROM
             0x0000..=0x0100 if self.is_booting => {
@@ -217,7 +217,7 @@ impl Mmu {
         result
     }
 
-    fn read_8_ram(&mut self, address: u16, caller: Caller) -> u8 {
+    pub(crate) fn read_8_ram(&mut self, address: u16, caller: Caller) -> u8 {
         let ram_address = address as usize - 0x8000;
 
         let result = match address {
@@ -295,7 +295,7 @@ impl Mmu {
     }
 
     #[allow(unused_variables)]
-    fn write_8_rom(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
+    pub(crate) fn write_8_rom(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
         match address {
             // BOOT ROM
             0x0000..=0x0100 if self.is_booting => {
@@ -317,8 +317,8 @@ impl Mmu {
         // For debugging because conditional breakpoints are unuseably slow
         self.rom[address as usize]
     }
-   
-    fn write_8_ram(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
+
+    pub(crate) fn write_8_ram(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
         let ram_address = address as usize - 0x8000;
 
         match address {

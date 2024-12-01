@@ -1,13 +1,26 @@
 use crate::console::mmu::{Caller, Mmu};
 
+/*
+pub(crate) trait ReadWrite {
+    fn read_8(&mut self) -> u8;
+    fn write_8(&mut self, value: u8) -> u8;
+}
+*/
+
+#[allow(dead_code)]
 pub(crate) struct Register {
     pub(crate) address: u16,
+    value: u8,
 }
 
 impl Register {
     pub(crate) fn new(address: u16) -> Register {
+        Register::_new(address, 0)
+    }
+    pub(crate) fn _new(address: u16, value: u8) -> Register {
         Register {
-            address
+            address,
+            value,
         }
     }
 
@@ -32,3 +45,52 @@ impl Register {
         self.write(mmu, value, caller);
     }
 }
+
+/*
+impl ReadWrite for Register {
+    fn read_8(&mut self) -> u8 {
+        self.value
+    }
+
+    fn write_8(&mut self, value: u8) -> u8 {
+        self.value = value;
+        self.value
+    }
+}
+*/
+
+/*
+impl PartialEq<Register> for Register {
+    fn eq(&self, other: &Register) -> bool {
+        if let Some(other_register) = &other.value {
+            *other_register.value == self.value
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<u8> for Register {
+    fn eq(&self, other: &u8) -> bool {
+        self.value == *other
+    }
+}
+
+impl PartialOrd<u8> for Register {
+    fn partial_cmp(&self, other: &u8) -> Option<Ordering> {
+        self.value.partial_cmp(other)
+    }
+    fn lt(&self, other: &u8) -> bool {
+        self.value.lt(other)
+    }
+    fn le(&self, other: &u8) -> bool {
+        self.value.le(other)
+    }
+    fn gt(&self, other: &u8) -> bool {
+        self.value.gt(other)
+    }
+    fn ge(&self, other: &u8) -> bool {
+        self.value.gt(other)
+    }
+}
+ */
