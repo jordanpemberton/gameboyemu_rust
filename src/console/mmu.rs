@@ -164,7 +164,7 @@ impl Mmu {
     }
 
     //noinspection RsNonExhaustiveMatch
-    pub(crate) fn write_8(&mut self, address: u16, value: u8, caller: Caller) {
+    pub(crate) fn write_8(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
         let result = match address {
             0x0000..=0x7FFF => self.write_8_rom(address, value, caller),
             0x8000..=0xFFFF => self.write_8_ram(address, value, caller),
@@ -178,9 +178,11 @@ impl Mmu {
                     value, debug_address, self.debug_written_value);
             }
         }
+
+        result
     }
 
-    pub(crate) fn write_16(&mut self, address: u16, value: u16, endian: Endianness, caller: Caller) {
+    pub(crate) fn write_16(&mut self, address: u16, value: u16, endian: Endianness, caller: Caller) -> u16 {
         let mut a = ((value & 0xFF00) >> 8) as u8;
         let mut b = (value & 0x00FF) as u8;
 
@@ -190,12 +192,14 @@ impl Mmu {
             b = temp;
         }
 
-        self.write_8(address, a, caller);
-        self.write_8(address + 1, b, caller);
+        a = self.write_8(address, a, caller);
+        b = self.write_8(address + 1, b, caller);
+
+        ((a as u16) << 8) | (b as u16)
     }
 
     #[allow(unused_variables)]
-    pub(crate) fn read_8_rom(&mut self, address: u16, caller: Caller) -> u8 {
+    fn read_8_rom(&mut self, address: u16, caller: Caller) -> u8 {
         let result = match address {
             // BOOT ROM
             0x0000..=0x0100 if self.is_booting => {
@@ -217,7 +221,7 @@ impl Mmu {
         result
     }
 
-    pub(crate) fn read_8_ram(&mut self, address: u16, caller: Caller) -> u8 {
+    fn read_8_ram(&mut self, address: u16, caller: Caller) -> u8 {
         let ram_address = address as usize - 0x8000;
 
         let result = match address {
@@ -295,7 +299,7 @@ impl Mmu {
     }
 
     #[allow(unused_variables)]
-    pub(crate) fn write_8_rom(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
+    fn write_8_rom(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
         match address {
             // BOOT ROM
             0x0000..=0x0100 if self.is_booting => {
@@ -318,7 +322,7 @@ impl Mmu {
         self.rom[address as usize]
     }
 
-    pub(crate) fn write_8_ram(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
+    fn write_8_ram(&mut self, address: u16, value: u8, caller: Caller) -> u8 {
         let ram_address = address as usize - 0x8000;
 
         match address {

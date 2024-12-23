@@ -120,7 +120,7 @@ impl CpuRegisters {
         match register {
             CpuRegIndex::AF => {
                 self.a = ((value & 0xFF00) >> 8) as u8;
-                self.f = (value & 0x00F0) as u8;
+                self.f = (value & 0x00F0) as u8; // Clear lower bits!
             }
             CpuRegIndex::BC => {
                 self.b = ((value & 0xFF00) >> 8) as u8;

@@ -639,24 +639,24 @@ impl Instruction {
 
     fn set_target_value_8(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, value: u8) {
         match target {
-            Src::A8 => mmu.write_8(0xFF00 | args[0] as u16, value, Caller::CPU),
-            Src::A16 => mmu.write_8(((args[1] as u16) << 8) | (args[0] as u16), value, Caller::CPU),
+            Src::A8 => { mmu.write_8(0xFF00 | args[0] as u16, value, Caller::CPU); },
+            Src::A16 => { mmu.write_8(((args[1] as u16) << 8) | (args[0] as u16), value, Caller::CPU); },
 
-            Src::A => cpu.registers.set_byte(CpuRegIndex::A, value),
-            Src::B => cpu.registers.set_byte(CpuRegIndex::B, value),
-            Src::C => cpu.registers.set_byte(CpuRegIndex::C, value),
-            Src::D => cpu.registers.set_byte(CpuRegIndex::D, value),
-            Src::E => cpu.registers.set_byte(CpuRegIndex::E, value),
-            Src::F => cpu.registers.set_byte(CpuRegIndex::F, value),
-            Src::H => cpu.registers.set_byte(CpuRegIndex::H, value),
-            Src::L => cpu.registers.set_byte(CpuRegIndex::L, value),
+            Src::A => { cpu.registers.set_byte(CpuRegIndex::A, value); },
+            Src::B => { cpu.registers.set_byte(CpuRegIndex::B, value); },
+            Src::C => { cpu.registers.set_byte(CpuRegIndex::C, value); },
+            Src::D => { cpu.registers.set_byte(CpuRegIndex::D, value); },
+            Src::E => { cpu.registers.set_byte(CpuRegIndex::E, value); },
+            Src::F => { cpu.registers.set_byte(CpuRegIndex::F, value); },
+            Src::H => { cpu.registers.set_byte(CpuRegIndex::H, value); },
+            Src::L => { cpu.registers.set_byte(CpuRegIndex::L, value); },
 
-            Src::Ca => mmu.write_8(0xFF00 | cpu.registers.get_byte(CpuRegIndex::C) as u16, value, Caller::CPU),
+            Src::Ca => { mmu.write_8(0xFF00 | cpu.registers.get_byte(CpuRegIndex::C) as u16, value, Caller::CPU); },
 
-            Src::AFa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::AF), value, Caller::CPU),
-            Src::BCa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::BC), value, Caller::CPU),
-            Src::DEa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::DE), value, Caller::CPU),
-            Src::HLa => mmu.write_8(cpu.registers.get_word(CpuRegIndex::HL), value, Caller::CPU),
+            Src::AFa => { mmu.write_8(cpu.registers.get_word(CpuRegIndex::AF), value, Caller::CPU); },
+            Src::BCa => { mmu.write_8(cpu.registers.get_word(CpuRegIndex::BC), value, Caller::CPU); },
+            Src::DEa => { mmu.write_8(cpu.registers.get_word(CpuRegIndex::DE), value, Caller::CPU); },
+            Src::HLa => { mmu.write_8(cpu.registers.get_word(CpuRegIndex::HL), value, Caller::CPU); },
 
             _ => panic!("Unsupported 8-bit target: {:?}", target),
         }
@@ -664,7 +664,7 @@ impl Instruction {
 
     fn set_target_value_16(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, value: u16) {
         match target {
-            Src::A16 => mmu.write_16(((args[1] as u16) << 8) | (args[0] as u16), value, Endianness::BIG, Caller::CPU),
+            Src::A16 => { mmu.write_16(((args[1] as u16) << 8) | (args[0] as u16), value, Endianness::BIG, Caller::CPU); },
 
             Src::AF => cpu.registers.set_word(CpuRegIndex::AF, value),
             Src::BC => cpu.registers.set_word(CpuRegIndex::BC, value),
@@ -1018,13 +1018,13 @@ impl Instruction {
         self.ld_8(cpu, mmu, args, Src::A, Src::BCa)
     }
 
-    /// DEC BC 
-    /// 1 8 
+    /// DEC BC
+    /// 1 8
     /// - - - -
     fn op_000b(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.decrement_16(cpu, mmu, args, Src::BC)
     }
-    
+
     /// INC C
     /// 1 4
     /// Z 0 H -
@@ -2697,8 +2697,8 @@ impl Instruction {
     }
 
 
-    /// LD (a16),A 
-    /// 3 16 
+    /// LD (a16),A
+    /// 3 16
     /// - - - -
     fn op_00ea(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.ld_8(cpu, mmu, args, Src::A16, Src::A)
@@ -4405,7 +4405,7 @@ impl Instruction {
     fn op_cbdf(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         self.set(cpu, mmu, args, Src::A, 3, true)
     }
-    
+
     /// SET 4,B
     /// 2 8
     /// - - - -

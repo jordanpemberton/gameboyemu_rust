@@ -68,7 +68,7 @@ pub(crate) struct Ppu {
     mode_cycle_count: usize,
     scy: Register,
     scx: Register,
-    ly: Register,
+    // ly: Register,
     lyc: Register,
     dma: Register,
     bgp: Register,
@@ -88,7 +88,7 @@ impl Ppu {
             mode_cycle_count: 0,
             scy: Register::new(mmu::SCY_REG),
             scx: Register::new(mmu::SCX_REG),
-            ly: Register::new(mmu::LY_REG),
+            // ly: Register::new(mmu::LY_REG),
             lyc: Register::new(mmu::LYC_REG),
             dma: Register::new(mmu::DMA_REG),
             bgp: Register::new(mmu::BGP_REG),
@@ -157,7 +157,8 @@ impl Ppu {
             }
 
             // If LY == LYC
-            let ly = mmu.read_8_ram(mmu::LY_REG, Caller::PPU);
+            let ly = mmu.read_8(mmu::LY_REG, Caller::PPU);
+
             let lyc = self.lyc.read(mmu, Caller::PPU);
 
             if ly == lyc {
@@ -187,12 +188,13 @@ impl Ppu {
     }
 
     fn increment_ly(&mut self, mmu: &mut Mmu) -> u8 {
-        let mut new_ly = mmu.read_8_ram(mmu::LY_REG, Caller::PPU).wrapping_add(1);
+        let mut new_ly = mmu.read_8(mmu::LY_REG, Caller::PPU).wrapping_add(1);
+
         if new_ly >= 154 {
             new_ly = 0;
         }
 
-        mmu.write_8_ram(mmu::LY_REG, new_ly, Caller::PPU)
+        mmu.write_8(mmu::LY_REG, new_ly, Caller::PPU)
     }
 
     fn set_stat_mode(&mut self, mmu: &mut Mmu, new_mode: StatMode, interrupts: &mut Interrupts) {
@@ -259,7 +261,8 @@ impl Ppu {
     }
 
     fn oam_search(&mut self, mmu: &mut Mmu) {
-        let ly = mmu.read_8_ram(mmu::LY_REG, Caller::PPU);
+        let ly = mmu.read_8(mmu::LY_REG, Caller::PPU);
+
         if ly == 0 {
             self.lcd_control.read(mmu, Caller::PPU);
             let obj_enabled = self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::ObjEnabled as u8, Caller::PPU);
@@ -312,7 +315,7 @@ impl Ppu {
     fn draw_sprites_line(&mut self, mmu: &mut Mmu) {
         if self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::ObjEnabled as u8, Caller::PPU) {
             let tiledata_address: usize = 0x8000;
-            let ly = mmu.read_8_ram(mmu::LY_REG, Caller::PPU);
+            let ly = mmu.read_8(mmu::LY_REG, Caller::PPU);
 
             for attr in self.sprite_attributes {
                 let is_16_sprite = self.lcd_control.check_bit(mmu, mmu::LcdControlRegBit::SpriteSizeIs16 as u8, Caller::PPU);
@@ -365,7 +368,7 @@ impl Ppu {
     }
 
     fn draw_background_or_window_line(&mut self, mmu: &mut Mmu, mode: DrawMode) { // TOO SLOW
-        let ly = mmu.read_8_ram(mmu::LY_REG, Caller::PPU) as i32;
+        let ly = mmu.read_8(mmu::LY_REG, Caller::PPU) as i32;
 
         let y_offset = match mode {
             DrawMode::Window => {
