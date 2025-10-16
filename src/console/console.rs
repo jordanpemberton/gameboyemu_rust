@@ -14,7 +14,8 @@ use crate::console::interrupts::InterruptRegBit;
 use crate::console::mmu;
 use crate::console::timer::Timer;
 
-const CYCLES_PER_FRAME: u64 = 69905;
+// const CYCLES_PER_FRAME: u64 = 69_905;
+const CYCLES_PER_FRAME: u64 = 100_000;
 const FRAMES_PER_SECOND: u64 = 60;
 
 pub(crate) struct Console {
