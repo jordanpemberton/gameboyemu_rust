@@ -1,5 +1,7 @@
 # Game Boy Emulator Project
 
+Forver WIP (very buggy, very slow)
+
 ## Dependencies
 - Rust, Cargo
 -- To install (Ubuntu), see: https://rust-lang.org/tools/install/
