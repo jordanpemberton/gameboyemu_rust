@@ -10,7 +10,7 @@ use crate::console::timer::Timer;
 pub(crate) enum DebugAction {
     BREAK,
     PEEK,
-    STEP,
+    STEP, // Unimplemented
 }
 
 pub(crate) struct Debugger {

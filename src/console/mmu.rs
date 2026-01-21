@@ -110,7 +110,7 @@ impl Mmu {
             oam_dma_src_addr: None,
             active_input: HashSet::from([]),
             cartridge,
-            debug_address: Option::from(LCD_CONTROL_REG),
+            debug_address: Option::None, // Option::from(LCD_CONTROL_REG),
             debug_written_value: 0,
             debug_read_value: 0,
             rom: [0; 0x8000],
@@ -446,7 +446,7 @@ impl Mmu {
                     }
                     LCD_CONTROL_REG => {
                         if self.ppu_mode == ppu::StatMode::VBlank {
-                            println!("{:?} Writing CONTROL during VBlank: {:02X}", caller, value);
+                            // println!("{:?} Writing CONTROL during VBlank: {:02X}", caller, value);
                             self.ram[ram_address] = value;
                         }
                         // else if caller == Caller::PPU {
@@ -456,8 +456,8 @@ impl Mmu {
                         else {
                             let curr_value = self.ram[ram_address];
                             let adjusted_value = value | (curr_value & 0x80); // Enforce not clearing bit 7
-                            println!("{:?} Writing CONTROL outside VBlank, clearing bit 7 is not allowed: {:02X} -> {:02X}",
-                                caller, value, adjusted_value);
+                            // println!("{:?} Writing CONTROL outside VBlank, clearing bit 7 is not allowed: {:02X} -> {:02X}",
+                            //     caller, value, adjusted_value);
                             self.ram[ram_address] = adjusted_value;
                         }
                     }

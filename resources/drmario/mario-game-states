@@ -1,0 +1,137 @@
+Dr Mario
+address 0xFFE1 = game status
+
+00=(frozen) title
+07=nautilus
+08=fish
+09=shows sprites
+0A=can make pills appear (wait)
+0B=(frozen) settings memu
+01,02,03,04,05,0C,0D,0E,0F=nothing
+
+
+Running Mooneye:
+
+=== boot rom ===
+write 0x0000 to FFE1
+write 0x0000 to FFE1
+
+=== loading screen ===
+write 0x0001 to FFE1
+
+=== select 1 player ===
+write 0x000B to FFE1
+
+=== menu virus ===
+write 0x000C to FFE1
+=== menu speed ===
+write 0x000D to FFE1
+=== menu sound ===
+write 0x000E to FFE1
+
+=== start game ===
+write 0x0002 to FFE1  <-- mine gets stuck here
+write 0x0003 to FFE1
+
+=== game ===
+write 0x000A to FFE1
+write 0x0004 to FFE1
+write 0x000A to FFE1
+write 0x0004 to FFE1
+write 0x000A to FFE1
+write 0x0004 to FFE1
+
+
+
+// timer interrupt handler...
+    ...
+    push bc
+	push de
+	push hl
+    Call "JumpTo" // 20a? -> 7ff0   **
+jp   Unk_65C0 // 7ff0, jump -> 65c0
+
+ld   a,[wUnk_DF7F] // 65c0
+	cp   a,$01
+	jr   z,.unk_6641
+	cp   a,$02
+	jp   z,Unk_667A
+	ld   a,[wUnk_DF7E]
+	and  a   // 65cf
+	jp   nz,Unk_6684
+	ld   hl,$DFE8
+	ldi  a,[hl]
+	and  a   // 65d7
+	jr   nz,.unk_663C
+	ld   a,[wUnk_DF8B]  // 65da
+	and  a // 65dd
+	jr   z,.unk_65E5 // 65de, jump -> 65e5
+ld   a,[wUnk_DFE0] // 65e5
+	cp   a,$08   // 65e8
+	jr   z,.unk_6618
+	cp   a,$0A // 65ec, DFE0 no longer 0A ?
+	jr   z,.unk_6618
+	cp   a,$0B   // 65f0
+	jr   z,.unk_6618
+	ld   a,[wUnk_DFE1]
+	cp   a,$08   // 65f7
+	jr   z,.unk_6618
+	cp   a,$0A
+	jr   z,.unk_6618
+	cp   a,$0B
+	jr   z,.unk_6618
+	ld   a,[wUnk_DF8A]
+	and  a  // 6606
+	jr   z,.unk_6618 // 6607, jump -> 6618
+call Unk_6555 // 6618 call -> 6555    *
+ld   de,wUnk_DFE0 // 6555  (whatever is after initmusic)
+    ld   a,[de]
+	and  a
+	jr   z,.unk_6563 // 655a jump -> 6563
+inc  e // 6563
+	ld   a,[de]
+    and  a
+    jr   z,.unk_656F  // 6566 jump -> 656f
+ret // 656f
+
+// return back to 661b
+ld   a,[wUnk_DFE8] // 661b
+    cp   a,$0A
+	jr   z,.unk_65D3 // 6620
+	call Unk_6570 // 6622, call -> 6570    *
+
+ld   de,$DFF8 // 6570
+	ld   a,[de]
+	and  a
+	jr   z,.unk_657E // 6575, jump -> 657e
+
+inc  e // 657e
+    ld   a,[de]
+	and  a
+	jr   z,.unk_658A // 6581, jump -> 658a
+ret // 658a, return to 6625
+
+call Unk_68A7 // 6625, call -> 68a7   *
+
+ld   hl,$DFE9 // 68a7
+	ld   a,[hl] // 68aa
+	and  a // 68ab
+	ret  z // 68ac, return -> 6628
+
+// 6628
+xor  a // 6628
+	ld   [wUnk_DFE0],a
+	ld   [wUnk_DFE8],a
+	ld   [wUnk_DFF0],a
+	ld   [wUnk_DFF8],a
+	ld   [wUnk_DF7F],a
+	ld   [wUnk_DF8B],a
+	ret // 663b, return -> back to timerhandler, 20a7
+
+// Back to TimerHandler
+// 20a7
+pop  hl // 20a7
+	pop  de
+	pop  bc
+	pop  af
+	reti   // 20ab, exit timerhandler, return to already visited code...

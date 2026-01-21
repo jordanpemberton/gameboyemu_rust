@@ -22,7 +22,7 @@ impl SpriteAttribute {
             flip_y: data[3] & 0x40 == 0x40,
             flip_x: data[3] & 0x20 == 0x20,
             palette_is_obp1: data[3] & 0x10 == 0x10,
-            tile_vram_bank_cgb: data[3] & 0x08 == 0x80,
+            tile_vram_bank_cgb: data[3] & 0x08 == 0x08,
             palette_cgb: data[3] & 0x07,
         }
     }

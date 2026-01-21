@@ -6,8 +6,9 @@ use crate::cartridge::cartridge::Cartridge;
 use crate::console::console::Console;
 use crate::console::disassembler;
 
-const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/dmg.bin";
-const ROM_DIR: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/";
+const BOOTROM_FILEPATH: &str = "./roms/bootrom/dmg.bin";
+const ROM_DIR: &str = "./roms";
+const DISASSEMBLE_OUTPUT_DIR: &str = "./out";
 const SKIP_BOOT_FLAG_STRING: &str = "skipboot";
 const DEBUG_FLAG_STRING: &str = "debug";
 const PRINT_CPU_FLAG_STRING: &str = "printcpu";
@@ -108,21 +109,21 @@ fn select_rom(is_contained: bool) -> String {
     rom_filepath
 }
 
-fn disassemble_rom(filepath: &str) {
+fn disassemble_rom(filepath: &str, out_path: &str) {
     let cartridge = Cartridge::new(filepath.as_ref());
     let name = *filepath.split('/').collect::<Vec<&str>>()
         .last().unwrap()
         .split('.').collect::<Vec<&str>>()
         .first().unwrap();
-    let path = format!("/home/jordan/RustProjs/GameBoyEmu/out/disassemble__{}.txt", name);
+    let path = format!("{}/disassemble__{}.txt", out_path, name);
     disassembler::disassemble_to_output_file(&cartridge.data, path.as_str());
 }
 
 fn run_rom(args: &EmuArgs) {
-    let window_scale = 7;
+    let window_scale = 5;
 
     if args.rom_filepath.trim().is_empty() {
-        disassemble_rom(BOOTROM_FILEPATH);
+        disassemble_rom(BOOTROM_FILEPATH, DISASSEMBLE_OUTPUT_DIR);
         let skip_boot = false;
         let mut gamboy = Console::new(
             "GAMBOY",
@@ -134,7 +135,7 @@ fn run_rom(args: &EmuArgs) {
         );
         gamboy.run();
     } else {
-        disassemble_rom(args.rom_filepath.as_str());
+        disassemble_rom(args.rom_filepath.as_str(), DISASSEMBLE_OUTPUT_DIR);
         let cartridge = Cartridge::new(args.rom_filepath.as_ref());
         let mut gamboy = Console::new(
             "GAMBOY",
