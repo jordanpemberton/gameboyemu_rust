@@ -2,6 +2,8 @@
 
 Forver WIP (very buggy, very slow)
 
+![GamBoy screenshot](/docs/screenshots/gamboy-trans-kirby.png)
+
 ## Dependencies
 - Rust, Cargo
 -- To install (Ubuntu), see: https://rust-lang.org/tools/install/
