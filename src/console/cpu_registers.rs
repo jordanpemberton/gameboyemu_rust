@@ -75,10 +75,10 @@ impl CpuRegisters {
 
     pub(crate) fn get_word(&self, register: CpuRegIndex) -> u16 {
         match register {
-            CpuRegIndex::AF => self.bytes_to_word(self.a, self.f),
-            CpuRegIndex::BC => self.bytes_to_word(self.b, self.c),
-            CpuRegIndex::DE => self.bytes_to_word(self.d, self.e),
-            CpuRegIndex::HL => self.bytes_to_word(self.h, self.l),
+            CpuRegIndex::AF => ((self.a as u16) << 8) | (self.f as u16),
+            CpuRegIndex::BC => ((self.b as u16) << 8) | (self.c as u16),
+            CpuRegIndex::DE => ((self.d as u16) << 8) | (self.e as u16),
+            CpuRegIndex::HL => ((self.h as u16) << 8) | (self.l as u16),
             CpuRegIndex::PC => self.pc,
             CpuRegIndex::SP => self.sp,
             _ => panic!("Invalid RegIndex"),
@@ -252,10 +252,6 @@ impl CpuRegisters {
     pub(crate) fn test() {
         let mut regs = CpuRegisters::new();
         regs.tests();
-    }
-
-    fn bytes_to_word(&self, reg1: u8, reg2: u8) -> u16 {
-        (reg1 as u16) << 8 | (reg2 as u16)
     }
 
     fn tests(&mut self) {

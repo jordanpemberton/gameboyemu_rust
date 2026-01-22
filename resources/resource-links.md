@@ -1,3 +1,6 @@
 - https://gbdev.io/
-
 - https://gbdev.io/pandocs/
+- https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
+- https://gbdev.io/gb-opcodes/optables/
+- http://www.6502.org/tutorials/6502opcodes.html
+- https://github.com/osnr/tetris/blob/master/tetris.asm

@@ -27,6 +27,7 @@ impl Cpu {
         }
     }
 
+    // TODO Broken?
     pub(crate) fn handle_interrupts(&mut self, mmu: &mut Mmu) -> i16 {
         let mut cycles = 0;
 

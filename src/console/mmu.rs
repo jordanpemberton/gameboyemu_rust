@@ -74,13 +74,6 @@ pub(crate) const IE_REG: u16 = 0xFFFF;
 
 const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/dmg.bin";
 
-#[allow(dead_code)]
-#[derive(PartialEq)]
-pub(crate) enum Endianness {
-    BIG,
-    LITTLE,
-}
-
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub(crate) enum Caller {
     CPU,
@@ -145,14 +138,15 @@ impl Mmu {
         result
     }
 
-    pub(crate) fn read_16(&mut self, address: u16, endian: Endianness, caller: Caller) -> u16 {
-        let lsb: u8 = self.read_8(address, caller);
-        let msb: u8 = self.read_8(address + 1, caller);
+    pub(crate) fn read_16(&mut self, address: u16, caller: Caller) -> u16 {
+        // TODO WIP
+        let lo_address: u16 = address;
+        let hi_address: u16 = address + 1;
 
-        match endian {
-            Endianness::BIG => (msb as u16) << 8 | lsb as u16,
-            Endianness::LITTLE => (lsb as u16) << 8 | msb as u16,
-        }
+        let lo: u8 = self.read_8(lo_address, caller);
+        let hi: u8 = self.read_8(hi_address, caller);
+
+        ((hi as u16) << 8) | (lo as u16)
     }
 
     pub(crate) fn read_buffer(&mut self, start: u16, end: u16, caller: Caller) -> Vec<u8> {
@@ -182,20 +176,17 @@ impl Mmu {
         result
     }
 
-    pub(crate) fn write_16(&mut self, address: u16, value: u16, endian: Endianness, caller: Caller) -> u16 {
-        let mut a = ((value & 0xFF00) >> 8) as u8;
-        let mut b = (value & 0x00FF) as u8;
+    pub(crate) fn write_16(&mut self, address: u16, value: u16, caller: Caller) -> u16 {
+        let mut hi: u8 = ((value & 0xFF00) >> 8) as u8;
+        let mut lo: u8 = (value & 0x00FF) as u8;
 
-        if endian == Endianness::BIG {
-            let temp = a;
-            a = b;
-            b = temp;
-        }
+        // TODO WIP
+        let lo_address: u16 = address;
+        let hi_address: u16 = address + 1;
 
-        a = self.write_8(address, a, caller);
-        b = self.write_8(address + 1, b, caller);
-
-        ((a as u16) << 8) | (b as u16)
+        lo = self.write_8(lo_address, lo, caller);
+        hi = self.write_8(hi_address, hi, caller);
+        ((hi as u16) << 8) | (lo as u16)
     }
 
     #[allow(unused_variables)]

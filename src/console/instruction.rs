@@ -3,7 +3,7 @@
 
 use crate::console::{alu, mmu};
 use crate::console::cpu::{Cpu, PREFIX_BYTE};
-use crate::console::mmu::{Caller, Endianness, Mmu};
+use crate::console::mmu::{Caller, Mmu};
 use crate::console::cpu_registers::{Flags, CpuRegIndex};
 
 #[derive(Clone, Copy, Debug)]
@@ -384,7 +384,7 @@ impl Instruction {
             0xCB4C => Instruction { opcode, mnemonic: "BIT 1,H", size: 2, cycles: 8, _fn: Instruction::op_cb4c },
             0xCB4D => Instruction { opcode, mnemonic: "BIT 1,L", size: 2, cycles: 8, _fn: Instruction::op_cb4d },
             0xCB4E => Instruction { opcode, mnemonic: "BIT 1,(HL)", size: 2, cycles: 12, _fn: Instruction::op_cb4e },
-            0xCB4f => Instruction { opcode, mnemonic: "BIT 1,A", size: 2, cycles: 8, _fn: Instruction::op_cb4f },
+            0xCB4F => Instruction { opcode, mnemonic: "BIT 1,A", size: 2, cycles: 8, _fn: Instruction::op_cb4f },
 
             0xCB50 => Instruction { opcode, mnemonic: "BIT 2,B", size: 2, cycles: 8, _fn: Instruction::op_cb50 },
             0xCB51 => Instruction { opcode, mnemonic: "BIT 2,C", size: 2, cycles: 8, _fn: Instruction::op_cb51 },
@@ -664,7 +664,8 @@ impl Instruction {
 
     fn set_target_value_16(cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8], target: Src, value: u16) {
         match target {
-            Src::A16 => { mmu.write_16(((args[1] as u16) << 8) | (args[0] as u16), value, Endianness::BIG, Caller::CPU); },
+            // Args = HiBits, LoBits
+            Src::A16 => { mmu.write_16(((args[0] as u16) << 8) | (args[1] as u16), value, Caller::CPU); },
 
             Src::AF => cpu.registers.set_word(CpuRegIndex::AF, value),
             Src::BC => cpu.registers.set_word(CpuRegIndex::BC, value),
@@ -677,21 +678,23 @@ impl Instruction {
         }
     }
 
+    // TODO Broken?
     /// PUSH
     fn push(cpu: &mut Cpu, mmu: &mut Mmu, source_register: CpuRegIndex) {
+        let value = cpu.registers.get_word(source_register);
+        // Stack address grows downward
         // SP=SP-2
         cpu.registers.decrement(CpuRegIndex::SP, 2);
         // (SP)=r16
-        let value = cpu.registers.get_word(source_register);
         let target_address = cpu.registers.get_word(CpuRegIndex::SP);
-        mmu.write_16(target_address, value, Endianness::BIG, Caller::CPU);
+        mmu.write_16(target_address, value, Caller::CPU);
     }
 
     /// POP
     fn pop(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, target_register: CpuRegIndex) -> i16 {
         // r16=(SP)
         let source_address = cpu.registers.get_word(CpuRegIndex::SP);
-        let value = mmu.read_16(source_address, Endianness::BIG, Caller::CPU);
+        let value = mmu.read_16(source_address, Caller::CPU);
         cpu.registers.set_word(target_register, value);
         // SP=SP+2
         cpu.registers.increment(CpuRegIndex::SP, 2);
@@ -706,7 +709,7 @@ impl Instruction {
     fn relative_jump(&mut self, cpu: &mut Cpu, d8: u8) {
         let jump_by = alu::signed_8(d8);
         if jump_by < 0 {
-            cpu.registers.decrement(CpuRegIndex::PC, (-1 * jump_by) as u16);
+            cpu.registers.decrement(CpuRegIndex::PC, -jump_by as u16);
         } else {
             cpu.registers.increment(CpuRegIndex::PC, jump_by as u16);
         }
@@ -1171,7 +1174,7 @@ impl Instruction {
     /// 2 12/8
     /// - - - -
     fn op_0020(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        if !(cpu.registers.get_flags().zero) {
+        if !cpu.registers.get_flags().zero {
             self.relative_jump(cpu, args[0]);
             self.cycles += 4;
         }
@@ -1292,7 +1295,7 @@ impl Instruction {
     /// CPL
     /// 1 4
     /// - 1 1 -
-    /// Gives the one's complement of A, i. e. all the bits of A are reversed individually.
+    /// Gives the one's complement of A, i.e. all the bits of A are reversed individually.
     fn op_002f(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
         let a = cpu.registers.get_byte(CpuRegIndex::A);
         cpu.registers.set_byte(CpuRegIndex::A, !a);
@@ -1310,7 +1313,7 @@ impl Instruction {
     /// 2 8/12
     /// - - - -
     fn op_0030(&mut self, cpu: &mut Cpu, mmu: &mut Mmu, args: &[u8]) -> i16 {
-        if !(cpu.registers.get_flags().carry) {
+        if !cpu.registers.get_flags().carry {
             self.relative_jump(cpu, args[0]);
             self.cycles += 4;
         }
@@ -2674,8 +2677,8 @@ impl Instruction {
         let sp = cpu.registers.get_word(CpuRegIndex::SP);
         let offset = args[0] as i8 as i16 as u16;
         let result = sp.wrapping_add(offset);
-        let half_carry = (sp & 0x0F) + (offset & 0x0F) > 0x0F;
-        let carry = (sp & 0xFF) + (offset & 0xFF) > 0xFF;
+        let half_carry = ((sp & 0x0F) + (offset & 0x0F)) > 0x0F;
+        let carry = ((sp & 0xFF) + (offset & 0xFF)) > 0xFF;
         let flags = Flags{
             zero: false,
             subtract: false,
