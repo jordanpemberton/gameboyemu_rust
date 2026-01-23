@@ -131,6 +131,9 @@ impl Console {
 
         for callback in callbacks {
             match callback {
+                Callback::CycleColorPalette => {
+                    self.display.cycle_color_palette();
+                }
                 Callback::DebugBreak => {
                     match self.debugger {
                         Some(ref mut debugger) => {

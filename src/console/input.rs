@@ -18,6 +18,7 @@ pub(crate) enum JoypadInput {
 
 #[derive(Debug)]
 pub(crate) enum Callback {
+    CycleColorPalette,
     DebugBreak,
     DebugPeek,
     DebugPrintScreen,
@@ -59,6 +60,9 @@ impl Input {
                 }
                 Event::KeyDown { keycode: Some(Keycode::O), .. } => {
                     callbacks.push(Callback::DebugPrintScreen);
+                }
+                Event::KeyDown { keycode: Some(Keycode::C), .. } => {
+                    callbacks.push(Callback::CycleColorPalette);
                 }
                 Event::KeyDown { keycode: Some(Keycode::Down), .. } => {
                     callbacks.push(Callback::InputKeyDown);

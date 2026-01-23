@@ -6,9 +6,9 @@ Forver WIP (very buggy, very slow)
 
 ## Dependencies
 - Rust, Cargo
-    - To install (Ubuntu), see: https://rust-lang.org/tools/install/
+    - To install, see: https://rust-lang.org/tools/install/
 - SDL2
-    - To install (Ubuntu): `sudo apt-get install libsdl2-dev`
+    - To install (Ubuntu): `sudo apt install libsdl2-dev`
 
 ## To Build
 `cargo build [--release]`
@@ -38,23 +38,23 @@ If a game rom filepath is not provided via the first command line argument, GamB
 ## Key Inputs
 ### Program Inputs:
 - `Escape`: Quit GamBoy
-- (FUTURE TODO): Swap color palette
+- `c`: Cycle available color palettes, including a randomly generated palette.
 
 ### JoyPad Inputs:
 - `Up Arrow`: Up
 - `Down Arrow`: Down
 - `Left Arrow`: Left
 - `Right Arrow`: Right
-- `A`: Select
-- `S`: Start
-- `X`: A Button
-- `Z`: B Button
+- `a`: Select
+- `s`: Start
+- `x`: A Button
+- `z`: B Button
 
 ### Debugger Inputs:
 When running with the `debug` flag, you can use:
-- `B`: Break /Resume -- Break and dump info to the output.
-- `O`: Output -- Output the display as plain text.
-- `P`: Peek -- Dump info to the output (without breaking).
+- `b`: Break /Resume -- Break and dump info to the output.
+- `o`: Output -- Output the display as plain text.
+- `p`: Peek -- Dump info to the output (without breaking).
 - (FUTURE TODO) `S`: Step
 
 ## More Resources
