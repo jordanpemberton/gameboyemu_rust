@@ -1,14 +1,27 @@
+use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 use crate::console::instruction::Instruction;
 
 const PREFIX_BYTE: u8 = 0xCB;
 
-pub(crate) fn disassemble_to_output_file(rom: &Vec<u8>, output_path: &str) {
-    let s = format!("{}", disassemble(rom));
-    let mut file = File::create(output_path)
-        .expect(format!("Failed to create file '{}'.", output_path).as_str());
-    file.write_all(s.as_ref()).expect("\n\nSomething went wrong...");
+pub(crate) fn disassemble_to_output_file(rom: &Vec<u8>, output_path: &str, filename: &str) {
+    let disassembled = disassemble(rom);
+
+    // Create output dir if it doesn't exist
+    if !Path::new(&output_path).exists() {
+        fs::create_dir_all(&output_path)
+            .expect(format!("Failed to create directory {}", output_path).as_str());
+    }
+
+    let filepath = Path::new(output_path).join(filename);
+
+    let mut file = File::create(filepath)
+        .expect(format!("Failed to create output file {}/{}.", output_path, filename).as_str());
+
+    file.write_all(disassembled.as_ref())
+        .expect("\n\nSomething went wrong...");
 }
 
 pub(crate) fn disassemble(rom: &Vec<u8>) -> String {

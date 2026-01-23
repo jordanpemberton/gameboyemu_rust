@@ -2,8 +2,8 @@ use std::cmp::min;
 use std::collections::HashSet;
 use std::fs::read;
 use crate::cartridge::cartridge::Cartridge;
-use crate::console::input::JoypadInput;
-use crate::console::ppu;
+use crate::cli::cli;
+use crate::console::{input::JoypadInput, ppu};
 
 // OAM
 pub(crate) const OAM_START: u16 = 0xFE00;
@@ -72,8 +72,6 @@ pub(crate) const BANK_REG: u16 = 0xFF50;
 // Interrupts
 pub(crate) const IE_REG: u16 = 0xFFFF;
 
-const BOOTROM_FILEPATH: &str = "/home/jordan/RustProjs/GameBoyEmu/roms/bootrom/dmg.bin";
-
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub(crate) enum Caller {
     CPU,
@@ -103,7 +101,7 @@ impl Mmu {
             oam_dma_src_addr: None,
             active_input: HashSet::from([]),
             cartridge,
-            debug_address: Option::None, // Option::from(LCD_CONTROL_REG),
+            debug_address: None, // Option::from(LCD_CONTROL_REG),
             debug_written_value: 0,
             debug_read_value: 0,
             rom: [0; 0x8000],
@@ -201,6 +199,7 @@ impl Mmu {
             0x0000..=0x7FFF => if let Some(cartridge) = &mut self.cartridge {
                 cartridge.read_8_rom(address)
             } else {
+                // TODO: Support running without a cartridge!
                 panic!("UNIMPLEMENTED: No cartridge loaded, cannot read address {:04X}.", address);
             }
 
@@ -485,7 +484,7 @@ impl Mmu {
     }
 
     fn load_bootrom(&mut self) {
-        let bootrom = read(BOOTROM_FILEPATH).unwrap();
+        let bootrom = read(cli::BOOTROM_FILEPATH).unwrap();
         let size = min(bootrom.len(), 0x100);
         self.rom[0..size].clone_from_slice(&bootrom[..size]);
     }

@@ -19,7 +19,13 @@ pub(crate) struct Cartridge {
 
 impl Cartridge {
     pub(crate) fn new(filepath: &Path) -> Cartridge {
-        let mut data = read(filepath).expect(format!("Failed to read from {:?}", filepath).as_str());
+        // Check that the file exists
+        if !filepath.exists() {
+            panic!("Cartridge ERROR: File path {} does not exist", filepath.display())
+        }
+
+        let mut data = read(filepath)
+            .expect(format!("Failed to read from {:?}", filepath).as_str());
         if data.len() < MIN_CARTRIDGE_SIZE {
             let mut new_data = vec![0; MIN_CARTRIDGE_SIZE];
             new_data[..data.len()].copy_from_slice(&data);

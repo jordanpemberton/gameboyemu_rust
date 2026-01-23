@@ -4,6 +4,8 @@ use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
 use crate::console::ppu::{Lcd, Ppu};
 
+pub(crate) const WINDOW_SCALE: u32 = 5;
+
 const WHITE: Color = Color::RGB(255, 255, 255);
 const GRAY_LT: Color = Color::RGB(170, 170, 170);
 const GRAY_DK: Color = Color::RGB(85, 85, 85);

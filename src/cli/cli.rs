@@ -1,18 +1,18 @@
 use std::{env, fs, io};
 use std::fs::DirEntry;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::cartridge::cartridge::Cartridge;
 use crate::console::console::Console;
-use crate::console::disassembler;
+use crate::console::{disassembler, display};
 
-const BOOTROM_FILEPATH: &str = "./roms/bootrom/dmg.bin";
-const ROM_DIR: &str = "./roms";
-const DISASSEMBLE_OUTPUT_DIR: &str = "./out";
+pub(crate) const BOOTROM_FILEPATH: &str = "./roms/bootrom/dmg.bin";
+pub(crate) const ROM_DIR: &str = "./roms";
+pub(crate) const DISASSEMBLE_OUTPUT_DIR: &str = "./out";
+const NO_ROM_STRING: &str = "norom";
 const SKIP_BOOT_FLAG_STRING: &str = "skipboot";
 const DEBUG_FLAG_STRING: &str = "debug";
 const PRINT_CPU_FLAG_STRING: &str = "printcpu";
-
 
 struct EmuArgs {
     skip_boot: bool,
@@ -51,8 +51,24 @@ impl EmuArgs {
     }
 }
 
-fn select_rom(is_contained: bool) -> String {
+fn select_rom(is_contained: bool) -> Option<String> {
     let root_path = PathBuf::from(ROM_DIR);
+
+    // If roms folder doesn't exist, create it.
+    if !Path::new(root_path.as_path()).exists() {
+        println!("\nThe provided roms folder path '{}' doesn't exist, creating it now...", root_path.display());
+        fs::create_dir_all(&root_path.as_path())
+            .expect(format!("Failed to create directory '{}'", root_path.display()).as_str());
+        println!("\nCreated roms folder '{}', put ye games in here.", root_path.display());
+    }
+
+    // If roms folder is empty, exit.
+    if root_path.read_dir().map(|mut e| e.next().is_none()).unwrap_or(false) {
+        println!("\nERROR: The provided roms folder path '{}' is empty. \
+            Either (1) provide a rom filepath arg or (2) place rom files in this folder.\n", root_path.display());
+        return None;
+    }
+
     let mut curr_path = PathBuf::from(ROM_DIR);
     let mut selection = -1;
 
@@ -106,7 +122,7 @@ fn select_rom(is_contained: bool) -> String {
 
     let rom_filepath = String::from(curr_path.to_str().unwrap());
     println!("\nSELECTED ROM: {}\n", rom_filepath);
-    rom_filepath
+    Option::from(rom_filepath)
 }
 
 fn disassemble_rom(filepath: &str, out_path: &str) {
@@ -115,46 +131,61 @@ fn disassemble_rom(filepath: &str, out_path: &str) {
         .last().unwrap()
         .split('.').collect::<Vec<&str>>()
         .first().unwrap();
-    let path = format!("{}/disassemble__{}.txt", out_path, name);
-    disassembler::disassemble_to_output_file(&cartridge.data, path.as_str());
+    let file_name = format!("disassemble__{}.txt", name);
+    disassembler::disassemble_to_output_file(&cartridge.data, out_path, file_name.as_str());
 }
 
-fn run_rom(args: &EmuArgs) {
-    let window_scale = 5;
+fn run_no_rom(args: &EmuArgs, window_scale: u32) {
+    // Don't allow skip boot if running without a cartridge
+    let skip_boot = false;
+    let mut gamboy = Console::new(
+        "GAMBOY",
+        window_scale,
+        args.debug_enabled,
+        args.print_cpu_instrs,
+        skip_boot,
+        None
+    );
+    gamboy.run();
+}
 
-    if args.rom_filepath.trim().is_empty() {
-        disassemble_rom(BOOTROM_FILEPATH, DISASSEMBLE_OUTPUT_DIR);
-        let skip_boot = false;
-        let mut gamboy = Console::new(
-            "GAMBOY",
-            window_scale,
-            args.debug_enabled,
-            args.print_cpu_instrs,
-            skip_boot,
-            None
-        );
-        gamboy.run();
-    } else {
-        disassemble_rom(args.rom_filepath.as_str(), DISASSEMBLE_OUTPUT_DIR);
-        let cartridge = Cartridge::new(args.rom_filepath.as_ref());
-        let mut gamboy = Console::new(
-            "GAMBOY",
-            window_scale,
-            args.debug_enabled,
-            args.print_cpu_instrs,
-            args.skip_boot,
-            Some(cartridge)
-        );
-        gamboy.run();
-    }
+fn run_rom(args: &EmuArgs, window_scale: u32) {
+    disassemble_rom(args.rom_filepath.as_str(), DISASSEMBLE_OUTPUT_DIR);
+    let cartridge = Cartridge::new(args.rom_filepath.as_ref());
+    let mut gamboy = Console::new(
+        "GAMBOY",
+        window_scale,
+        args.debug_enabled,
+        args.print_cpu_instrs,
+        args.skip_boot,
+        Some(cartridge)
+    );
+    gamboy.run();
 }
 
 pub(crate) fn run() {
+    // Verify that bootrom file exists
+    if !Path::new(BOOTROM_FILEPATH).exists() {
+        println!("Boot rom must be provided but the provided file path '{}' does not exist.", BOOTROM_FILEPATH);
+        return;
+    }
+    disassemble_rom(BOOTROM_FILEPATH, DISASSEMBLE_OUTPUT_DIR);
+
+    // Parse args, determine rom selection
     let mut args = EmuArgs::new();
 
-    if String::is_empty(&args.rom_filepath) {
-        args.rom_filepath = select_rom(true);
+    if args.rom_filepath.trim().is_empty() {
+        if let Some(selection) = select_rom(true) {
+            args.rom_filepath = selection;
+        } else {
+            println!("No rom provided, exiting...");
+            return;
+        }
     }
 
-    run_rom(&args);
+    if args.rom_filepath.eq_ignore_ascii_case(NO_ROM_STRING) {
+        run_no_rom(&args, display::WINDOW_SCALE);
+    } else {
+        run_rom(&args, display::WINDOW_SCALE);
+    }
 }

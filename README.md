@@ -22,10 +22,16 @@ Forver WIP (very buggy, very slow)
 ## To Run
 `cargo run [--release] [<path/to/rom>] [skipboot] [debug] [printcpu]`
 
-Args:
+### Args:
 - `skipboot`: Skip the boot sequence
 - `debug`: Run with debugger enabled.
 - `printcpu`: Print CPU commands to output.
+
+### Boot Rom
+A boot rom file must be provided in `/roms/bootrom/`.
+
+### Game Roms
+If a game rom filepath is not provided via the first command line argument, GamBoy will allow you to select a rom from the `/roms/` directory.
 
 ## To Run Tests
 `cargo run [--release] [<path/to/testrom>] [debug] [printcpu]`
@@ -33,6 +39,7 @@ Args:
 ## Key Inputs
 Program Inputs:
 - `Escape`: Quit GamBoy
+- (FUTURE TODO): Swap color palette
 
 JoyPad Inputs:
 - `Up Arrow`: Up
@@ -50,3 +57,6 @@ When running with the `debug` flag, you can use:
 - `O`: Output -- Output the display as plain text.
 - `P`: Peek -- Dump info to the output (without breaking).
 - (FUTURE TODO) `S`: Step
+
+## More Resources
+See [./resouces/]

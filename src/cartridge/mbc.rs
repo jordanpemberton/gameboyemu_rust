@@ -38,7 +38,7 @@ impl Mbc {
         };
 
         let cartridge_type = CartridgeType::from_u8(data[CARTRIDGE_TYPE_ADDRESS]);
-        println!("CARTRIDGE TYPE is {:?}", cartridge_type);
+        println!("CARTRIDGE TYPE = {:?}", cartridge_type);
 
         let mbc = match cartridge_type {
             CartridgeType::NoMbc { .. } => Mbc::None,
@@ -49,8 +49,8 @@ impl Mbc {
             | CartridgeType::Huc1 { .. }
             | _ => panic!("UNIMPLEMENTED CartridgeType {:?}", cartridge_type),
         };
+        println!("CARTRIDGE MBC TYPE = {:?}", mbc);
 
-        println!("MBC TYPE is {:?}", mbc);
         mbc
     }
 }
